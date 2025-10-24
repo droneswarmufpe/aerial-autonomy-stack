@@ -176,7 +176,7 @@ RUN bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install
 
 # Add pymavlink for debugging and testing
 RUN pip3 install --no-cache-dir --upgrade pip \
-    && pip3 install --no-cache-dir --resume-retries 5 pymavlink
+    && pip3 install --no-cache-dir --resume-retries 5 pymavlink pyserial
 # Check with $ python3 -c "import pymavlink; print(pymavlink.__version__)"
 
 # Install Zenoh
@@ -216,9 +216,6 @@ COPY aircraft/aircraft_resources/patches/apm_pluginlists.yaml /opt/ros/humble/sh
 RUN echo "source /aas/github_ws/install/setup.bash" >> /root/.bashrc
 RUN echo "source /aas/aircraft_ws/install/setup.bash" >> /root/.bashrc
 # If needed (but already in .bashrc) $ source /opt/ros/humble/setup.bash && source /aas/github_ws/install/setup.bash && source /aas/aircraft_ws/install/setup.bash
-
-# TO BE REMOVED
-RUN /opt/ros/humble/lib/mavros/install_geographiclib_datasets.sh
 
 # Final config
 WORKDIR /aas

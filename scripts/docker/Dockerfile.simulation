@@ -180,7 +180,7 @@ RUN apt update \
 
 # Add pymavlink to emulate the ground system using telemetry data
 RUN pip3 install --no-cache-dir --upgrade pip \
-    && pip3 install --no-cache-dir --resume-retries 5 pymavlink
+    && pip3 install --no-cache-dir --resume-retries 5 pymavlink pyserial
 # Check with $ python3 -c "import pymavlink; print(pymavlink.__version__)"
 
 # Install Zenoh

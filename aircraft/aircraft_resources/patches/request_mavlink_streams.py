@@ -20,13 +20,50 @@ def main():
     print(f"Heartbeat received from target_system {master.target_system}")
 
     print(f"Requesting data streams at {args.rate} Hz from target_system {args.target_system}, target_component {args.target_component}")
+    # master.mav.request_data_stream_send(
+    #     args.target_system, 
+    #     args.target_component, 
+    #     mavutil.mavlink.MAV_DATA_STREAM_ALL, 
+    #     args.rate, 
+    #     1 # 1 = start, 0 = stop
+    # )
     master.mav.request_data_stream_send(
         args.target_system, 
         args.target_component, 
-        mavutil.mavlink.MAV_DATA_STREAM_ALL, 
+        mavutil.mavlink.MAV_DATA_STREAM_EXTENDED_STATUS, # Enable GPS_STATUS, CONTROL_STATUS, AUX_STATUS
         args.rate, 
         1 # 1 = start, 0 = stop
     )
+    master.mav.request_data_stream_send(
+        args.target_system, 
+        args.target_component, 
+        mavutil.mavlink.MAV_DATA_STREAM_POSITION, # Enable LOCAL_POSITION, GLOBAL_POSITION_INT messages
+        args.rate, 
+        1 # 1 = start, 0 = stop
+    )
+    master.mav.request_data_stream_send(
+        args.target_system, 
+        args.target_component, 
+        mavutil.mavlink.MAV_DATA_STREAM_EXTRA1,
+        args.rate, 
+        1 # 1 = start, 0 = stop
+    )
+    master.mav.request_data_stream_send(
+        args.target_system, 
+        args.target_component, 
+        mavutil.mavlink.MAV_DATA_STREAM_EXTRA2,
+        args.rate, 
+        1 # 1 = start, 0 = stop
+    )
+    master.mav.request_data_stream_send(
+        args.target_system, 
+        args.target_component, 
+        mavutil.mavlink.MAV_DATA_STREAM_EXTRA3,
+        args.rate, 
+        1 # 1 = start, 0 = stop
+    )
+    # See also: https://github.com/ArduPilot/pymavlink/blob/master/tests/snapshottests/resources/common.xml
+    # And: https://ardupilot.org/copter/docs/parameters-Copter-stable-V4.6.2.html#sr2-parameters
     print("Data streams requested")
 
 if __name__ == "__main__":

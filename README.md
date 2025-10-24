@@ -248,7 +248,7 @@ Once flown from CLI, implemented your mission in [`MissionNode.conops_callback()
 > [!IMPORTANT]
 > These instructions are tested on a [Holybro Jetson Baseboard](https://holybro.com/products/pixhawk-jetson-baseboard) (Pixhawk 6X + NVIDIA Orin NX 16GB)
 > 
-> **To setup (i.a) PX4's DDS client or (i.b) ArduPilot MAVLink bridge, (ii) JetPack 6, (iii) Docker Engine, and (iv) NVIDIA Container Toolkit (with NVIDIA NGC API Key) on Orin, read [`SETUP_AVIONICS.md`](/supplementary/SETUP_AVIONICS.md)**
+> **To setup (i.a) PX4's DDS client or (i.b) ArduPilot MAVLink serial, (ii) JetPack 6, (iii) Docker Engine, and (iv) NVIDIA Container Toolkit (with NVIDIA NGC API Key) on Orin, read [`SETUP_AVIONICS.md`](/supplementary/SETUP_AVIONICS.md)**
 
 ```sh
 # Install dependencies (git, Git LFS)
@@ -314,6 +314,7 @@ Once done, detach Tmux (and remove the containers) with `Ctrl + b`, then `d`
 
 ### Known Issues
 
+- On non-configured real-life AP, missing topics: ros2 topic echo /mavros/local_position/odom ros2 topic echo /mavros/home_position/home
 - The simulation (SITL or HITL) container must start after the aircraft ones for Gstreamer to pick up the UDP streams
 - wmctrl does not work as-is in WSLg
 - QGC is started with a virtual joystick (with low throttle if using only VTOLs and centered throttle if there are quads), this is reflective of real-life but note that this counts as "RC loss" when switching focus from one autopilot instance to another
