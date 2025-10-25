@@ -12,14 +12,12 @@
 - Setup an account when prompted `Enter new UNIX username:` and `New password:`
 
 ```sh
-sudo apt update
-sudo apt upgrade
+sudo apt update && sudo apt upgrade
 
 # Install X11 apps and xserver
-sudo apt install x11-apps
-sudo apt install x11-xserver-utils
+sudo apt install -y x11-apps x11-xserver-utils
 
-xclock # Test: a new window with a clock should appear
+xclock    # Test: a new window with a clock should appear
 ```
 
 > [!WARNING]
@@ -43,7 +41,7 @@ xclock # Test: a new window with a clock should appear
 > exit
 > wsl --shutdown 
 > wsl ~
-> free -h # Check the available memory and swap reflect .wslconfig
+> free -h    # Check the available memory and swap reflect .wslconfig
 > ```
 
 ## Install the NVIDIA Driver in Windows 11
@@ -51,7 +49,7 @@ xclock # Test: a new window with a clock should appear
 Download and install **NVIDIA driver 580** using the [NVIDIA App](https://www.nvidia.com/en-us/software/nvidia-app/) 
 
 > [!WARNING] 
-> The latest NVIDIA Windows drivers fully support **WSL2**, enabling existing CUDA applications compiled on Linux to run unmodified in WSL, once the Windows NVIDIA driver is installed, CUDA is available in WSL2 via a stubbed `libcuda.so`
+> The latest NVIDIA Windows drivers fully support **WSL2**, enabling existing CUDA applications compiled on Linux to run unmodified in WSL, once the Windows NVIDIA driver is installed, CUDA is available in WSL2 *via* a stubbed `libcuda.so`
 >
 > **Do NOT install a separate NVIDIA GPU Linux driver inside WSL2**
 
@@ -60,13 +58,12 @@ From PowerShell
 ```sh
 wsl ~
 
-nvidia-smi # From WSL, check NVIDIA driver
+nvidia-smi    # From WSL, check NVIDIA driver
 # These instructions are tested on Driver Version: 581.15, CUDA Version:13.0
 
-sudo apt update
-sudo apt install mesa-utils
+sudo apt update && sudo apt install -y mesa-utils
 
-glxinfo -B # Check the GPU is the OpenGL renderer
+glxinfo -B    # Check the GPU is the OpenGL renderer
 ```
 
 ## Install Docker Engine and NVIDIA Container Toolkit inside WSLg
@@ -78,7 +75,7 @@ wsl ~
 
 # Based on https://docs.docker.com/engine/install/ubuntu/ and https://docs.docker.com/engine/install/linux-postinstall/
 
-for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do sudo apt-get remove $pkg; done # none should be there
+for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do sudo apt-get remove $pkg; done
 
 # Add Docker's official GPG key:
 sudo apt-get update
@@ -97,15 +94,15 @@ sudo apt-get update
 # Install Docker Engine
 sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-sudo docker run hello-world  # Test Docker is working
-sudo docker version # Check version, 28.3.0 at the time of writing
+sudo docker run hello-world    # Test Docker is working
+sudo docker version    # Check version, 28.3.0 at the time of writing
 
 # Remove the need to sudo the docker command
 sudo groupadd docker
 sudo usermod -aG docker $USER
-newgrp docker # Reboot
+newgrp docker    # Reboot
 
-docker run hello-world # Test Docker is working without sudo
+docker run hello-world    # Test Docker is working without sudo
 ```
 
 Log in to the NVIDIA Registry:
@@ -115,9 +112,9 @@ Log in to the NVIDIA Registry:
 - Click "Generate API Key" -> "+ Generate Personal Key" for the "NCG Catalog" service, confirm, and copy the key.
 
 ```sh
-docker login nvcr.io # To be able to reliably pull NVIDIA base images
-Username: # type $oauthtoken
-Password: # copy and paste (e.g. right-click once in PowerShell) the API key and press enter to pull base images from nvcr.io/
+docker login nvcr.io    # To be able to reliably pull NVIDIA base images
+Username:    # type $oauthtoken
+Password:    # copy and paste (e.g. right-click once in PowerShell) the API key and press enter to pull base images from nvcr.io/
 ```
 
 ```sh
@@ -125,14 +122,13 @@ Password: # copy and paste (e.g. right-click once in PowerShell) the API key and
 distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
 curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
 curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
-sudo apt update
-sudo apt install -y nvidia-container-toolkit
+sudo apt update && sudo apt install -y nvidia-container-toolkit
 sudo nvidia-ctk runtime configure --runtime=docker
 sudo systemctl restart docker
 
-docker info | grep -i runtime # Check `nvidia` runtime is available
+docker info | grep -i runtime    # Check `nvidia` runtime is available
 
-docker run --rm --gpus all nvcr.io/nvidia/cuda:12.2.0-base-ubuntu22.04 nvidia-smi # Test nvidia-smi works in a container with CUDA
+docker run --rm --gpus all nvcr.io/nvidia/cuda:12.2.0-base-ubuntu22.04 nvidia-smi    # Test nvidia-smi works in a container with CUDA
 ```
 
 ![wsl](https://github.com/user-attachments/assets/1b4a18c0-896f-4e5f-9186-72425ceeabac)
