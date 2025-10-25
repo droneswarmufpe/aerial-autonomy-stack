@@ -148,7 +148,7 @@ Once flown from CLI, implemented your mission in [`MissionNode.conops_callback()
 > MODE=dev ./sim_run.sh                               # Starts one simulation-image and one aircraft-image where the *_resources/ and *_ws/src/ folders are mounted from the host
 > ```
 > 
-> To build changes made **on the host** in either `simulation_ws/src` or `aircraft_ws/src` **in the simulation and/or in the aircraft container**:
+> To make changes **on the host** and build them **in the simulation and/or aircraft container**:
 > 
 > ```sh
 > cd /aas/simulation_ws/                              # Or cd /aas/aircraft_ws/
