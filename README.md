@@ -95,9 +95,8 @@ To advance the simulation in **discrete time steps**, e.g. 1s, from a terminal o
 
 ```sh
 docker exec simulation-container bash -c " \
-  gz service -s /world/\$WORLD/control \
-    --reqtype gz.msgs.WorldControl --reptype gz.msgs.Boolean \
-    --req 'multi_step: 250, pause: true'"                              # Adjust multi_step based on the value of max_step_size in the world's .sdf (defaults: 250 for PX4, 1000 for ArduPilot)
+  gz service -s /world/\$WORLD/control --reqtype gz.msgs.WorldControl --reptype gz.msgs.Boolean \
+  --req 'multi_step: 250, pause: true'"                                # Adjust multi_step based on the value of max_step_size in the world's .sdf (defaults: 250 for PX4, 1000 for ArduPilot)
 ```
 
 To add or disable [**wind effects**](https://github.com/gazebosim/gz-sim/blob/gz-sim10/examples/worlds/wind.sdf), from a terminal on the host, run:
