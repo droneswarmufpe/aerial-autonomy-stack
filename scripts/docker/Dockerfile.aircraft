@@ -163,7 +163,7 @@ ENV PYTHONPATH=/aas/github_apps/onnxruntime/build/Linux/Release
 # Check with $ python3 -c "import onnxruntime as ort; print(ort.__version__); print(ort.get_available_providers())"
 
 ################################################################################
-# Stage 6 - 15+GB ##############################################################
+# Stage 6 - 16GB ###############################################################
 ################################################################################
 FROM image-with-onnxruntime-gpu_${TARGETARCH} AS ros2-px4msgs-dds-mavros-yolo-kissicp-zenoh-image
 
@@ -187,7 +187,7 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/*
 
 ################################################################################
-# Stage 7 - 15+GB ##############################################################
+# Stage 7 - 17+GB ##############################################################
 ################################################################################
 FROM ros2-px4msgs-dds-mavros-yolo-kissicp-zenoh-image AS aircraft-dev-image
 
@@ -198,8 +198,8 @@ RUN apt-get update && \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Build the ROS 2 workspace (NOTE: also includes ground_system_msgs from the simulation_ws)
-COPY simulation/simulation_ws/src/ground_system_msgs /aas/aircraft_ws/src/ground_system_msgs
+# Build the ROS 2 workspace (NOTE: also includes ground_system_msgs from the ground_ws)
+COPY ground/ground_ws/src/ground_system_msgs /aas/aircraft_ws/src/ground_system_msgs
 COPY aircraft/aircraft_ws/src /aas/aircraft_ws/src
 WORKDIR /aas/aircraft_ws
 RUN rosdep update

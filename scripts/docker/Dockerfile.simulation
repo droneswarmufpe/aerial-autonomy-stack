@@ -47,7 +47,7 @@ RUN rosdep init
 ################################################################################
 # Stage 2 - 9GB ################################################################
 ################################################################################
-FROM ros2-image AS ros2-gz-qgc-image
+FROM ros2-image AS ros2-gz-image
 
 # Gazebo Harmonic
 # Based on https://gazebosim.org/docs/harmonic/install_ubuntu/
@@ -66,29 +66,10 @@ RUN apt update \
     && rm -rf /var/lib/apt/lists/*
 # Run with $ gz sim
 
-# QGroundControl (as qgcuser)
-# Based on https://docs.qgroundcontrol.com/master/en/qgc-user-guide/getting_started/download_and_install.html
-WORKDIR /
-RUN useradd -m -s /bin/bash qgcuser
-RUN usermod -aG dialout qgcuser
-# RUN apt-get remove modemmanager -y
-RUN apt update \
-    && apt install -y --no-install-recommends \
-        gstreamer1.0-plugins-bad gstreamer1.0-libav gstreamer1.0-gl \
-        libfuse2 \
-        libxcb-xinerama0 libxkbcommon-x11-0 libxcb-cursor-dev \
-    && apt clean \
-    && rm -rf /var/lib/apt/lists/*
-RUN wget https://d176tv9ibo4jno.cloudfront.net/latest/QGroundControl-x86_64.AppImage && \
-    chmod +x /QGroundControl-x86_64.AppImage && \
-    /QGroundControl-x86_64.AppImage --appimage-extract && \
-    rm /QGroundControl-x86_64.AppImage
-# Run with $ gosu qgcuser /squashfs-root/AppRun
-
 ################################################################################
 # Stage 3 - 13GB ###############################################################
 ################################################################################
-FROM ros2-gz-qgc-image AS ros2-gz-qgc-px4-image
+FROM ros2-gz-image AS ros2-gz-px4-image
 
 # PX4 SITL (NOTE: install PX4 tools first to avoid conflicts with ArduPilot, build later to customize)
 # Based on https://docs.px4.io/main/en/dev_setup/dev_env_linux_ubuntu.html
@@ -99,7 +80,7 @@ RUN bash ./Tools/setup/ubuntu.sh --no-sim-tools
 ################################################################################
 # Stage 4 - 18GB ###############################################################
 ################################################################################
-FROM ros2-gz-qgc-px4-image AS ros2-gz-qgc-px4-ardupilot-image
+FROM ros2-gz-px4-image AS ros2-gz-px4-ardupilot-image
 
 # ArduPilot SITL (temporarily as arduuser, then re chown to root)
 # Based on https://ardupilot.org/dev/docs/building-setup-linux.html#building-setup-linux
@@ -140,9 +121,9 @@ RUN mkdir /airframes
 RUN find /temp_folder -type f -regex '.*/[0-9]+_.*' -exec cp {} /airframes/ \;
 
 ################################################################################
-# Stage 5 - 18+GB ##############################################################
+# Stage 5 - 19GB ###############################################################
 ################################################################################
-FROM ros2-gz-qgc-px4-ardupilot-image AS ros2-gz-qgc-px4custom-ardupilot-image
+FROM ros2-gz-px4-ardupilot-image AS ros2-gz-px4custom-ardupilot-image
 
 # Apply PX4 patch (DDS Agent on custom IP, ...) created with $ git diff > ../px4-v1.16.0.patch
 COPY simulation/simulation_resources/patches/px4-v1.16.0.patch /aas/github_apps/px4-v1.16.0.patch
@@ -166,14 +147,15 @@ RUN make px4_sitl
 # Run with $ /aas/github_apps/PX4-Autopilot/build/px4_sitl_default/bin/px4
 
 ################################################################################
-# Stage 6 - 18+GB ##############################################################
+# Stage 6 - 20GB ###############################################################
 ################################################################################
-FROM ros2-gz-qgc-px4custom-ardupilot-image AS ros2-gz-qgc-px4custom-ardupilot-gst-pymavlink-zenoh-image
+FROM ros2-gz-px4custom-ardupilot-image AS ros2-gz-px4custom-ardupilot-gst-pymavlink-image
 
 # Add GStreamer packages to stream the cameras to the aircraft containers
 RUN apt update \
     && apt install -y --no-install-recommends \
-        gstreamer1.0-tools gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly gstreamer1.0-libav \
+        gstreamer1.0-tools gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly \ 
+        gstreamer1.0-libav gstreamer1.0-gl \
         python3-gi gir1.2-gst-plugins-base-1.0 gir1.2-gstreamer-1.0 \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
@@ -183,19 +165,12 @@ RUN pip3 install --no-cache-dir --upgrade pip \
     && pip3 install --no-cache-dir --resume-retries 5 pymavlink pyserial
 # Check with $ python3 -c "import pymavlink; print(pymavlink.__version__)"
 
-# Install Zenoh
-RUN echo "deb [trusted=yes] https://download.eclipse.org/zenoh/debian-repo/ /" | sudo tee -a /etc/apt/sources.list > /dev/null
-RUN apt-get update && \
-    apt-get install -y zenoh-bridge-ros2dds \
-    && apt clean \
-    && rm -rf /var/lib/apt/lists/*
-
 ################################################################################
-# Stage 7 - 18+GB ##############################################################
+# Stage 7 - 21+GB ##############################################################
 ################################################################################
-FROM ros2-gz-qgc-px4custom-ardupilot-gst-pymavlink-zenoh-image AS simulation-dev-image
+FROM ros2-gz-px4custom-ardupilot-gst-pymavlink-image AS simulation-dev-image
 
-# Install wmctrl and xrandr to resize Gazebo and QGC GUIs
+# Install wmctrl and xrandr to resize Gazebo window
 RUN apt update \
     && apt install -y --no-install-recommends \
         wmctrl x11-xserver-utils \
@@ -213,32 +188,10 @@ RUN python3 -m venv /px4rf-env
 RUN /px4rf-env/bin/pip3 install --no-cache-dir --upgrade pip && \
     /px4rf-env/bin/pip3 install --no-cache-dir --resume-retries 5 -r requirements.txt
 
-# # Build the ROS 2 workspace for external packages
-# RUN mkdir -p /aas/github_ws/src
-# WORKDIR /aas/github_ws
-# RUN rosdep update
-# RUN rosdep install --from-paths src/ --ignore-src --rosdistro humble -y
-# # Explicitly use bash, not sh, to source and build the workspace
-# RUN bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install"
-
-# Build the ROS 2 workspace
-COPY simulation/simulation_ws/src /aas/simulation_ws/src
-WORKDIR /aas/simulation_ws
-RUN rosdep update
-RUN rosdep install --from-paths src/ --ignore-src --rosdistro humble -y
-# Explicitly use bash, not sh, to source and build the workspace
-RUN bash -c "source /opt/ros/humble/setup.bash && (source /aas/github_ws/install/setup.bash || true) && colcon build --symlink-install"
-
 # Copy resources and configuration files from this repository
 COPY simulation/simulation_resources/ /aas/simulation_resources
-COPY simulation/simulation_resources/patches/QGroundControl.ini /home/qgcuser/.config/QGroundControl/QGroundControl.ini
 RUN chmod +x /aas/simulation_resources/aircraft_models/_create_ardupilot_models.sh
 RUN chmod +x /aas/simulation_resources/simulation_worlds/_create_ardupilot_world.sh
-
-# Source the workspaces
-# RUN echo "source /aas/github_ws/install/setup.bash" >> /root/.bashrc
-RUN echo "source /aas/simulation_ws/install/setup.bash" >> /root/.bashrc
-# If needed (but already in .bashrc) $ source /opt/ros/humble/setup.bash && source /aas/github_ws/install/setup.bash && source /aas/simulation_ws/install/setup.bash
 
 # Final config
 WORKDIR /aas

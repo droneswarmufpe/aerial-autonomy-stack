@@ -1,0 +1,52 @@
+<% num_quads = ENV.fetch('NUM_QUADS', 1).to_i %>
+<% num_vtols = ENV.fetch('NUM_VTOLS', 0).to_i %>
+<% autopilot = ENV.fetch('AUTOPILOT', 'px4') %>
+<% world = ENV.fetch('WORLD', 'impalpable_greyness') %>
+<% headless = ENV.fetch('HEADLESS', 'false') %>
+<% camera = ENV.fetch('CAMERA', 'true') %>
+<% lidar = ENV.fetch('LIDAR', 'true') %>
+<% simulated_time = ENV.fetch('SIMULATED_TIME', 'false') %>
+<% subnet_prefix = ENV.fetch('SUBNET_PREFIX', '42.42') %>
+<% hitl = ENV.fetch('HITL', 'false') %>
+
+name: ground
+
+windows:
+
+  - debug:
+      layout: even-horizontal
+      panes:
+        - clear && echo "So nice to have you with us, this is the ground container."
+
+  - ground_system_over_zenoh:
+      layout: even-vertical
+      panes:
+        - "ros2 run ros_gz_bridge parameter_bridge /clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock"
+        - ros2 run ground_system oracle --num-drones <%=  num_quads + num_vtols %> --ip 127.0.0.1 --base-port 14540 --rate 1.0 <% if simulated_time == 'true' %> --ros-args -p use_sim_time:=True<% end %>
+        - zenoh-bridge-ros2dds -c /aas/ground_resources/comms/zenoh_config_ground.json5
+
+  - qgc:
+      layout: even-horizontal
+      panes:
+        <% if headless == 'true' %>
+        - echo "Headless mode, not launching QGroundControl."
+        <% else %>
+        - >
+          <% if num_quads > 0 %>
+          sed -i 's/virtualJoystickAutoCenterThrottle=false/virtualJoystickAutoCenterThrottle=true/g' /home/qgcuser/.config/QGroundControl/QGroundControl.ini &&
+          <% end %>
+          gosu qgcuser /squashfs-root/AppRun &
+          (
+            PRIMARY_RES=$(xrandr | grep -oE '[0-9]+x[0-9]+' | head -1)
+            SCREEN_W=$(echo $PRIMARY_RES | cut -d'x' -f1); SCREEN_H=$(echo $PRIMARY_RES | cut -d'x' -f2)
+            SCREEN_SCALE=$((SCREEN_H * 100 / 1080)) # Full HD = 100%
+            WIN_W=$(( 800 * SCREEN_SCALE / 100 )); WIN_H=$(( 600 * SCREEN_SCALE / 100 ))
+            POS_X=$((SCREEN_W - WIN_W)); POS_Y=$((WIN_H))
+            for i in {1..10}; do 
+              sleep 2
+              if wmctrl -l | grep -q "QGroundControl"; then
+                wmctrl -r "QGroundControl" -e "0,$POS_X,$POS_Y,$WIN_W,$WIN_H" && break
+              fi
+            done
+          )
+        <% end %>

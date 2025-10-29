@@ -36,7 +36,7 @@ For even more resources, check out [`aerial_robotic_landscape`](https://github.c
 - [おまかせ](https://dhh.dk/2012/rails-is-omakase.html) **end-to-end**ness (from camera frames, to autopilot uORB/MAVLink commands)
 - **Recentness** (break and fix, rather than carrying technical [debt](https://c2.com/doc/oopsla92.html))
 - **Deployment** focus
-    - Clear, Dockerized split between simulation and aircraft software
+    - Clear, Dockerized split between aircraft, ground, and simulation software
     - ROS2 intra-companion board messaging
     - XRCE-DDS (PX4), MAVROS (ArduPilot) autopilot-to-companion board ROS2 UDP bridge
     - GStreamer camera-to-companion board acquisition

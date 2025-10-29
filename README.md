@@ -62,12 +62,13 @@ cd ~/git/aerial-autonomy-stack/scripts
 ./sim_build.sh
 ```
 
-> Latest weekly builds with `sim_build.sh`: 
+> Latest weekly builds: 
 > [![simulation-image amd64](https://github.com/JacopoPan/aerial-autonomy-stack/actions/workflows/weekly-simulation-amd64-build.yml/badge.svg)](https://github.com/JacopoPan/aerial-autonomy-stack/actions/workflows/weekly-simulation-amd64-build.yml)
+> [![ground-image amd64](https://github.com/JacopoPan/aerial-autonomy-stack/actions/workflows/weekly-ground-amd64-build.yml/badge.svg)](https://github.com/JacopoPan/aerial-autonomy-stack/actions/workflows/weekly-ground-amd64-build.yml)
 > [![aircraft-image amd64](https://github.com/JacopoPan/aerial-autonomy-stack/actions/workflows/weekly-aircraft-amd64-build.yml/badge.svg)](https://github.com/JacopoPan/aerial-autonomy-stack/actions/workflows/weekly-aircraft-amd64-build.yml)
 
 > [!WARNING]
-> The 1st build takes ~45GB of space and ~25' with good internet (`Ctrl + c` and restart if needed)
+> The 1st build takes ~30GB of space and ~25' with good internet (`Ctrl + c` and restart if needed)
 
 ---
 
@@ -140,17 +141,17 @@ Once flown from CLI, implemented your mission in [`MissionNode.conops_callback()
 > <details>
 > <summary><b>Development within Live Containers</b> <i>(click to expand)</i></summary>
 > 
-> Launching the `sim_run.sh` script with `MODE=dev`, does **not** start the simulation and mounts folders `[simulation|aircraft]_resources`, `[simulation|aircraft]_ws/src` as volumes to more easily track, commit, push changes while building and testing them within the containers:
+> Launching the `sim_run.sh` script with `MODE=dev`, does **not** start the simulation and mounts folders `[aircraft|ground|simulation]_resources`, `[aircraft|ground]_ws/src` as volumes to more easily track, commit, push changes while building and testing them within the containers:
 > 
 > ```sh
 > cd ~/git/aerial-autonomy-stack/scripts
-> MODE=dev ./sim_run.sh                               # Starts one simulation-image and one aircraft-image where the *_resources/ and *_ws/src/ folders are mounted from the host
+> MODE=dev ./sim_run.sh                               # Starts one simulation-image, one ground-image, and one aircraft-image where the *_resources/ and *_ws/src/ folders are mounted from the host
 > ```
 > 
-> To make changes **on the host** and build them **in the simulation and/or aircraft container**:
+> To make changes **on the host** and build them **in the aircraft and/or ground container**:
 > 
 > ```sh
-> cd /aas/simulation_ws/                              # Or cd /aas/aircraft_ws/
+> cd /aas/aircraft_ws/                                # Or cd /aas/ground_ws/
 > colcon build --symlink-install
 > ```
 > 
@@ -158,6 +159,11 @@ Once flown from CLI, implemented your mission in [`MissionNode.conops_callback()
 > 
 > ```sh
 > tmuxinator start -p /aas/aircraft.yml.erb
+> ```
+> 
+> In the ground Xterm terminal:
+> ```sh
+> tmuxinator start -p /aas/ground.yml.erb
 > ```
 > 
 > In the simulation Xterm terminal:
@@ -185,6 +191,13 @@ Once flown from CLI, implemented your mission in [`MissionNode.conops_callback()
 > │   │
 > │   └── aircraft.yml.erb            # Aircraft docker tmux entrypoint
 > │
+> ├── ground
+> │   ├── ground_ws
+> │   │   └── src
+> │   │       └── ground_system       # Publisher of topic `/tracks` broadcasted by Zenoh
+> │   │
+> │   └── ground.yml.erb              # Ground docker tmux entrypoint
+> │
 > ├── scripts
 > │   ├── docker
 > │   │   ├── Dockerfile.aircraft     # Docker image for aircraft simulation and deployment
@@ -210,10 +223,6 @@ Once flown from CLI, implemented your mission in [`MissionNode.conops_callback()
 >     │       ├── impalpable_greyness.sdf
 >     │       ├── shibuya_crossing.sdf
 >     │       └── swiss_town.sdf
->     │
->     ├── simulation_ws
->     │   └── src
->     │       └── ground_system        # Publisher of topic `/tracks` broadcasted by Zenoh
 >     │
 >     └── simulation.yml.erb           # Simulation docker tmux entrypoint
 > ```

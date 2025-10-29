@@ -23,7 +23,7 @@ case "$MODE" in
     MODE_OPTS="--entrypoint /bin/bash"
     MODE_OPTS+=" -v ${SCRIPT_DIR}/../aircraft/aircraft_resources/:/aas/aircraft_resources:cached"
     MODE_OPTS+=" -v ${SCRIPT_DIR}/../aircraft/aircraft_ws/src:/aas/aircraft_ws/src:cached"
-    MODE_OPTS+=" -v ${SCRIPT_DIR}/../simulation/simulation_ws/src/ground_system_msgs:/aas/aircraft_ws/src/ground_system_msgs:cached"
+    MODE_OPTS+=" -v ${SCRIPT_DIR}/../ground/ground_ws/src/ground_system_msgs:/aas/aircraft_ws/src/ground_system_msgs:cached"
     ;;
   *)
     MODE_OPTS=""
