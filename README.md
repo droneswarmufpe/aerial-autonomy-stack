@@ -344,6 +344,14 @@ Once done, detach Tmux (and remove the containers) with `Ctrl + b`, then `d`
 
 <!-- 
 
+## PRs TODOS
+
+- Dual network or subnet implementation for HITL
+- Search: .1.99 / .1.98 / .1. / 42.42 / 192.168
+- Deploy build / run for ground (infer from architecture)
+- Update HITL instructions
+- Restore optional QGC in sim container but lose oracle and zenoh (tracks, state sharing)
+
 ## TODOs
 
 [Gymnasium](https://github.com/Farama-Foundation/Gymnasium) RL interface

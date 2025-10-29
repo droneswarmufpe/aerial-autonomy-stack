@@ -33,9 +33,9 @@ def main():
     global pipeline, appsrc, main_loop
 
     parser = argparse.ArgumentParser(description="Bridge a Gazebo camera topic to a GStreamer UDP stream.")
-    parser.add_argument('--gz_topic', default="/camera", help="Gazebo topic to subscribe to.")
-    parser.add_argument('--ip', default="42.42.1.1", help="Destination host for the GStreamer stream.")
-    parser.add_argument('--port', type=int, default=5600, help="Destination port for the GStreamer stream.")
+    parser.add_argument('--gz_topic', help="Gazebo Image topic to subscribe to.")
+    parser.add_argument('--ip', help="Destination host for the GStreamer stream.")
+    parser.add_argument('--port', type=int, help="Destination port for the GStreamer stream (see pipelines in yolo_inference_node.py).")
     args = parser.parse_args()
 
     Gst.init(None)

@@ -56,13 +56,19 @@ trap cleanup EXIT INT TERM
 
 # Initialize an empty variable for the flags
 MODE_SIM_OPTS=""
+MODE_GND_OPTS=""
 MODE_AIR_OPTS=""
 case "$MODE" in
   dev)
-    # In dev mode, resources and workspaces are mounted from the host
     SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+    # In dev mode, resources and workspaces are mounted from the host
     MODE_SIM_OPTS="--entrypoint /bin/bash"
     MODE_SIM_OPTS+=" -v ${SCRIPT_DIR}/../simulation/simulation_resources/:/aas/simulation_resources:cached"
+    #
+    MODE_GND_OPTS="--entrypoint /bin/bash"
+    MODE_GND_OPTS+=" -v ${SCRIPT_DIR}/../ground/ground_resources/:/aas/ground_resources:cached"
+    MODE_GND_OPTS+=" -v ${SCRIPT_DIR}/../ground/ground_ws/src:/aas/ground_ws/src:cached"
+    #
     MODE_AIR_OPTS="--entrypoint /bin/bash"
     MODE_AIR_OPTS+=" -v ${SCRIPT_DIR}/../aircraft/aircraft_resources/:/aas/aircraft_resources:cached"
     MODE_AIR_OPTS+=" -v ${SCRIPT_DIR}/../aircraft/aircraft_ws/src:/aas/aircraft_ws/src:cached"
@@ -157,10 +163,9 @@ if [[ "$HITL" == "false" ]]; then
   DOCKER_CMD="docker run -it --rm \
     --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
     --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR \
-    --env ROS_DOMAIN_ID=98 --env AUTOPILOT=$AUTOPILOT --env DRONE_TYPE=$DRONE_TYPE \
+    --env ROS_DOMAIN_ID=98 \
     --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS \
-    --env WORLD=$WORLD --env HEADLESS=$HEADLESS --env CAMERA=$CAMERA --env LIDAR=$LIDAR \
-    --env SIMULATED_TIME=true \
+    --env HEADLESS=$HEADLESS --env SIMULATED_TIME=true \
     --env SUBNET_PREFIX=$SUBNET_PREFIX \
     --privileged \
     --name ground-container"
@@ -174,7 +179,7 @@ if [[ "$HITL" == "false" ]]; then
   if [[ "$DESK_ENV" == "wsl" ]]; then
     DOCKER_CMD="$DOCKER_CMD $WSL_OPTS"
   fi
-  DOCKER_CMD="$DOCKER_CMD ${MODE_SIM_OPTS} ground-image"
+  DOCKER_CMD="$DOCKER_CMD ${MODE_GND_OPTS} ground-image"
   calculate_terminal_position 1
   xterm "${XTERM_CONFIG_ARGS[@]}" -title "Ground" -fa Monospace -fs $FONT_SIZE -bg black -fg white -geometry "${TERM_COLS}x${TERM_ROWS}+${X_POS}+${Y_POS}" -hold -e bash -c "$DOCKER_CMD" &
 

@@ -101,8 +101,8 @@ windows:
         <% end %>
   <% end %>
         - "ROS_DOMAIN_ID=<%= drone_id %> ros2 run ros_gz_bridge parameter_bridge /clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock"
-        - mavproxy.py --state-basedir=/aas/sitl_<%= drone_id %>/mavproxy-oracle --master=udp:127.0.0.1:<%= 14540 + sitl_instance %> --out=udp:<%= subnet_prefix %>.1.98:<%= 14540 + sitl_instance %> 
-        - mavproxy.py --state-basedir=/aas/sitl_<%= drone_id %>/mavproxy-qgc --master=udp:127.0.0.1:<%= 14550 + sitl_instance %> --out=udp:<%= subnet_prefix %>.1.98:<%= 14550 + sitl_instance %> 
+        - mavproxy.py --state-basedir=/aas/mavproxy_<%= drone_id %>/ground --master=udp:127.0.0.1:<%= 14540 + sitl_instance %> --out=udp:<%= subnet_prefix %>.1.98:<%= 14540 + sitl_instance %> --streamrate -1
+        - mavproxy.py --state-basedir=/aas/mavproxy_<%= drone_id %>/qgc --master=udp:127.0.0.1:<%= 14550 + sitl_instance %> --out=udp:<%= subnet_prefix %>.1.98:<%= 14550 + sitl_instance %> --streamrate -1
         <% if lidar == 'true' %>
         - "ROS_DOMAIN_ID=<%= drone_id %> ros2 run ros_gz_bridge parameter_bridge /world/<%= world %>/model/<%= model_name %>/<%= sensor_path %>model/simple_lidar/link/lidar/base_link/sensor/lidar3d/scan/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked --ros-args -r /world/<%= world %>/model/<%= model_name %>/<%= sensor_path %>model/simple_lidar/link/lidar/base_link/sensor/lidar3d/scan/points:=/lidar_points"
         <% end %>
