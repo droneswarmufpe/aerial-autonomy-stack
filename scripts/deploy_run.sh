@@ -19,6 +19,7 @@ DRONE_ID="${DRONE_ID:-1}" # Id of aircraft (default = 1)
 #
 DEV="${DEV:false}" # Options: true, false (default)
 HITL="${HITL:-false}" # Options: true, false (default)
+GND_CONTAINER="${GND_CONTAINER:-true}" # Options: true (default), false
 
 if [ "$HEADLESS" = "false" ]; then
   # Grant access to the X server
@@ -66,6 +67,7 @@ docker run $DOCKER_RUN_FLAGS \
   --env HITL=$HITL --env SIMULATED_TIME=$HITL \
   --env DRONE_TYPE=$DRONE_TYPE --env DRONE_ID=$DRONE_ID \
   --env SIM_SUBNET=$SIM_SUBNET --env AIR_SUBNET=$AIR_SUBNET --env SIM_ID=$SIM_ID --env GROUND_ID=$GROUND_ID \
+  --env GND_CONTAINER=$GND_CONTAINER \
   --env ROS_DOMAIN_ID=$DRONE_ID \
   --net=host \
   --privileged \

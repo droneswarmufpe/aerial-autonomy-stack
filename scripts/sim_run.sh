@@ -20,6 +20,7 @@ WORLD="${WORLD:-impalpable_greyness}" # Options: impalpable_greyness (default), 
 #
 DEV="${DEV:false}" # Options: true, false (default)
 HITL="${HITL:-false}" # Options: true, false (default)
+GND_CONTAINER="${GND_CONTAINER:-true}" # Options: true (default), false
 
 # Detect the environment (Ubuntu/GNOME, WSL, etc.)
 if command -v gnome-terminal >/dev/null 2>&1 && [ -n "$XDG_CURRENT_DESKTOP" ]; then
@@ -138,6 +139,7 @@ DOCKER_CMD="docker run -it --rm \
   --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS --env WORLD=$WORLD \
   --env SIMULATED_TIME=true \
   --env SIM_SUBNET=$SIM_SUBNET --env GROUND_ID=$GROUND_ID \
+  --env GND_CONTAINER=$GND_CONTAINER \
   --env ROS_DOMAIN_ID=$SIM_ID \
   --privileged \
   --name simulation-container"
@@ -156,25 +158,28 @@ calculate_terminal_position 0
 xterm "${XTERM_CONFIG_ARGS[@]}" -title "Simulation" -fa Monospace -fs $FONT_SIZE -bg black -fg white -geometry "${TERM_COLS}x${TERM_ROWS}+${X_POS}+${Y_POS}" -hold -e bash -c "$DOCKER_CMD" &
 
 if [[ "$HITL" == "false" ]]; then
-  sleep 0.5 # Limit resource usage
-  # Launch the ground container
-  DOCKER_CMD="docker run -it --rm \
-    --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
-    --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR \
-    --env HEADLESS=$HEADLESS \
-    --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS \
-    --env SIMULATED_TIME=true \
-    --env ROS_DOMAIN_ID=$GROUND_ID \
-    --net=aas-sim-network --ip=${SIM_SUBNET}.90.${GROUND_ID} \
-    --privileged \
-    --name ground-container"
-  # Add WSL-specific options and complete the command
-  if [[ "$DESK_ENV" == "wsl" ]]; then
-    DOCKER_CMD="$DOCKER_CMD $WSL_OPTS"
+
+  if [[ "$GND_CONTAINER" == "true" ]]; then
+    sleep 0.5 # Limit resource usage
+    # Launch the ground container
+    DOCKER_CMD="docker run -it --rm \
+      --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
+      --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR \
+      --env HEADLESS=$HEADLESS \
+      --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS \
+      --env SIMULATED_TIME=true \
+      --env ROS_DOMAIN_ID=$GROUND_ID \
+      --net=aas-sim-network --ip=${SIM_SUBNET}.90.${GROUND_ID} \
+      --privileged \
+      --name ground-container"
+    # Add WSL-specific options and complete the command
+    if [[ "$DESK_ENV" == "wsl" ]]; then
+      DOCKER_CMD="$DOCKER_CMD $WSL_OPTS"
+    fi
+    DOCKER_CMD="$DOCKER_CMD ${DEV_GND_OPTS} ground-image"
+    calculate_terminal_position 1
+    xterm "${XTERM_CONFIG_ARGS[@]}" -title "Ground" -fa Monospace -fs $FONT_SIZE -bg black -fg white -geometry "${TERM_COLS}x${TERM_ROWS}+${X_POS}+${Y_POS}" -hold -e bash -c "$DOCKER_CMD" &
   fi
-  DOCKER_CMD="$DOCKER_CMD ${DEV_GND_OPTS} ground-image"
-  calculate_terminal_position 1
-  xterm "${XTERM_CONFIG_ARGS[@]}" -title "Ground" -fa Monospace -fs $FONT_SIZE -bg black -fg white -geometry "${TERM_COLS}x${TERM_ROWS}+${X_POS}+${Y_POS}" -hold -e bash -c "$DOCKER_CMD" &
 
   # Initialize a counter for the drone IDs
   DRONE_ID=1 # 1, 2, .., N drones
@@ -193,6 +198,7 @@ if [[ "$HITL" == "false" ]]; then
         --env DRONE_TYPE=$drone_type --env DRONE_ID=$DRONE_ID \
         --env SIMULATED_TIME=true \
         --env SIM_SUBNET=$SIM_SUBNET --env AIR_SUBNET=$AIR_SUBNET --env SIM_ID=$SIM_ID --env GROUND_ID=$GROUND_ID \
+        --env GND_CONTAINER=$GND_CONTAINER \
         --env ROS_DOMAIN_ID=$DRONE_ID \
         --net=aas-sim-network --ip=${SIM_SUBNET}.90.$DRONE_ID \
         --privileged \
@@ -212,12 +218,14 @@ if [[ "$HITL" == "false" ]]; then
   # Launch the VTOL containers
   launch_aircraft_containers "vtol" $NUM_VTOLS
 
-  # Finally, connect ground and aircraft containers to the air network
-  sleep 1
-  docker network connect --ip=${AIR_SUBNET}.90.$GROUND_ID aas-air-network ground-container
-  for i in $(seq 1 $((NUM_QUADS + NUM_VTOLS))); do
-    docker network connect --ip=${AIR_SUBNET}.90.$i aas-air-network aircraft-container_$i
-  done
+  if [[ "$GND_CONTAINER" == "true" ]]; then
+    # Finally, connect ground and aircraft containers to the air network
+    sleep 1
+    docker network connect --ip=${AIR_SUBNET}.90.$GROUND_ID aas-air-network ground-container
+    for i in $(seq 1 $((NUM_QUADS + NUM_VTOLS))); do
+      docker network connect --ip=${AIR_SUBNET}.90.$i aas-air-network aircraft-container_$i
+    done
+  fi
 fi
 
 echo "Fly, my pretties, fly!"

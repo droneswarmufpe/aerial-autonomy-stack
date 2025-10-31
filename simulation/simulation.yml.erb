@@ -10,6 +10,8 @@
 <% num_vtols = ENV.fetch('NUM_VTOLS', 0).to_i %>
 <% world = ENV.fetch('WORLD', 'impalpable_greyness') %>
 
+<% gnd_container = ENV.fetch('GND_CONTAINER', 'true') %>
+
 <% simulated_time = ENV.fetch('SIMULATED_TIME', 'false') %>
 
 name: sim
@@ -39,7 +41,9 @@ windows:
           GZ_SIM_RESOURCE_PATH=$GZ_SIM_RESOURCE_PATH:/aas/simulation_resources/aircraft_models:/aas/simulation_resources/simulation_worlds 
           GZ_SIM_PHYSICS_ENGINE_PATH=$GZ_SIM_PHYSICS_ENGINE_PATH:/usr/lib/x86_64-linux-gnu/gz-physics-7/engine-plugins/
           gz sim -v4 -r <% if headless == 'true' %> -s <% end %> <% if autopilot == 'px4' %> <%= world %>.sdf <% elsif autopilot == 'ardupilot' %> populated_ardupilot.sdf <% end %>
+        <% if gnd_container == 'true' %>
         - "ROS_DOMAIN_ID=<%= ground_id %> ros2 run ros_gz_bridge parameter_bridge /clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock"
+        <% end %>
         - >
           (
             PRIMARY_RES=$(xrandr | grep -oE '[0-9]+x[0-9]+' | head -1)
@@ -104,8 +108,10 @@ windows:
         <% end %>
   <% end %>
         - "ROS_DOMAIN_ID=<%= drone_id %> ros2 run ros_gz_bridge parameter_bridge /clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock"
+        <% if gnd_container == 'true' %>
         - mavproxy.py --state-basedir=/aas/mavproxy_<%= drone_id %>/ground --master=udp:127.0.0.1:<%= 14540 + sitl_instance %> --out=udp:<%= sim_subnet %>.90.<%= ground_id %>:<%= 14540 + sitl_instance %> --streamrate -1
         - sleep 1 && mavproxy.py --state-basedir=/aas/mavproxy_<%= drone_id %>/qgc --master=udp:127.0.0.1:<%= 14550 + sitl_instance %> --out=udp:<%= sim_subnet %>.90.<%= ground_id %>:<%= 14550 + sitl_instance %> --streamrate -1
+        <% end %>
         <% if lidar == 'true' %>
         - "ROS_DOMAIN_ID=<%= drone_id %> ros2 run ros_gz_bridge parameter_bridge /world/<%= world %>/model/<%= model_name %>/<%= sensor_path %>model/simple_lidar/link/lidar/base_link/sensor/lidar3d/scan/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked --ros-args -r /world/<%= world %>/model/<%= model_name %>/<%= sensor_path %>model/simple_lidar/link/lidar/base_link/sensor/lidar3d/scan/points:=/lidar_points"
         <% end %>
@@ -115,5 +121,38 @@ windows:
           python3 /aas/simulation_resources/comms/gz_to_gst_image_bridge.py 
           --gz_topic /world/<%= world %>/model/<%= model_name %>/<%= sensor_path %>model/simple_camera/link/mono_cam/base_link/sensor/imager/image
           --ip <%= sim_subnet %>.90.<%= drone_id %> --port 5600
+        <% end %>
+  <% end %>
+
+  <% if gnd_container == 'false' %>
+  - zenoh:
+      layout: even-vertical
+      panes:
+        - zenoh-bridge-ros2dds
+
+  - qgc:
+      layout: even-horizontal
+      panes:
+        <% if headless == 'true' %>
+        - echo "Headless mode, not launching QGroundControl."
+        <% else %>
+        - >
+          <% if num_quads > 0 %>
+          sed -i 's/virtualJoystickAutoCenterThrottle=false/virtualJoystickAutoCenterThrottle=true/g' /home/qgcuser/.config/QGroundControl/QGroundControl.ini &&
+          <% end %>
+          gosu qgcuser /squashfs-root/AppRun &
+          (
+            PRIMARY_RES=$(xrandr | grep -oE '[0-9]+x[0-9]+' | head -1)
+            SCREEN_W=$(echo $PRIMARY_RES | cut -d'x' -f1); SCREEN_H=$(echo $PRIMARY_RES | cut -d'x' -f2)
+            SCREEN_SCALE=$((SCREEN_H * 100 / 1080)) # Full HD = 100%
+            WIN_W=$(( 800 * SCREEN_SCALE / 100 )); WIN_H=$(( 600 * SCREEN_SCALE / 100 ))
+            POS_X=$((SCREEN_W - WIN_W)); POS_Y=$((WIN_H))
+            for i in {1..10}; do 
+              sleep 2
+              if wmctrl -l | grep -q "QGroundControl"; then
+                wmctrl -r "QGroundControl" -e "0,$POS_X,$POS_Y,$WIN_W,$WIN_H" && break
+              fi
+            done
+          )
         <% end %>
   <% end %>
