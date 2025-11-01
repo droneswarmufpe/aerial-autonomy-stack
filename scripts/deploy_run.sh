@@ -21,6 +21,15 @@ DEV="${DEV:false}" # Options: true, false (default)
 HITL="${HITL:-false}" # Options: true, false (default)
 GND_CONTAINER="${GND_CONTAINER:-true}" # Options: true (default), false
 
+# In dev mode, resources and workspaces are mounted from the host
+if [[ "$DEV" == "true" ]]; then
+  SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+  DEV_OPTS="--entrypoint /bin/bash"
+  DEV_OPTS+=" -v ${SCRIPT_DIR}/../aircraft/aircraft_resources/:/aas/aircraft_resources:cached"
+  DEV_OPTS+=" -v ${SCRIPT_DIR}/../aircraft/aircraft_ws/src:/aas/aircraft_ws/src:cached"
+  DEV_OPTS+=" -v ${SCRIPT_DIR}/../ground/ground_ws/src/ground_system_msgs:/aas/aircraft_ws/src/ground_system_msgs:cached"
+fi
+
 if [ "$HEADLESS" = "false" ]; then
   # Grant access to the X server
   xhost +local:docker # Avoid this when building the TensorRT cache for the first time
@@ -31,30 +40,14 @@ if [ "$HITL" = "true" ]; then
 else
   DOCKER_RUN_FLAGS="-d -t" # Detached mode
   if [[ "$DEV" == "true" ]]; then
-    echo ""
-    echo "With DEV=true, attach directly to the bash shell:"
-    echo ""
-    echo -e "\t docker exec -it aircraft-container_$DRONE_ID bash"
+    echo -e "\nWith DEV=true, attach directly to the bash shell:\n"
+    echo -e "\t docker exec -it aircraft-container_$DRONE_ID bash\n"
   else
-    echo ""
-    echo "Attach to the Tmux session in the running 'aircraft-container':"
-    echo ""
-    echo -e "\t docker exec -it aircraft-container_$DRONE_ID tmux attach"
+    echo -e "\nAttach to the Tmux session in the running 'aircraft-container':\n"
+    echo -e "\t docker exec -it aircraft-container_$DRONE_ID tmux attach\n"
   fi
-  echo ""
-  echo "To stop all containers and remove stopped containers:"
-  echo ""
-  echo -e '\t docker stop $(docker ps -q) && docker container prune'
-  echo ""
-fi
-
-# In dev mode, resources and workspaces are mounted from the host
-if [[ "$DEV" == "true" ]]; then
-  SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-  DEV_OPTS="--entrypoint /bin/bash"
-  DEV_OPTS+=" -v ${SCRIPT_DIR}/../aircraft/aircraft_resources/:/aas/aircraft_resources:cached"
-  DEV_OPTS+=" -v ${SCRIPT_DIR}/../aircraft/aircraft_ws/src:/aas/aircraft_ws/src:cached"
-  DEV_OPTS+=" -v ${SCRIPT_DIR}/../ground/ground_ws/src/ground_system_msgs:/aas/aircraft_ws/src/ground_system_msgs:cached"
+  echo -e "To stop all containers and remove stopped containers:\n"
+  echo -e '\t docker stop $(docker ps -q) && docker container prune\n'
 fi
 
 # Launch the aircraft container
