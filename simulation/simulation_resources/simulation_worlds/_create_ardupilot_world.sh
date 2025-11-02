@@ -13,6 +13,12 @@ NUM_QUADS=$1
 NUM_VTOLS=$2
 BASE_WORLD_WITH_PATH=$3
 
+# Resolve the path relative to the script's directory if it's not absolute
+if [[ "$BASE_WORLD_WITH_PATH" != /* ]]; then
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  BASE_WORLD_WITH_PATH="${SCRIPT_DIR}/${BASE_WORLD_WITH_PATH}"
+fi
+
 # Create a copy of the template to work on
 BASE_WORLD_DIR=$(dirname "$BASE_WORLD_WITH_PATH")
 OUTPUT_FILE="${BASE_WORLD_DIR}/populated_ardupilot.sdf"

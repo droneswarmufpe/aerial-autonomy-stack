@@ -21,8 +21,8 @@ https://github.com/user-attachments/assets/c194ada6-2996-4bfa-99e9-32b45e29281d
 - **Dockerized deployment** based on [`nvcr.io/nvidia/l4t-jetpack:r36.4.0`](https://catalog.ngc.nvidia.com/orgs/nvidia/containers/l4t-jetpack/tags)
 - **Windows 11 compatibility** with GPU support *via* WSLg
 - **3D worlds** for perception-based simulation
-- Distributed, **Hardware-(Jetson-)in-the-loop (HITL) simulation** to test on-board compute and networking
-- **Dual network** in both SITL and HITL for synthetic sensor data (`SIM_SUBNET`) and inter-vehicle communication (`AIR_SUBNET`)
+- Multi-**Jetson-in-the-loop (HITL) simulation** to test NVIDIA- and ARM-based on-board compute
+- **Dual network** to separate simulated sensors (`SIM_SUBNET`) and inter-vehicle comms (`AIR_SUBNET`)
 - [Zenoh](https://github.com/eclipse-zenoh/zenoh-plugin-ros2dds) inter-vehicle ROS2 bridge
 - Support for [PX4 Offboard](https://docs.px4.io/main/en/flight_modes/offboard.html) mode (e.g. CTBR/`VehicleRatesSetpoint` for agile, GNSS-denied flight) 
 - Support for [ArduPilot Guided](https://ardupilot.org/copter/docs/ac2_guidedmode.html) mode (i.e. `setpoint_velocity`, `setpoint_accel` references)
@@ -125,7 +125,7 @@ AUTOPILOT=px4 NUM_QUADS=1 ./sim_run.sh                                 # Or `ard
 
 In aircraft 1's Xterm terminal:
 ```sh
-ros2 run mission mission --conops yalla --ros-args -r __ns:=/Drone$DRONE_ID -p use_sim_time:=true        # This mission is a simple takeoff, followed by an orbit, and landing for any vehicle
+ros2 run mission mission --ros-args -r __ns:=/Drone$DRONE_ID -p use_sim_time:=true        # This mission is a simple takeoff, followed by an orbit, and landing for any vehicle
 ```
 
 Finally, in the simulation's Xterm terminal:

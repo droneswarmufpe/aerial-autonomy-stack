@@ -123,7 +123,8 @@ if [[ "$DESK_ENV" == "wsl" ]]; then
 fi
 DOCKER_CMD="$DOCKER_CMD ${DEV_SIM_OPTS} simulation-image"
 calculate_terminal_position 0
-xterm "${XTERM_CONFIG_ARGS[@]}" -title "Simulation" -fa Monospace -fs $FONT_SIZE -bg black -fg white -geometry "${TERM_COLS}x${TERM_ROWS}+${X_POS}+${Y_POS}" -hold -e bash -c "$DOCKER_CMD" &
+xterm "${XTERM_CONFIG_ARGS[@]}" -title "Simulation" -fa Monospace -fs $FONT_SIZE -bg black -fg white \
+  -geometry "${TERM_COLS}x${TERM_ROWS}+${X_POS}+${Y_POS}" -hold -e bash -c "$DOCKER_CMD" &
 
 if [[ "$HITL" == "false" ]]; then
 
@@ -146,7 +147,8 @@ if [[ "$HITL" == "false" ]]; then
     fi
     DOCKER_CMD="$DOCKER_CMD ${DEV_GND_OPTS} ground-image"
     calculate_terminal_position 1
-    xterm "${XTERM_CONFIG_ARGS[@]}" -title "Ground" -fa Monospace -fs $FONT_SIZE -bg black -fg white -geometry "${TERM_COLS}x${TERM_ROWS}+${X_POS}+${Y_POS}" -hold -e bash -c "$DOCKER_CMD" &
+    xterm "${XTERM_CONFIG_ARGS[@]}" -title "Ground" -fa Monospace -fs $FONT_SIZE -bg black -fg white \
+      -geometry "${TERM_COLS}x${TERM_ROWS}+${X_POS}+${Y_POS}" -hold -e bash -c "$DOCKER_CMD" &
   fi
 
   # Initialize a counter for the drone IDs
@@ -177,7 +179,8 @@ if [[ "$HITL" == "false" ]]; then
       fi
       DOCKER_CMD="$DOCKER_CMD ${DEV_AIR_OPTS} aircraft-image"
       calculate_terminal_position $(($DRONE_ID + 1))
-      xterm "${XTERM_CONFIG_ARGS[@]}" -title "${drone_type^^} $DRONE_ID" -fa Monospace -fs $FONT_SIZE -bg black -fg white -geometry "${TERM_COLS}x${TERM_ROWS}+${X_POS}+${Y_POS}" -hold -e bash -c "$DOCKER_CMD" &
+      xterm "${XTERM_CONFIG_ARGS[@]}" -title "${drone_type^^} $DRONE_ID" -fa Monospace -fs $FONT_SIZE -bg black -fg white \
+        -geometry "${TERM_COLS}x${TERM_ROWS}+${X_POS}+${Y_POS}" -hold -e bash -c "$DOCKER_CMD" &
       DRONE_ID=$((DRONE_ID + 1))
     done
   }

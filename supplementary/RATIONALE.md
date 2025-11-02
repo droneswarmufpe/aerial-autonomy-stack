@@ -5,7 +5,7 @@
 The *sim2real gap* is an euphemism for robotic projects that work well on a developer's laptop but not so much in the field.
 Aerial sim2real research often focuses on modeling and simulation of complex aerodynamics effects.
 
-Nonetheless, in applied robotics, an equally important component of *sim2real gap* lies in software tooling and engineering, where the dynamic range between ["average and the best is 50-to-1, maybe 100-to-1"](https://www.youtube.com/watch?v=wTgQ2PBiz-g&t=35s).
+Nonetheless, in applied robotics, an equally important component of *sim2real gap* lies in [system design](https://arxiv.org/abs/2510.20808)—in particular, software tooling and engineering, where the dynamic range between ["average and the best is 50-to-1, maybe 100-to-1"](https://www.youtube.com/watch?v=wTgQ2PBiz-g&t=35s).
 
 This is the challenge—and good sport—of **full-stack integration** among:
 
@@ -38,8 +38,8 @@ For even more resources, check out [`aerial_robotic_landscape`](https://github.c
 - **Deployment** focus
     - Clear, Dockerized split between aircraft, ground, and simulation software
     - ROS2 intra-companion board messaging
-    - XRCE-DDS (PX4), MAVROS (ArduPilot) autopilot-to-companion board ROS2 UDP bridge
-    - GStreamer camera-to-companion board acquisition
+    - XRCE-DDS (PX4), MAVROS (ArduPilot) autopilot-to-companion board ROS2 bridge
+    - GStreamer camera-to-companion board acquisition pipelines
     - Zenoh inter-vehicle ROS2 bridge, with networking over LAN (HITL) or emulated by `docker network` (SITL)
     - Dual network—in both SITL and HITL—to separate synthetic sensor data from inter-vehicle communication
 

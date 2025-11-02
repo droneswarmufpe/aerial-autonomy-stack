@@ -42,7 +42,7 @@ windows:
           <% end %>
           <% if autopilot == 'ardupilot' %>
           /aas/simulation_resources/aircraft_models/_create_ardupilot_models.sh <%= num_quads %> <%= num_vtols %>  &&
-          /aas/simulation_resources/simulation_worlds/_create_ardupilot_world.sh <%= num_quads %> <%= num_vtols %> /aas/simulation_resources/simulation_worlds/<%= world %>.sdf &&
+          /aas/simulation_resources/simulation_worlds/_create_ardupilot_world.sh <%= num_quads %> <%= num_vtols %> <%= world %>.sdf &&
           GZ_SIM_SYSTEM_PLUGIN_PATH=/aas/github_apps/ardupilot_gazebo/build:$GZ_SIM_SYSTEM_PLUGIN_PATH 
           <% end %>
           GZ_SIM_RESOURCE_PATH=$GZ_SIM_RESOURCE_PATH:/aas/simulation_resources/aircraft_models:/aas/simulation_resources/simulation_worlds 
@@ -102,7 +102,7 @@ windows:
           <%= vehicle_config %> --model JSON
           -I <%= sitl_instance %> --sysid <%= drone_id %>
           --add-param-file=/aas/simulation_resources/aircraft_models/<%= model_name %>/ardupilot-4.6.params
-          -l $(awk -F "[><]" "/<spherical_coordinates>/,/<\/spherical_coordinates>/" /aas/simulation_resources/simulation_worlds/<%= world %>.sdf | awk -F "[><]" "/latitude_deg/ {print \$3}"),$(awk -F "[><]" "/<spherical_coordinates>/,/<\/spherical_coordinates>/" /aas/simulation_resources/simulation_worlds/<%= world %>.sdf | awk -F "[><]" "/longitude_deg/ {print \$3}"),$(awk -F "[><]" "/<spherical_coordinates>/,/<\/spherical_coordinates>/" /aas/simulation_resources/simulation_worlds/<%= world %>.sdf | awk -F "[><]" "/elevation/ {print \$3}"),0          
+          -l $(python3 /aas/simulation_resources/patches/extract_spherical_coords.py /aas/simulation_resources/simulation_worlds/<%= world %>.sdf)
           --out=udp:<%= "#{sim_subnet}.90.#{drone_id}" %>:8888
           --out=udp:127.0.0.1:<%= 14540 + sitl_instance %> --out=udp:127.0.0.1:<%= 14550 + sitl_instance %>
         <% if is_quad %>
@@ -111,11 +111,18 @@ windows:
   <% end %>
         - "ROS_DOMAIN_ID=<%= drone_id %> ros2 run ros_gz_bridge parameter_bridge /clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock"
         <% if gnd_container %>
-        - mavproxy.py --state-basedir=/aas/mavproxy_<%= drone_id %>/ground --master=udp:127.0.0.1:<%= 14540 + sitl_instance %> --out=udp:<%= "#{sim_subnet}.90.#{ground_id}" %>:<%= 14540 + sitl_instance %> --streamrate -1
-        - sleep 1 && mavproxy.py --state-basedir=/aas/mavproxy_<%= drone_id %>/qgc --master=udp:127.0.0.1:<%= 14550 + sitl_instance %> --out=udp:<%= "#{sim_subnet}.90.#{ground_id}" %>:<%= 14550 + sitl_instance %> --streamrate -1
+        - > 
+          mavproxy.py --state-basedir=/aas/mavproxy_<%= drone_id %>/ground --master=udp:127.0.0.1:<%= 14540 + sitl_instance %> 
+          --out=udp:<%= "#{sim_subnet}.90.#{ground_id}" %>:<%= 14540 + sitl_instance %> --streamrate -1
+        - >
+          sleep 1 && mavproxy.py --state-basedir=/aas/mavproxy_<%= drone_id %>/qgc --master=udp:127.0.0.1:<%= 14550 + sitl_instance %> 
+          --out=udp:<%= "#{sim_subnet}.90.#{ground_id}" %>:<%= 14550 + sitl_instance %> --streamrate -1
         <% end %>
         <% if lidar %>
-        - "ROS_DOMAIN_ID=<%= drone_id %> ros2 run ros_gz_bridge parameter_bridge /world/<%= world %>/model/<%= model_name %>/<%= sensor_path %>model/simple_lidar/link/lidar/base_link/sensor/lidar3d/scan/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked --ros-args -r /world/<%= world %>/model/<%= model_name %>/<%= sensor_path %>model/simple_lidar/link/lidar/base_link/sensor/lidar3d/scan/points:=/lidar_points"
+        - >
+          ROS_DOMAIN_ID=<%= drone_id %> ros2 run ros_gz_bridge parameter_bridge 
+          /world/<%= world %>/model/<%= model_name %>/<%= sensor_path %>model/simple_lidar/link/lidar/base_link/sensor/lidar3d/scan/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked 
+          --ros-args -r /world/<%= world %>/model/<%= model_name %>/<%= sensor_path %>model/simple_lidar/link/lidar/base_link/sensor/lidar3d/scan/points:=/lidar_points
         <% end %>
         <% if camera %>
         - >
