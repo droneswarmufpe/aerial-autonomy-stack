@@ -39,8 +39,6 @@ https://github.com/user-attachments/assets/c194ada6-2996-4bfa-99e9-32b45e29281d
 
 </details>
 
-A (i) list of related works and (ii) the motivation for AAS can be found in [`RATIONALE.md`](/supplementary/RATIONALE.md)
-
 ---
 
 ## "How-to" Part 1: Installation
@@ -83,11 +81,11 @@ AUTOPILOT=px4 NUM_QUADS=1 NUM_VTOLS=1 WORLD=swiss_town ./sim_run.sh             
 ![interface](https://github.com/user-attachments/assets/71b07851-42dd-45d4-a9f5-6b5b00cd85bc)
 
 > [!NOTE]
-> On a low-mid range laptop—i7-11 with 16GB RAM and RTX 3060—AAS simulates three PX4 quads with camera and LiDAR at 99% real-time-factor (note that ArduPilot faster physics updates and more complex worlds have higher computational demands). Make sure you run `sudo prime-select nvidia` and rebooted to effectively leverage GPU compute.
+> On a low-mid range laptop—i7-11 with 16GB RAM and RTX 3060—AAS simulates three PX4 quads with camera and LiDAR at **99% real-time-factor** (note that ArduPilot faster physics updates and more complex worlds have higher computational demands). Make sure you run `sudo prime-select nvidia` and rebooted to effectively leverage GPU compute.
 
 ### Fly a Mission
 
-In one of the `QUAD` or `VTOL` Xterm terminals:
+In any of the `QUAD` or `VTOL` Xterm terminals:
 ```sh
 ros2 run mission mission --ros-args -r __ns:=/Drone$DRONE_ID -p use_sim_time:=true            # This mission is a simple takeoff, followed by an orbit, and landing for any vehicle
 ```
@@ -97,15 +95,15 @@ Check the flight logs in the `Simulation`'s Xterm terminal:
 /aas/simulation_resources/patches/plot_logs.sh                                                # Analyze the flight logs at http://10.42.90.100:5006/browse or in MAVExplorer
 ```
 
-> [!TIP]
+> [!IMPORTANT]
 > <details>
-> <summary>Familiarize with Tmux (and Docker) shortcuts to navigate panes in Xterm <i>(click to expand)</i></summary>
+> <summary>Familiarize with Tmux (and Docker) shortcuts to navigate the windows/panes in Xterm <i>(click to expand)</i></summary>
 >
 > Tmux cheatsheet:
 > ```sh
 > Ctrl + b, then n, p                   # Move between Tmux windows 
-> Ctrl + b, then [arrow keys]           # Move between Tmux panes
-> Ctrl + [, then [arrow keys]           # Enter copy mode (select, scroll back)
+> Ctrl + b, then [arrow keys]           # Move between Tmux panes in a window
+> Ctrl + [, then [arrow keys]           # Enter copy mode (to select and/or scroll back)
 > q                                     # Exit copy mode
 > Ctrl + b, then "                      # Split a Tmux window horizontally
 > Ctrl + b, then %                      # Split a Tmux window vertically
@@ -131,9 +129,7 @@ Check the flight logs in the `Simulation`'s Xterm terminal:
 > ```
 > </details>
 
-To create a new mission, read the banner comments in [`ardupilot_interface.hpp`](/aircraft/aircraft_ws/src/autopilot_interface/src/ardupilot_interface.hpp) and [`px4_interface.hpp`](/aircraft/aircraft_ws/src/autopilot_interface/src/px4_interface.hpp) for command line examples of takeoff, orbit, reposition, offboard, land
-
-Once flown from CLI, implemented your mission in [`MissionNode.conops_callback()`](/aircraft/aircraft_ws/src/mission/mission/mission_node.py)
+To create a new mission, read the banner comments in [`ardupilot_interface.hpp`](/aircraft/aircraft_ws/src/autopilot_interface/src/ardupilot_interface.hpp) and [`px4_interface.hpp`](/aircraft/aircraft_ws/src/autopilot_interface/src/px4_interface.hpp) for command line examples of takeoff, orbit, reposition, offboard, land; once flown from CLI, implemented your mission in [`MissionNode.conops_callback()`](/aircraft/aircraft_ws/src/mission/mission/mission_node.py)
 
 Available `WORLD`s:
 - `apple_orchard`, a GIS world created using [BlenderGIS](https://github.com/domlysz/BlenderGIS)
@@ -175,48 +171,48 @@ docker exec simulation-container bash -c " \
 > ├── aircraft
 > │   ├── aircraft_ws
 > │   │   └── src
-> │   │       ├── autopilot_interface                      # Ardupilot/PX4 high-level actions (Takeoff, Orbit, Offboard, Land)
-> │   │       ├── mission                                  # Orchestrator of the actions in `autopilot_interface` 
-> │   │       ├── offboard_control                         # Low-level references for the Offboard action in `autopilot_interface` 
-> │   │       ├── state_sharing                            # Publisher of the `/state_sharing_drone_N` topic broadcasted by Zenoh
-> │   │       └── yolo_inference                           # GStreamer video acquisition and publisher of YOLO bounding boxes
+> │   │       ├── autopilot_interface                 # Ardupilot/PX4 high-level actions (Takeoff, Orbit, Offboard, Land)
+> │   │       ├── mission                             # Orchestrator of the actions in `autopilot_interface` 
+> │   │       ├── offboard_control                    # Low-level references for the Offboard action in `autopilot_interface` 
+> │   │       ├── state_sharing                       # Publisher of the `/state_sharing_drone_N` topic broadcasted by Zenoh
+> │   │       └── yolo_inference                      # GStreamer video acquisition and publisher of YOLO bounding boxes
 > │   │
-> │   └── aircraft.yml.erb                                 # Aircraft docker tmux entrypoint
+> │   └── aircraft.yml.erb                            # Aircraft docker tmux entrypoint
 > │
 > ├── ground
 > │   ├── ground_ws
 > │   │   └── src
-> │   │       └── ground_system                            # Publisher of topic `/tracks` broadcasted by Zenoh
+> │   │       └── ground_system                       # Publisher of topic `/tracks` broadcasted by Zenoh
 > │   │
-> │   └── ground.yml.erb                                   # Ground docker tmux entrypoint
+> │   └── ground.yml.erb                              # Ground docker tmux entrypoint
 > │
 > ├── scripts
 > │   ├── docker
-> │   │   ├── Dockerfile.aircraft                          # Docker image for aircraft simulation and deployment
-> │   │   └── Dockerfile.simulation                        # Docker image for SITL and HITL simulation
+> │   │   ├── Dockerfile.aircraft                     # Docker image for aircraft simulation and deployment
+> │   │   └── Dockerfile.simulation                   # Docker image for SITL and HITL simulation
 > │   │
-> │   ├── deploy_build.sh                                  # Build `Dockerfile.aircraft` for arm64/Orin
-> │   ├── deploy_run.sh                                    # Start the aircraft docker on arm64/Orin (deploy or HITL)
+> │   ├── deploy_build.sh                             # Build `Dockerfile.aircraft` for arm64/Orin
+> │   ├── deploy_run.sh                               # Start the aircraft docker on arm64/Orin (deploy or HITL)
 > │   │
-> │   ├── sim_build.sh                                     # Build both dockerfiles for amd64/simulation
-> │   └── sim_run.sh                                       # Start the simulation (SITL or HITL)
+> │   ├── sim_build.sh                                # Build both dockerfiles for amd64/simulation
+> │   └── sim_run.sh                                  # Start the simulation (SITL or HITL)
 > │
 > └── simulation
 >     ├── simulation_resources
 >     │   ├── aircraft_models
->     │   │   ├── alti_transition_quad                     # ArduPilot VTOL
->     │   │   ├── iris_with_ardupilot                      # ArduPilot quad
+>     │   │   ├── alti_transition_quad                # ArduPilot VTOL
+>     │   │   ├── iris_with_ardupilot                 # ArduPilot quad
 >     │   │   ├── sensor_camera
 >     │   │   ├── sensor_lidar
->     │   │   ├── standard_vtol                            # PX4 VTOL
->     │   │   └── x500                                     # PX4 quad
+>     │   │   ├── standard_vtol                       # PX4 VTOL
+>     │   │   └── x500                                # PX4 quad
 >     │   └── simulation_worlds
 >     │       ├── apple_orchard.sdf
 >     │       ├── impalpable_greyness.sdf
 >     │       ├── shibuya_crossing.sdf
 >     │       └── swiss_town.sdf
 >     │
->     └── simulation.yml.erb                               # Simulation docker tmux entrypoint
+>     └── simulation.yml.erb                          # Simulation docker tmux entrypoint
 > ```
 > </details>
 >
