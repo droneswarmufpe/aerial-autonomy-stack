@@ -110,6 +110,19 @@ class YoloInferenceNode(Node):
     def run_inference_loop(self):
         # Acquire video stream
         if self.architecture == 'x86_64':
+            # # GPU pipeline: NOT WORKING TODO: switch to base image with DeepStream
+            # gst_pipeline_string = (
+            #     "udpsrc port=5600 ! "
+            #     "application/x-rtp, media=(string)video, encoding-name=(string)H264 ! "
+            #     "rtph264depay ! "
+            #     "h264parse ! "
+            #     "nvh264dec ! "
+            #     "nvvidconv ! "  # Use NVIDIA's GPU-accelerated converter
+            #     "video/x-raw(memory:NVMM), format=BGRx ! "
+            #     "videoconvert ! "
+            #     "video/x-raw, format=BGR ! appsink"
+            # )
+            # CPU pipeline
             gst_pipeline_string = (
                 "udpsrc port=5600 ! "
                 "application/x-rtp, media=(string)video, encoding-name=(string)H264 ! "
@@ -118,20 +131,10 @@ class YoloInferenceNode(Node):
                 "videoconvert ! "
                 "video/x-raw, format=BGR ! appsink"
             )
-            # NOT WORKING: system Python's OpenCV has GStreamer but no CUDA support
-            # TODO: build OpenCV from source to support both or use python3-gi gir1.2-gst-plugins-base-1.0 gir1.2-gstreamer-1.0
-            # gst_pipeline_string = (
-            #     "udpsrc port=5600 ! "
-            #     "'application/x-rtp, media=(string)video, encoding-name=(string)H264' ! "
-            #     "rtph264depay ! "
-            #     "nvh264dec ! "       # Use the NVIDIA hardware decoder
-            #     "cudadownload ! "    # Copy the frame from GPU to CPU memory
-            #     "videoconvert ! "
-            #     "video/x-raw, format=BGR ! appsink"
-            # )
             cap = cv2.VideoCapture(gst_pipeline_string, cv2.CAP_GSTREAMER)
         elif self.architecture == 'aarch64':
             if self.hitl: # For HITL, acquire UDP stream from gz-sim
+                # GPU pipeline:
                 gst_pipeline_string = (
                 "udpsrc port=5600 ! "
                     "application/x-rtp, media=(string)video, encoding-name=(string)H264 ! "
@@ -144,7 +147,7 @@ class YoloInferenceNode(Node):
                     "video/x-raw, format=BGR ! "
                     "appsink drop=true max-buffers=1 "
                 )
-                # ALSO WORKING: CPU fallback for test/debug
+                # # CPU pipeline:
                 # gst_pipeline_string = (
                 #     "udpsrc port=5600 ! "
                 #     "application/x-rtp, media=(string)video, encoding-name=(string)H264 ! "
@@ -155,6 +158,7 @@ class YoloInferenceNode(Node):
                 # )
                 cap = cv2.VideoCapture(gst_pipeline_string, cv2.CAP_GSTREAMER)
             else: # Default, acquire CSI camera 
+                # GPU pipeline:
                 gst_pipeline_string = (
                     "nvarguscamerasrc sensor-id=0 ! "
                     "video/x-raw(memory:NVMM), width=1280, height=720, framerate=60/1 ! "

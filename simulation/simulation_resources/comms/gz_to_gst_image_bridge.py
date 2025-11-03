@@ -29,6 +29,13 @@ def on_new_gz_frame(msg: Image):
     if retval != Gst.FlowReturn.OK:
         print("Error pushing buffer to GStreamer")
 
+def check_nvidia_encoder():
+    element = Gst.ElementFactory.make('nvh264enc', None)
+    if element is not None:
+        element.set_state(Gst.State.NULL)
+        return True
+    return False
+
 def main():
     global pipeline, appsrc, main_loop
 
@@ -40,20 +47,26 @@ def main():
 
     Gst.init(None)
 
-    # pipeline_str = (
-    #     "appsrc name=py_source ! "
-    #     "videoconvert ! "
-    #     "x264enc speed-preset=ultrafast tune=zerolatency bitrate=500 ! " # Optimize CPU use
-    #     "rtph264pay ! "
-    #     f"udpsink host={args.ip} port={args.port}"
-    # )
-    pipeline_str = (
-        "appsrc name=py_source ! "
-        "videoconvert ! "
-        "nvh264enc preset=low-latency-hq ! " # Use the NVIDIA H.264 encoder
-        "rtph264pay ! "
-        f"udpsink host={args.ip} port={args.port}"
-    )
+    use_gpu = check_nvidia_encoder()
+    if use_gpu:
+        pipeline_str = (
+            "appsrc name=py_source ! "
+            "videoconvert ! "
+            "nvh264enc preset=low-latency-hq ! " # Use the NVIDIA H.264 encoder
+            "rtph264pay ! "
+            f"udpsink host={args.ip} port={args.port}"
+        )
+        print("Using GPU-accelerated GStreamer pipeline")
+    else:
+        pipeline_str = (
+            "appsrc name=py_source ! "
+            "videoconvert ! "
+            "x264enc speed-preset=ultrafast tune=zerolatency bitrate=500 ! " # Optimize CPU use
+            "rtph264pay ! "
+            f"udpsink host={args.ip} port={args.port}"
+        )
+        print("[WARNING] Falling back to CPU-based GStreamer pipeline")
+
     pipeline = Gst.parse_launch(pipeline_str)
     appsrc = pipeline.get_by_name('py_source')
 

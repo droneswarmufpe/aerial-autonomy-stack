@@ -44,7 +44,7 @@ https://github.com/user-attachments/assets/c194ada6-2996-4bfa-99e9-32b45e29281d
 ## "How-to" Part 1: Installation
 
 > [!IMPORTANT]
-> AAS is developed using Ubuntu 22.04 with `nvidia-driver-580` on an i9-13 with RTX 3500 and an i7-11 with RTX 3060—an NVIDIA GPU *is* required for ideal performance
+> AAS is developed using Ubuntu 22.04 with `nvidia-driver-580` (on an i9-13 with RTX 3500 and an i7-11 with RTX 3060)
 > 
 > **To setup the requirements: (i) Ubuntu, (ii) NVIDIA driver, (iii) Docker Engine, and (iv) NVIDIA Container Toolkit (with NVIDIA NGC API Key), read [`REQUIREMENTS_UBUNTU.md`](/supplementary/REQUIREMENTS_UBUNTU.md)**
 >
@@ -131,7 +131,7 @@ Check the flight logs in the `Simulation`'s Xterm terminal:
 
 To create a new mission, read the banner comments in [`ardupilot_interface.hpp`](/aircraft/aircraft_ws/src/autopilot_interface/src/ardupilot_interface.hpp) and [`px4_interface.hpp`](/aircraft/aircraft_ws/src/autopilot_interface/src/px4_interface.hpp) for command line examples of takeoff, orbit, reposition, offboard, land; once flown from CLI, implemented your mission in [`MissionNode.conops_callback()`](/aircraft/aircraft_ws/src/mission/mission/mission_node.py)
 
-Available `WORLD` s:
+Available `WORLD`s:
 - `apple_orchard`, a GIS world created using [BlenderGIS](https://github.com/domlysz/BlenderGIS)
 - `impalpable_greyness`, (default) an empty world with simple shapes
 - `shibuya_crossing`, a 3D world adapted from [cgtrader](https://www.cgtrader.com/)
