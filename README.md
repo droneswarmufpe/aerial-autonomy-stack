@@ -52,7 +52,7 @@ https://github.com/user-attachments/assets/c194ada6-2996-4bfa-99e9-32b45e29281d
 
 ```sh
 sudo apt update && sudo apt install -y git git-lfs xterm xfonts-base
-git lfs install
+git lfs install # WARNING: without this, git will NOT download the simulation assets
 
 mkdir -p ~/git && cd ~/git
 git clone https://github.com/JacopoPan/aerial-autonomy-stack.git
@@ -263,7 +263,7 @@ docker exec simulation-container bash -c " \
 
 ```sh
 sudo apt update && sudo apt install -y git git-lfs
-git lfs install # IMPORTANT: without this, git will NOT download the simulation assets
+git lfs install
 
 mkdir -p ~/git && cd ~/git
 git clone https://github.com/JacopoPan/aerial-autonomy-stack.git
