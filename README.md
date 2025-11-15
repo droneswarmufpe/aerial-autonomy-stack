@@ -35,7 +35,7 @@ https://github.com/user-attachments/assets/c194ada6-2996-4bfa-99e9-32b45e29281d
 <details>
 <summary>AAS leverages the following frameworks: <i>(click to expand)</i></summary>
 
-> [*Ubuntu 22.04*](https://ubuntu.com/about/release-cycle) (LTS, ESM 4/2032), [*`nvidia-driver-580`*](https://developer.nvidia.com/datacenter-driver-archive) (latest as of 9/2025), [*Docker Engine v28*](https://docs.docker.com/engine/release-notes/28/) (latest as of 9/2025), [*ROS2 Humble*](https://docs.ros.org/en/rolling/Releases.html) (LTS, EOL 5/2027), [*Gazebo Sim Harmonic*](https://gazebosim.org/docs/latest/releases/) (LTS, EOL 9/2028), [*PX4 1.16*](https://github.com/PX4/PX4-Autopilot/releases) interfaced *via* [XRCE-DDS](https://github.com/eProsima/Micro-XRCE-DDS/releases), [*ArduPilot 4.6*](https://github.com/ArduPilot/ardupilot/releases) interfaced *via* [MAVROS](https://github.com/mavlink/mavros/releases), [*YOLOv8*](https://github.com/ultralytics/ultralytics/releases) on [*ONNX Runtime 1.22*](https://onnxruntime.ai/getting-started) (latest stable releases as of 8/2025), [*L4T 36* (Ubuntu 22-based)/*JetPack 6*](https://developer.nvidia.com/embedded/jetpack-archive) (for deployment only, latest major release as of 8/2025), [WSLg](https://learn.microsoft.com/en-us/windows/wsl/tutorials/gui-apps) (for simulation and development on Windows 11 only)
+> [*Ubuntu 22.04*](https://ubuntu.com/about/release-cycle) (LTS, ESM 4/2032), [*`nvidia-driver-580`*](https://developer.nvidia.com/datacenter-driver-archive) (latest as of 9/2025), [*Docker Engine v28*](https://docs.docker.com/engine/release-notes/28/), [*NVIDIA Container Toolkit 1.18*](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/index.html) (latest as of 11/2025), [*ROS2 Humble*](https://docs.ros.org/en/rolling/Releases.html) (LTS, EOL 5/2027), [*Gazebo Sim Harmonic*](https://gazebosim.org/docs/latest/releases/) (LTS, EOL 9/2028), [*PX4 1.16*](https://github.com/PX4/PX4-Autopilot/releases) interfaced *via* [XRCE-DDS](https://github.com/eProsima/Micro-XRCE-DDS/releases), [*ArduPilot 4.6*](https://github.com/ArduPilot/ardupilot/releases) interfaced *via* [MAVROS](https://github.com/mavlink/mavros/releases), [*YOLOv8*](https://github.com/ultralytics/ultralytics/releases) on [*ONNX Runtime 1.22*](https://onnxruntime.ai/getting-started) (latest stable releases as of 8/2025), [*L4T 36* (Ubuntu 22-based)/*JetPack 6*](https://developer.nvidia.com/embedded/jetpack-archive) (for deployment only, latest major release as of 8/2025), [WSLg](https://learn.microsoft.com/en-us/windows/wsl/tutorials/gui-apps) (for simulation and development on Windows 11 only)
 
 </details>
 
@@ -290,42 +290,42 @@ DRONE_TYPE=quad AUTOPILOT=px4 DRONE_ID=1 CAMERA=true LIDAR=false ./deploy_run.sh
 >
 > Use USB2.0 ASIX Ethernet adapters to add multiple network interfaces to the Jetson baseboards
 
-Set up a LAN with netmask `255.255.0.0` and an arbitrary `SIM_SUBNET` (e.g. `172.30`) between:
+Set up a LAN on an arbitrary `SIM_SUBNET` with netmask `255.255.0.0` (e.g. `172.30.x.x`) between:
 
 - One **simulation** computer, with IP `[SIM_SUBNET].90.100`
 - One **ground** computer, with IP `[SIM_SUBNET].90.101`
 - `N` Jetson Baseboards with IPs `[SIM_SUBNET].90.1`, ..., `[SIM_SUBNET].90.N`
 
-**Optionally**, set up a second LAN or [MANET](https://doodlelabs.com/product/nano/) with netmask `255.255.0.0` and `AIR_SUBNET` (e.g. `10.223`) between:
-
-- One **ground** computer, with IP `[AIR_SUBNET].90.101`
-- `N` Jetson Baseboards with IPs `[AIR_SUBNET].90.1`, ..., `[AIR_SUBNET].90.N` 
+> **Optionally**, set up a second LAN :`AIR_SUBNET` with netmask `255.255.0.0` (e.g. `10.223.x.x`) between:
+> 
+> - One **ground** computer, with IP `[AIR_SUBNET].90.101`
+> - `N` Jetson Baseboards with IPs `[AIR_SUBNET].90.1`, ..., `[AIR_SUBNET].90.N` 
 
 First, start all aircraft containers, one on each Jetson (e.g. *via* SSH):
 ```sh
-# On the Jetson with IP ending in 90.1
+# On the Jetson with IPs ending in 90.1
 HITL=true DRONE_ID=1 SIM_SUBNET=172.30 AIR_SUBNET=10.223 ./deploy_run.sh                      # Add HEADLESS=false if a screen is connected to the Jetson
 ```
 
 ```sh
-# On the Jetson with IP ending in 90.2
+# On the Jetson with IPs ending in 90.2
 HITL=true DRONE_ID=2 SIM_SUBNET=172.30 AIR_SUBNET=10.223 ./deploy_run.sh
 ```
 
-Enable the Zenoh bridge between aircraft using the `AIR_SUBNET`, on the ground computer:
+Then, start the simulation:
 ```sh
-# Computer with IP ending in 90.101
-HITL=true GROUND=true HEADLESS=false NUM_QUADS=2 SIM_SUBNET=172.30 AIR_SUBNET=10.223 ./deploy_run.sh
-```
-
-Finally, on the simulation computer:
-```sh
-# Computer with IP ending in 90.100
+# On the computer with IPs ending in 90.100
 HITL=true NUM_QUADS=2 SIM_SUBNET=172.30 AIR_SUBNET=10.223 ./sim_run.sh
 ```
 
+Finally, start QGC and the Zenoh bridge:
+```sh
+# On the computer with IPs ending in 90.101
+HITL=true GROUND=true HEADLESS=false NUM_QUADS=2 SIM_SUBNET=172.30 AIR_SUBNET=10.223 ./deploy_run.sh
+```
+
 > [!NOTE]
-> Running the previous commands (except the 3rd) with `GND_CONTAINER=false` moves the Zenoh bridge to the `SIM_SUBNET`, removing the need for the optional `AIR_SUBNET` and the computer with IP ending in `90.101`
+> Running only the first 3 commands with `GND_CONTAINER=false` moves the Zenoh bridge to the `SIM_SUBNET`, removing the need for the optional `AIR_SUBNET` and the computer with IP ending in `90.101`
 
 Once done, detach Tmux (and remove the containers) with `Ctrl + b`, then `d`
 

@@ -87,7 +87,7 @@ def main(args=None):
 
     # Listen for user cancellation in a separate thread
     def wait_for_input_and_cancel():
-        input("Press Enter to cancel the action (or exit the script after termination)...\n")
+        input("Press Enter to cancel the action (or to recoup the terminal after the action ends)...\n")
         cancellable_client.cancel_goal_from_input()
     input_thread = Thread(target=wait_for_input_and_cancel)
     input_thread.start()
