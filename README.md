@@ -357,7 +357,11 @@ Once done, detach Tmux (and remove the containers) with `Ctrl + b`, then `d`
 
 ## TODOs
 
-[Gymnasium](https://github.com/Farama-Foundation/Gymnasium) RL interface
+Gymnasium RL interface
+- based on https://github.com/JacopoPan/gymnasium-docker-ros2
+
+LiDAR driver https://github.com/Livox-SDK/livox_ros_driver2
+- the LiDAR should publish on topic `/lidar_points` for KISS-ICP
 
 HITL/SITL architectures
 - https://docs.px4.io/main/en/simulation/
@@ -365,17 +369,12 @@ HITL/SITL architectures
 - https://docs.px4.io/main/en/simulation/hitl.html add HITL for for Gazebo Harmonic
 - https://ardupilot.org/dev/docs/sitl-simulator-software-in-the-loop.html#sitl-architecture
 
-- Add LiDAR driver https://github.com/Livox-SDK/livox_ros_driver2
-  the LiDAR should publish on topic `/lidar_points` for KISS-ICP
-
 ## Future Work / Ideas for Contributions
 
 - Support for [Betaflight SITL](https://betaflight.com/docs/development/SITL) interfaced *via* UDP or [MultiWii Serial Protocol (MSP)](https://github.com/betaflight/betaflight/tree/master/src/main/msp)
 - Support for [ArduPilot's DDS interface](https://ardupilot.org/dev/docs/ros2-interfaces.html)
-
 - Support for a [Isaac Sim](https://github.com/isaac-sim/IsaacSim) higher fidelity rendering
 - Support for [JSBSim](https://github.com/JSBSim-Team/jsbsim) flight dynamics
-
 - Support for [SPARK-FAST-LIO](https://github.com/MIT-SPARK/spark-fast-lio)/[SuperOdom](https://github.com/superxslam/SuperOdom)
 
 -->
