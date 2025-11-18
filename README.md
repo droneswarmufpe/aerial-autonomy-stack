@@ -1,3 +1,6 @@
+[![GitHub stars](https://img.shields.io/github/stars/JacopoPan/aerial-autonomy-stack.svg?style=flat-square&label=Leave%20a%20⭐)](https://github.com/JacopoPan/aerial-autonomy-stack) [![GitHub forks](https://img.shields.io/github/forks/JacopoPan/aerial-autonomy-stack.svg?style=flat-square&label=Create%20your%20fork)](https://github.com/JacopoPan/aerial-autonomy-stack/fork)
+[![GitHub issues](https://img.shields.io/github/issues/JacopoPan/aerial-autonomy-stack.svg?style=flat-square&label=Ask%20a%20question)](https://github.com/JacopoPan/aerial-autonomy-stack/issues/new)
+
 # aerial-autonomy-stack
 
 *Aerial autonomy stack* (AAS) is a software stack to:
