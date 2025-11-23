@@ -41,20 +41,7 @@ create_model() {
 
     mkdir -p "$NEW_MODEL_DIR"
     cp "$BASE_MODEL_PATH"/model.sdf "$NEW_MODEL_DIR"/
-    
-    # Create .config file to let gz sim include the model
-    CONFIG_FILE="${NEW_MODEL_DIR}/model.config"
-    cat > "$CONFIG_FILE" << EOF
-<?xml version='1.0'?>
-<model>
-  <name>${NEW_MODEL_NAME}</name>
-  <version>1.0</version>
-  <sdf version='1.9'>model.sdf</sdf>
-  <description>
-    A dynamically generated model of ${NEW_MODEL_NAME}.
-  </description>
-</model>
-EOF
+    cp "$BASE_MODEL_PATH"/model.config "$NEW_MODEL_DIR"/
 
     sed -i "s/<model name=\"${BASE_MODEL_NAME}\">/<model name=\"${NEW_MODEL_NAME}\">/g" "${NEW_MODEL_DIR}/model.sdf"
     sed -i "s/<fdm_port_in>${BASE_PORT}<\/fdm_port_in>/<fdm_port_in>$(($BASE_PORT + ($DRONE_ID - 1) * 10))<\/fdm_port_in>/g" "${NEW_MODEL_DIR}/model.sdf"
