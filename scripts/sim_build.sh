@@ -28,7 +28,7 @@ REPOS=( # Format: "URL;BRANCH;LOCAL_DIR_NAME"
   "https://github.com/ArduPilot/ardupilot_gazebo.git;main;ardupilot_gazebo"
   "https://github.com/PX4/flight_review.git;main;flight_review"
   # Ground image
-  # n/a
+  "https://github.com/mavlink/c_library_v2;master;c_library_v2"
   # Aircraft image
   "https://github.com/PX4/px4_msgs.git;release/1.16;px4_msgs"
   "https://github.com/eProsima/Micro-XRCE-DDS-Agent.git;master;Micro-XRCE-DDS-Agent"

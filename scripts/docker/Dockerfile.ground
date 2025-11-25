@@ -105,6 +105,9 @@ RUN apt update \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Add MAVLink 2 C library
+COPY /github_clones/c_library_v2 /usr/local/include/mavlink/
+
 # Build the ROS 2 workspace
 COPY ground/ground_ws/src /aas/ground_ws/src
 WORKDIR /aas/ground_ws
