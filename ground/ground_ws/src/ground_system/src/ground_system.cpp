@@ -1,14 +1,6 @@
 #include "ground_system.hpp"
 
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <iostream>
-#include <cstring>
-
-GroundSystem::GroundSystem()
-: Node("ground_system"), keep_running_(true)
+GroundSystem::GroundSystem() : Node("ground_system"), keep_running_(true)
 {
     // Declare Parameters
     this->declare_parameter("num_drones", 1);
@@ -70,7 +62,7 @@ void GroundSystem::mavlink_listener(int drone_id, int port)
 
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = inet_addr(ip_.c_str()); // Likely INADDR_ANY (0.0.0.0)
+    servaddr.sin_addr.s_addr = inet_addr(ip_.c_str());
     servaddr.sin_port = htons(port);
 
     if (bind(sockfd, (const struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
@@ -85,7 +77,7 @@ void GroundSystem::mavlink_listener(int drone_id, int port)
 
     while (keep_running_ && rclcpp::ok()) {
         ssize_t len = recvfrom(sockfd, (char *)buffer, 2048, 0, NULL, NULL);
-
+        // Small sleep to prevent CPU hogging is handled by recvfrom blocking/timeout
         if (len > 0) {
             // Parse bytes
             for (ssize_t i = 0; i < len; ++i) {
@@ -112,7 +104,6 @@ void GroundSystem::mavlink_listener(int drone_id, int port)
                 }
             }
         }
-        // Small sleep to prevent CPU hogging is handled by recvfrom blocking/timeout
     }
 
     close(sockfd);

@@ -48,7 +48,7 @@ windows:
       layout: even-horizontal
       panes:
         <% if camera %>
-        - ros2 run yolo_inference yolo_inference <%= headless ? '--headless' : '' %> <%= hitl ? '--hitl' : '' %> <%= simulated_time ? '--ros-args -p use_sim_time:=true' : '' %>
+        - ros2 run yolo_inference_py yolo_inference_py <%= headless ? '--headless' : '' %> <%= hitl ? '--hitl' : '' %> <%= simulated_time ? '--ros-args -p use_sim_time:=true' : '' %>
         <% end %>
         <% if lidar %>
         - ros2 launch kiss_icp odometry.launch.py topic:=/lidar_points <%= headless ? 'visualize:=false' : '' %>

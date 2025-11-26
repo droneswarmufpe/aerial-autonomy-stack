@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'yolo_inference'
+package_name = 'yolo_inference_py'
 
 setup(
     name=package_name,
@@ -15,7 +15,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'yolo_inference = yolo_inference.yolo_inference_node:main',
+            'yolo_inference_py = yolo_inference_py.yolo_inference_node:main',
         ],
     },
 )
