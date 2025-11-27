@@ -16,9 +16,11 @@ from vision_msgs.msg import Detection2DArray, Detection2D, BoundingBox2D, Object
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 
-frame_queue = queue.Queue(maxsize=3) # A queue to hold frames
+CONF_THRESH = 0.5
+NMS_THRESH = 0.45 # Non-Maximal Suppression
+INPUT_SIZE = 640 # YOLOv8 input size
 
-def frame_capture_thread(cap, is_running):
+def frame_capture_thread(cap, frame_queue, is_running):
     try:
         os.nice(-10)
     except:
@@ -34,11 +36,16 @@ def frame_capture_thread(cap, is_running):
             time.sleep(0.01)
             continue
         try:
-            frame_queue.put(frame, timeout=0.1)
+            if frame_queue.full():
+                try:
+                    frame_queue.get_nowait()
+                except queue.Empty:
+                    pass
+            frame_queue.put(frame)
             frame_count += 1
         except queue.Full:
             pass # Drop frame if the main thread is lagging
-        if frame_count % 120 == 0:
+        if frame_count % 60 == 0: # Every 60 frames
             end_time = time.time()
             elapsed_time = end_time - start_time
             fps = frame_count / elapsed_time
@@ -47,15 +54,6 @@ def frame_capture_thread(cap, is_running):
             frame_count = 0
             start_time = time.time()
             read_times = []
-
-def xywh2xyxy(box):
-    # Convert [x, y, w, h] to [x1, y1, x2, y2]
-    coord = np.copy(box)
-    coord[..., 0] = box[..., 0] - box[..., 2] / 2  # x1
-    coord[..., 1] = box[..., 1] - box[..., 3] / 2  # y1
-    coord[..., 2] = box[..., 0] + box[..., 2] / 2  # x2
-    coord[..., 3] = box[..., 1] + box[..., 3] / 2  # y2
-    return coord
 
 class YoloInferenceNode(Node):
     def __init__(self, headless, hitl, hfov, vfov):
@@ -85,6 +83,7 @@ class YoloInferenceNode(Node):
             provider_options = {
                 'trt_engine_cache_enable': True,
                 'trt_engine_cache_path': cache_path,
+                # 'trt_fp16_enable': True, # Optional: Enable FP16 for Jetson speedup
             }
             self.session = ort.InferenceSession(
                 model_path,
@@ -102,6 +101,9 @@ class YoloInferenceNode(Node):
         self.detection_publisher = self.create_publisher(Detection2DArray, 'detections', 10)
         # self.image_publisher = self.create_publisher(Image, 'detections_image', 10)
         self.bridge = CvBridge()
+
+        # Pre-allocate reusable arrays for scaling to avoid allocation in hot loops
+        self.scale_factors = np.zeros(4, dtype=np.float32)
         
         self.get_logger().info("YOLO inference started.")
 
@@ -184,7 +186,8 @@ class YoloInferenceNode(Node):
         # Start the video capture thread
         is_running = threading.Event()
         is_running.set()
-        frame_thread = threading.Thread(target=frame_capture_thread, args=(cap, is_running), daemon=True)
+        frame_queue = queue.Queue(maxsize=1) # A queue to hold frames, reduce maxsize to reduce latency (buffer bloat)
+        frame_thread = threading.Thread(target=frame_capture_thread, args=(cap, frame_queue, is_running), daemon=True)
         frame_thread.start()
 
         # ROS spinning thread
@@ -198,7 +201,7 @@ class YoloInferenceNode(Node):
 
         while rclpy.ok():
             try:
-                frame = frame_queue.get(timeout=1) # Get the most recent frame from the queue
+                frame = frame_queue.get(timeout=1.0) # Get the most recent frame from the queue
             except queue.Empty:
                 self.get_logger().info("Frame queue is empty, is the stream running?")
                 continue
@@ -209,7 +212,7 @@ class YoloInferenceNode(Node):
             yolo_times.append(time.time() - yolo_start)
 
             inference_count += 1
-            if inference_count % 120 == 0:
+            if inference_count % 60 == 0: # Every 60 inferences
                 end_time = time.time()
                 elapsed_time = end_time - start_time
                 yolo_fps = inference_count / elapsed_time
@@ -221,12 +224,14 @@ class YoloInferenceNode(Node):
                 self.session_times = []
 
             # Publish detections
-            self.publish_detections(frame, boxes, confidences, class_ids)
+            if len(boxes) > 0:
+                self.publish_detections(frame.shape, boxes, confidences, class_ids)
 
             # Visualize
             if not self.headless:
                 self.visualize(frame, boxes, confidences, class_ids)
-                cv2.waitKey(1)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
 
         # Cleanup
         is_running.clear()
@@ -238,7 +243,6 @@ class YoloInferenceNode(Node):
 
     def run_yolo(self, frame):
         h0, w0 = frame.shape[:2]
-        INPUT_SIZE = 640 # YOLOv8 input size
         
         img = cv2.dnn.blobFromImage(frame, 1/255.0, (INPUT_SIZE, INPUT_SIZE), swapRB=True, crop=False)
         
@@ -253,75 +257,88 @@ class YoloInferenceNode(Node):
         class_ids = scores.argmax(axis=1)
         
         # Filter
-        CONF_THRESH = 0.5
         mask = confidences > CONF_THRESH
         
         if not mask.any():
             return np.array([]), np.array([]), np.array([])
         
         # Apply mask once
-        boxes_filtered = boxes[mask]
-        confidences_filtered = confidences[mask]
-        class_ids_filtered = class_ids[mask]
+        boxes = boxes[mask]
+        confidences = confidences[mask]
+        class_ids = class_ids[mask]
         
-        # Convert to xyxy once
-        boxes_xyxy = xywh2xyxy(boxes_filtered)
+        # Convert [x, y, w, h] to [x1, y1, x2, y2]
+        dw = boxes[:, 2] * 0.5 
+        dh = boxes[:, 3] * 0.5
+        x1 = boxes[:, 0] - dw
+        y1 = boxes[:, 1] - dh
+        x2 = boxes[:, 0] + dw
+        y2 = boxes[:, 1] + dh
+        boxes_xyxy = np.stack((x1, y1, x2, y2), axis=1)
         
         # Apply Non-Maximal Suppression
-        NMS_THRESH = 0.45
-        indices = cv2.dnn.NMSBoxes(boxes_xyxy.tolist(), confidences_filtered.tolist(), CONF_THRESH, NMS_THRESH)
+        indices = cv2.dnn.NMSBoxes(boxes_xyxy, confidences, CONF_THRESH, NMS_THRESH)
         
         if len(indices) == 0:
             return np.array([]), np.array([]), np.array([])
-        
-        # Scale 
-        final_boxes = boxes_xyxy[indices]
-        scale = np.array([w0 / INPUT_SIZE, h0 / INPUT_SIZE, w0 / INPUT_SIZE, h0 / INPUT_SIZE])
-        final_boxes *= scale
-        
-        return final_boxes, confidences_filtered[indices], class_ids_filtered[indices]
 
-    def publish_detections(self, frame, boxes, confidences, class_ids):
-        detection_array_msg = Detection2DArray()
-        detection_array_msg.header.stamp = self.get_clock().now().to_msg()
-        detection_array_msg.header.frame_id = "camera_frame"
-        image_height, image_width = frame.shape[:2]
+        indices = np.array(indices).flatten() # indices might be a list or a tuple of arrays depending on cv2 version, flatten it
+        
+        boxes = boxes_xyxy[indices]
+        confidences = confidences[indices]
+        class_ids = class_ids[indices]
+
+        self.scale_factors[:] = [w0 / INPUT_SIZE, h0 / INPUT_SIZE, w0 / INPUT_SIZE, h0 / INPUT_SIZE]
+        boxes *= self.scale_factors
+        
+        return boxes, confidences, class_ids
+
+    def publish_detections(self, frame_shape, boxes, confidences, class_ids):
+        h, w = frame_shape[:2]
+        w_half = w * 0.5
+        h_half = h * 0.5
+        
+        # Vectorized calculations
+        center_x = (boxes[:, 0] + boxes[:, 2]) * 0.5
+        center_y = (boxes[:, 1] + boxes[:, 3]) * 0.5
+        widths = boxes[:, 2] - boxes[:, 0]
+        heights = boxes[:, 3] - boxes[:, 1]        
+        norm_x = (center_x - w_half) / w
+        norm_y = (h_half - center_y) / h
+        azimuths = norm_x * self.hfov
+        elevations = norm_y * self.vfov
+
+        # Construct Message
+        detection_array = Detection2DArray()
+        detection_array.header.stamp = self.get_clock().now().to_msg()
+        detection_array.header.frame_id = "camera_frame"
 
         for i in range(len(boxes)):
-            x1, y1, x2, y2 = boxes[i]
             bbox = BoundingBox2D()
-            center_x = float((x1 + x2) / 2.0)
-            center_y = float((y1 + y2) / 2.0)
-            bbox.center.position.x = center_x
-            bbox.center.position.y = center_y
-            bbox.size_x = float(x2 - x1)
-            bbox.size_y = float(y2 - y1)
-
-            offset_x = center_x - (image_width / 2.0)
-            offset_y = (image_height / 2.0) - center_y
-            norm_x = offset_x / image_width
-            norm_y = offset_y / image_height
-            azimuth = norm_x * self.hfov
-            elevation = norm_y * self.vfov
+            bbox.center.position.x = float(center_x[i])
+            bbox.center.position.y = float(center_y[i])
+            bbox.size_x = float(widths[i])
+            bbox.size_y = float(heights[i])
 
             hypothesis = ObjectHypothesis()
             hypothesis.class_id = str(self.classes[class_ids[i]])
             hypothesis.score = float(confidences[i])
-
+            
             result = ObjectHypothesisWithPose()
             result.hypothesis = hypothesis
-            result.pose.pose.position.x = azimuth # degrees
-            result.pose.pose.position.y = elevation # degrees
-            
-            detection = Detection2D() 
-            detection.bbox = bbox
-            detection.id = str(self.classes[class_ids[i]]) 
-            detection.results.append(result)
-            detection_array_msg.detections.append(detection)
+            result.pose.pose.position.x = float(azimuths[i]) # degrees
+            result.pose.pose.position.y = float(elevations[i]) # degrees
 
-        self.detection_publisher.publish(detection_array_msg)
+            detection = Detection2D()
+            detection.bbox = bbox
+            detection.id = hypothesis.class_id
+            detection.results.append(result)
+            
+            detection_array.detections.append(detection)
+
+        self.detection_publisher.publish(detection_array)
         
-        # if not self.headless:
+        # if not self.headless: # TODO: requires to add frame to arguments of publish_detections
         #     self.image_publisher.publish(self.bridge.cv2_to_imgmsg(frame, "bgr8"))
 
     def visualize(self, frame, boxes, confidences, class_ids):
@@ -330,7 +347,7 @@ class YoloInferenceNode(Node):
             conf = confidences[i]
             class_id = class_ids[i]
             class_name = self.classes[class_id]
-            color = tuple(self.colors[class_id, [2, 1, 0]].tolist())
+            color = self.colors[class_id].tolist()
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
             cv2.putText(frame, f"{class_name} {conf:.2f}", (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 1)
         cv2.imshow(self.WINDOW_NAME, frame)

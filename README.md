@@ -29,7 +29,7 @@
 
 https://github.com/user-attachments/assets/c194ada6-2996-4bfa-99e9-32b45e29281d
 
-## "How-to" Part 1: Installation
+## Installation
 
 > AAS is tested on Ubuntu 22.04 with `nvidia-driver-580` using an i7-11 with 16GB RAM and RTX 3060
 > 
@@ -40,12 +40,10 @@ https://github.com/user-attachments/assets/c194ada6-2996-4bfa-99e9-32b45e29281d
 ```sh
 sudo apt update && sudo apt install -y git git-lfs xterm xfonts-base && git lfs install
 
-mkdir -p ~/git && cd ~/git
 git clone https://github.com/JacopoPan/aerial-autonomy-stack.git
+cd aerial-autonomy-stack/scripts/
 
-cd ~/git/aerial-autonomy-stack/scripts
 ./sim_build.sh
-
 # Note: the 1st build takes ~30GB of space and ~25' with good internet (`Ctrl + c` and restart if needed)
 ```
 
@@ -63,17 +61,15 @@ cd ~/git/aerial-autonomy-stack/scripts
 
 ---
 
-## "How-to" Part 2: Simulation and Development
+## Simulation
 
 ![interface](https://github.com/user-attachments/assets/71b07851-42dd-45d4-a9f5-6b5b00cd85bc)
 
 > On a low-mid range laptop—i7-11 with 16GB RAM and RTX 3060—AAS can simulate a PX4 quad with YOLO and LiDAR at **~8-10x real-time-factor** (with flag `RTF=0.0`, monitor with `gz topic -e -t /stats`, note that ArduPilot faster physics updates have higher computational demands). Make sure you run `sudo prime-select nvidia` and rebooted to effectively leverage GPU compute.
 
-### Fly a Simulated Mission
-
 ```sh
 # 1. Start AAS
-cd ~/git/aerial-autonomy-stack/scripts
+cd aerial-autonomy-stack/scripts
 AUTOPILOT=px4 NUM_QUADS=1 NUM_VTOLS=1 WORLD=swiss_town ./sim_run.sh                           # Start a simulation, check the script for more options (note: ArduPilot SITL checks take ~40s before being ready to arm)
 ```
 
@@ -100,8 +96,7 @@ Optionally, add or disable **wind effects**, in the `Simulation`'s Xterm termina
 
 ```sh
 python3 /aas/simulation_resources/scripts/gz_wind.py --from_west 0.0 --from_south 3.0
-```
-```sh
+
 python3 /aas/simulation_resources/scripts/gz_wind.py --stop_wind
 ```
 
@@ -219,7 +214,7 @@ Included `WORLD`s:
 > Launching the `sim_run.sh` script with `DEV=true`, does **not** start the simulation and mounts folders `[aircraft|ground|simulation]_resources`, `[aircraft|ground]_ws/src` as volumes to more easily track, commit, push changes while building and testing them within the containers:
 > 
 > ```sh
-> cd ~/git/aerial-autonomy-stack/scripts
+> cd aerial-autonomy-stack/scripts/
 > DEV=true ./sim_run.sh                                                                       # Starts one simulation-image, one ground-image, and one aircraft-image where the *_resources/ and *_ws/src/ folders are mounted from the host
 > ```
 > 
@@ -251,7 +246,7 @@ Included `WORLD`s:
 
 ---
 
-## "How-to" Part 3: Jetson Deployment
+## Jetson Deployment
 
 > AAS is tested on a [Holybro Jetson Baseboard](https://holybro.com/products/pixhawk-jetson-baseboard) with Pixhawk 6X and NVIDIA Orin NX 16GB
 > 
@@ -260,10 +255,9 @@ Included `WORLD`s:
 ```sh
 sudo apt update && sudo apt install -y git git-lfs
 
-mkdir -p ~/git && cd ~/git
 git clone https://github.com/JacopoPan/aerial-autonomy-stack.git
+cd aerial-autonomy-stack/scripts/
 
-cd ~/git/aerial-autonomy-stack/scripts
 ./deploy_build.sh                                                                             # Build for arm64, on Jetson Orin NX the first build takes ~1h, mostly to build onnxruntime-gpu with TensorRT support from source
 ```
 
@@ -276,8 +270,8 @@ cd ~/git/aerial-autonomy-stack/scripts
 Finally, start the `aircraft-image` on Jetson Orin NX
 
 ```sh
+cd aerial-autonomy-stack/scripts/
 DRONE_TYPE=quad AUTOPILOT=px4 DRONE_ID=1 CAMERA=true LIDAR=false ./deploy_run.sh
-
 # Note: the 1st run of `./deploy_run.sh` requires ~3-4' to build the TensorRT cache
 ```
 
