@@ -16,44 +16,10 @@ from vision_msgs.msg import Detection2DArray, Detection2D, BoundingBox2D, Object
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 
+
 CONF_THRESH = 0.5
 NMS_THRESH = 0.45 # Non-Maximal Suppression
 INPUT_SIZE = 640 # YOLOv8 input size
-
-def frame_capture_thread(cap, frame_queue, is_running):
-    try:
-        os.nice(-10)
-    except:
-        pass
-    frame_count = 0
-    start_time = time.time()
-    read_times = []
-    while is_running.is_set():
-        read_start = time.time()
-        ret, frame = cap.read()
-        read_times.append(time.time() - read_start)
-        if not ret:
-            time.sleep(0.01)
-            continue
-        try:
-            if frame_queue.full():
-                try:
-                    frame_queue.get_nowait()
-                except queue.Empty:
-                    pass
-            frame_queue.put(frame)
-            frame_count += 1
-        except queue.Full:
-            pass # Drop frame if the main thread is lagging
-        if frame_count % 60 == 0: # Every 60 frames
-            end_time = time.time()
-            elapsed_time = end_time - start_time
-            fps = frame_count / elapsed_time
-            print(f"Frame Reception Rate: {fps:.2f} FPS; Avg. cap.read(): {sum(read_times) / len(read_times) * 1000:.2f}ms")
-            # Reset counters
-            frame_count = 0
-            start_time = time.time()
-            read_times = []
 
 class YoloInferenceNode(Node):
     def __init__(self, headless, hitl, hfov, vfov):
@@ -106,10 +72,6 @@ class YoloInferenceNode(Node):
         self.scale_factors = np.zeros(4, dtype=np.float32)
         
         self.get_logger().info("YOLO inference started.")
-
-    def ros_spin_thread(self):
-        while rclpy.ok():
-            rclpy.spin_once(self, timeout_sec=0.001) # This is only to get the simulation time from /clock
 
     def run_inference_loop(self):
         # Acquire video stream
@@ -187,17 +149,12 @@ class YoloInferenceNode(Node):
         is_running = threading.Event()
         is_running.set()
         frame_queue = queue.Queue(maxsize=1) # A queue to hold frames, reduce maxsize to reduce latency (buffer bloat)
-        frame_thread = threading.Thread(target=frame_capture_thread, args=(cap, frame_queue, is_running), daemon=True)
+        frame_thread = threading.Thread(target=self.frame_capture_thread, args=(cap, frame_queue, is_running), daemon=True)
         frame_thread.start()
 
         # ROS spinning thread
         ros_thread = threading.Thread(target=self.ros_spin_thread, daemon=True)
         ros_thread.start()
-
-        inference_count = 0
-        start_time = time.time()
-        yolo_times = []
-        self.session_times = []
 
         while rclpy.ok():
             try:
@@ -207,21 +164,8 @@ class YoloInferenceNode(Node):
                 continue
             
             # Inference
-            yolo_start = time.time()
-            boxes, confidences, class_ids = self.run_yolo(frame)
-            yolo_times.append(time.time() - yolo_start)
-
-            inference_count += 1
-            if inference_count % 60 == 0: # Every 60 inferences
-                end_time = time.time()
-                elapsed_time = end_time - start_time
-                yolo_fps = inference_count / elapsed_time
-                print(f"YOLO Inference Rate: {yolo_fps:.2f} FPS; Avg. YOLO: {sum(yolo_times) / len(yolo_times)*1000:.2f}ms; Avg. session: {sum(self.session_times) / len(self.session_times)*1000:.2f}ms")
-                # Reset counters
-                inference_count = 0
-                start_time = time.time()
-                yolo_times = []
-                self.session_times = []
+            with Profiler("do_yolo (includes ONNX Runtime)"):
+                boxes, confidences, class_ids = self.do_yolo(frame)
 
             # Publish detections
             if len(boxes) > 0:
@@ -241,14 +185,40 @@ class YoloInferenceNode(Node):
         if not self.headless:
             cv2.destroyAllWindows()
 
-    def run_yolo(self, frame):
+    def ros_spin_thread(self):
+        while rclpy.ok():
+            rclpy.spin_once(self, timeout_sec=0.001) # This is only to get the simulation time from /clock
+
+    def frame_capture_thread(self, cap, frame_queue, is_running):
+        try:
+            os.nice(-10)
+        except:
+            pass
+
+        while is_running.is_set():
+            with Profiler("cap.read()"):
+                ret, frame = cap.read()
+
+            if not ret:
+                time.sleep(0.01) # Avoid busy loop if no frame is received
+                continue
+            try:
+                if frame_queue.full():
+                    try:
+                        frame_queue.get_nowait()
+                    except queue.Empty:
+                        pass
+                frame_queue.put_nowait(frame)
+            except queue.Full:
+                pass # Drop frame if the main thread is lagging
+
+    def do_yolo(self, frame):
         h0, w0 = frame.shape[:2]
         
         img = cv2.dnn.blobFromImage(frame, 1/255.0, (INPUT_SIZE, INPUT_SIZE), swapRB=True, crop=False)
         
-        session_start = time.time()
-        outputs = self.session.run(None, {self.input_name: img})
-        self.session_times.append(time.time() - session_start)
+        with Profiler("ONNX Runtime Inference"):
+            outputs = self.session.run(None, {self.input_name: img})
         
         preds = outputs[0][0].T
         boxes = preds[:, :4]
@@ -351,6 +321,33 @@ class YoloInferenceNode(Node):
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
             cv2.putText(frame, f"{class_name} {conf:.2f}", (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 1)
         cv2.imshow(self.WINDOW_NAME, frame)
+
+class Profiler:
+    __slots__ = ('name', 'interval', 'start')
+    _last_log_times = {}
+    _counts = {}
+
+    def __init__(self, name, interval=2.0):
+        self.name = name
+        self.interval = interval 
+        self.start = 0.0
+
+    def __enter__(self):
+        self.start = time.perf_counter()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        end = time.perf_counter()
+        dt = (end - self.start) * 1000 # ms
+        Profiler._counts[self.name] = Profiler._counts.get(self.name, 0) + 1
+        last_time = Profiler._last_log_times.get(self.name, 0)
+        if end - last_time > self.interval:
+            count = Profiler._counts[self.name]
+            time_span = max(end - last_time, 0.001) 
+            actual_hz = count / time_span
+            print(f"[{self.name}] {dt:.2f}ms | {actual_hz:.2f}Hz")
+            Profiler._last_log_times[self.name] = end
+            Profiler._counts[self.name] = 0
 
 def main(args=None):
     parser = argparse.ArgumentParser(description="YOLOv8 ROS2 Inference Node.")
