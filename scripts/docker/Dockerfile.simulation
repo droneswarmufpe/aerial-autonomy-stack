@@ -141,7 +141,7 @@ RUN pip3 install --no-cache-dir --upgrade pip \
     && pip3 install --no-cache-dir --resume-retries 5 "numpy<2" mavproxy
 ENV GZ_VERSION=harmonic
 RUN mkdir build && cd build && \
-    cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release && \
     make -j$(nproc)
 
 # Pre-build in the Docker image to speed up the first use of sim_vehicle.py
@@ -235,7 +235,7 @@ COPY ground/ground_resources/patches/QGroundControl.ini /home/qgcuser/.config/QG
 # Build gz_gst_bridge
 WORKDIR /aas/simulation_resources/comms/gz_gst_bridge
 RUN mkdir build && cd build \
-    && cmake .. \
+    && cmake .. -DCMAKE_BUILD_TYPE=Release \
     && make
 
 # Final config

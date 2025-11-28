@@ -114,7 +114,7 @@ WORKDIR /aas/ground_ws
 RUN rosdep update
 RUN rosdep install --from-paths src/ --ignore-src --rosdistro humble -y
 # Explicitly use bash, not sh, to source and build the workspace
-RUN bash -c "source /opt/ros/humble/setup.bash && (source /aas/github_ws/install/setup.bash || true) && colcon build --symlink-install"
+RUN bash -c "source /opt/ros/humble/setup.bash && (source /aas/github_ws/install/setup.bash || true) && colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release"
 
 # Copy resources and configuration files from this repository
 COPY ground/ground_resources/ /aas/ground_resources
