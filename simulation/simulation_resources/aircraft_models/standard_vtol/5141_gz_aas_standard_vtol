@@ -186,3 +186,6 @@ param set-default VT_F_TRANS_THR 0.75 # The default value was decreased to 0.3 i
 # Increase max and cruise airspeed
 param set-default FW_AIRSPD_MAX 25.0
 param set-default FW_AIRSPD_TRIM 18.0
+
+# Increase manual control loss timeout for faster-thhan-real-life simulation
+param set-default COM_RC_LOSS_T 10
