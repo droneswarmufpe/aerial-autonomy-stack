@@ -349,8 +349,13 @@ Distributed under the MIT License. See `LICENSE.txt` for more information. Copyr
 Gymnasium RL interface
 - based on https://github.com/JacopoPan/gymnasium-docker-ros2
 
-LiDAR driver https://github.com/Livox-SDK/livox_ros_driver2
-- the LiDAR should publish on topic `/lidar_points` for KISS-ICP
+LiDAR-inertial Odometry and SLAM
+- LiDAR driver https://github.com/Livox-SDK/livox_ros_driver2 in aircraft-image (the LiDAR should publish on topic `/lidar_points` for KISS-ICP)
+- Integrate [SPARK-FAST-LIO](https://github.com/MIT-SPARK/spark-fast-lio) or [SuperOdom](https://github.com/superxslam/SuperOdom) as baselines
+- Create a 3D world.sdf for LIO-based navigation and mapping
+- Create a 3D world.sdf WITHOUT GPS PLUGIN (and configure PX4/ArduPilot accordingly) for LIO-based navigation and mapping
+- Add examples in the README.md showing exploration of these world with 3D mapping
+- Study how to compare/use/fuse LIO with PX4/ArduPilot state estimation
 
 HITL/SITL architectures
 - https://docs.px4.io/main/en/simulation/
@@ -365,6 +370,5 @@ HITL/SITL architectures
 - Support for [ArduPilot's DDS interface](https://ardupilot.org/dev/docs/ros2-interfaces.html)
 - Support for a [Isaac Sim](https://github.com/isaac-sim/IsaacSim) higher fidelity rendering
 - Support for [JSBSim](https://github.com/JSBSim-Team/jsbsim) flight dynamics
-- Support for [SPARK-FAST-LIO](https://github.com/MIT-SPARK/spark-fast-lio)/[SuperOdom](https://github.com/superxslam/SuperOdom)
 
 -->
