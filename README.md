@@ -1,6 +1,6 @@
 # aerial-autonomy-stack
 
-*Aerial autonomy stack* (AAS) is the prime software stack to:
+*Aerial autonomy stack* (AAS) is the all-in-one software stack to:
 
 1. **Develop** multi-drone autonomy—with ROS2, PX4, and ArduPilot
 2. **Simulate** faster-than-real-time perception and control—with YOLOv8 and 3D LiDAR 
