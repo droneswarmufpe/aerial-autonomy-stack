@@ -19,7 +19,6 @@ from cv_bridge import CvBridge
 
 CONF_THRESH = 0.5
 NMS_THRESH = 0.45 # Non-Maximal Suppression
-INPUT_SIZE = 640 # YOLOv8 input size
 
 class YoloInferenceNode(Node):
     def __init__(self, headless, hitl, hfov, vfov):
@@ -37,13 +36,21 @@ class YoloInferenceNode(Node):
         colors_rgba = plt.cm.hsv(np.linspace(0, 1, len(self.classes)))
         self.colors = (colors_rgba[:, [2, 1, 0]] * 255).astype(np.uint8) # From RGBA (0-1 float) to BGR (0-255 int)
 
-        # Load model runtime
-        model_path = "/aas/yolo/yolov8n.onnx" # Model options (from fastest to most accurate, <10MB to >100MB): yolov8n, yolov8s, yolov8m, yolov8l, yolov8x
+        # Load model and runtime
+        # Options, from fastest to most accurate, <10MB to >100MB: yolov8n, yolov8s, yolov8m, yolov8l, yolov8x, export in Dockerfile.aircraft
         if self.architecture == 'x86_64':
+            model_path = "/aas/yolo/yolov8n_320.onnx" # Simulated camera in sensor_camera/model.sdf is 320x240
+            self.input_size = 320 # YOLOv8 input size
             print("Loading CUDAExecutionProvider on AMD64 (x86) architecture.")
             self.session = ort.InferenceSession(model_path, providers=["CUDAExecutionProvider"]) # For simulation
         elif self.architecture == 'aarch64':
-            print("Loading (with cache) TensorrtExecutionProvider on ARM64 architecture (Jetson).") # The first cache built takes ~3'
+            if self.hitl:
+                model_path = "/aas/yolo/yolov8n_320.onnx" # Simulated camera in sensor_camera/model.sdf is 320x240
+                self.input_size = 320 # YOLOv8 input size
+            else:
+                model_path = "/aas/yolo/yolov8n_640.onnx" # Real CSI camera IMX219-200 is 1280x720, we resize to 640x640 for YOLOv8
+                self.input_size = 640 # YOLOv8 input size
+            print("Loading (with cache) TensorrtExecutionProvider on ARM64 architecture (Jetson).") # The first cache built takes ~10'
             cache_path = "/tensorrt_cache" # Mounted as volume by main_deploy.sh
             os.makedirs(cache_path, exist_ok=True)
             provider_options = {
@@ -217,7 +224,7 @@ class YoloInferenceNode(Node):
         #     frame = frame[:, :, :3]
         h0, w0 = frame.shape[:2]
         
-        img = cv2.dnn.blobFromImage(frame, 1/255.0, (INPUT_SIZE, INPUT_SIZE), swapRB=True, crop=False)
+        img = cv2.dnn.blobFromImage(frame, 1/255.0, (self.input_size, self.input_size), swapRB=True, crop=False)
         
         with Profiler("ONNX Runtime Inference"):
             outputs = self.session.run(None, {self.input_name: img})
@@ -258,7 +265,7 @@ class YoloInferenceNode(Node):
         confidences = confidences[indices]
         class_ids = class_ids[indices]
 
-        self.scale_factors[:] = [w0 / INPUT_SIZE, h0 / INPUT_SIZE, w0 / INPUT_SIZE, h0 / INPUT_SIZE]
+        self.scale_factors[:] = [w0 / self.input_size, h0 / self.input_size, w0 / self.input_size, h0 / self.input_size]
         boxes *= self.scale_factors
         
         return boxes, confidences, class_ids
