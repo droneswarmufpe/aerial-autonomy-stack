@@ -44,12 +44,8 @@ class YoloInferenceNode(Node):
             print("Loading CUDAExecutionProvider on AMD64 (x86) architecture.")
             self.session = ort.InferenceSession(model_path, providers=["CUDAExecutionProvider"]) # For simulation
         elif self.architecture == 'aarch64':
-            if self.hitl:
-                model_path = "/aas/yolo/yolov8n_320.onnx" # Simulated camera in sensor_camera/model.sdf is 320x240
-                self.input_size = 320 # YOLOv8 input size
-            else:
-                model_path = "/aas/yolo/yolov8n_640.onnx" # Real CSI camera IMX219-200 is 1280x720, we resize to 640x640 for YOLOv8
-                self.input_size = 640 # YOLOv8 input size
+            model_path = "/aas/yolo/yolov8n_640.onnx" # Real CSI camera IMX219-200 is 1280x720, we resize to 640x640 for YOLOv8 (this is slightly wasteful when self.hitl = True)
+            self.input_size = 640 # YOLOv8 input size
             print("Loading (with cache) TensorrtExecutionProvider on ARM64 architecture (Jetson).") # The first cache built takes ~10'
             cache_path = "/tensorrt_cache" # Mounted as volume by main_deploy.sh
             os.makedirs(cache_path, exist_ok=True)

@@ -24,11 +24,17 @@ GND_CONTAINER="${GND_CONTAINER:-true}" # Options: true (default), false
 RTF="${RTF:-1.0}" # Real-time factor (default = 1.0), set to <=0.0 for as fast as possible execution
 START_AS_PAUSED="${START_AS_PAUSED:-false}" # Options: true, false (default)
 #
-SESSION_ID="${SIM_SUBNET//./_}-${AIR_SUBNET//./_}" # A suffix to make docker network and container names unique based on subnets
-NAME_NET_SIM="aas-sim-network-${SESSION_ID}"
-NAME_NET_AIR="aas-air-network-${SESSION_ID}"
-NAME_SIM_CNT="simulation-container-${SESSION_ID}"
-NAME_GND_CNT="ground-container-${SESSION_ID}"
+INSTANCE="${INSTANCE:-0}" # Integer ID to make docker network/container names unique as well as offsetting the second byte of the subnets (default = 0)
+SIM_BYTE_1=$(echo "$SIM_SUBNET" | cut -d'.' -f1)
+SIM_BYTE_2=$(echo "$SIM_SUBNET" | cut -d'.' -f2)
+SIM_SUBNET="${SIM_BYTE_1}.$((SIM_BYTE_2 + INSTANCE))"
+AIR_BYTE_1=$(echo "$AIR_SUBNET" | cut -d'.' -f1)
+AIR_BYTE_2=$(echo "$AIR_SUBNET" | cut -d'.' -f2)
+AIR_SUBNET="${AIR_BYTE_1}.$((AIR_BYTE_2 + INSTANCE))"
+NAME_NET_SIM="aas-sim-network-inst${INSTANCE}"
+NAME_NET_AIR="aas-air-network-inst${INSTANCE}"
+NAME_SIM_CNT="simulation-container-inst${INSTANCE}"
+NAME_GND_CNT="ground-container-inst${INSTANCE}"
 
 # Detect the environment (Ubuntu/GNOME, WSL, etc.)
 if command -v gnome-terminal >/dev/null 2>&1 && [ -n "$XDG_CURRENT_DESKTOP" ]; then
@@ -169,7 +175,7 @@ if [[ "$HITL" == "false" ]]; then
     
     for i in $(seq 1 $num_drones); do
       sleep 1.0 # Limit resource usage
-      local NAME_AIRCRAFT_CNT="aircraft-container-${SESSION_ID}_${DRONE_ID}"
+      local NAME_AIRCRAFT_CNT="aircraft-container-inst${INSTANCE}_${DRONE_ID}"
       DOCKER_CMD="docker run -it --rm \
         --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
         --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR \
@@ -202,7 +208,7 @@ if [[ "$HITL" == "false" ]]; then
     sleep 2.0 # Once all containers are up, connect ground and aircraft containers to the air network
     docker network connect --ip=${AIR_SUBNET}.90.$GROUND_ID $NAME_NET_AIR $NAME_GND_CNT
     for i in $(seq 1 $((NUM_QUADS + NUM_VTOLS))); do
-      docker network connect --ip=${AIR_SUBNET}.90.$i $NAME_NET_AIR "aircraft-container-${SESSION_ID}_${i}"
+      docker network connect --ip=${AIR_SUBNET}.90.$i $NAME_NET_AIR "aircraft-container-inst${INSTANCE}_${i}"
     done
   fi
 fi
@@ -213,8 +219,8 @@ read -n 1 -s # Wait for user input
 
 # Cleanup function
 cleanup() {
-  DOCKER_PIDS=$(pgrep -f "docker run.*${SESSION_ID}" 2>/dev/null || true)
-  CONTAINER_NAMES=("${NAME_SIM_CNT}" "${NAME_GND_CNT}" "aircraft-container-${SESSION_ID}")
+  DOCKER_PIDS=$(pgrep -f "docker run.*inst${INSTANCE}" 2>/dev/null || true)
+  CONTAINER_NAMES=("${NAME_SIM_CNT}" "${NAME_GND_CNT}" "aircraft-container-inst${INSTANCE}")
   CONTAINERS_TO_STOP=""
   for name in "${CONTAINER_NAMES[@]}"; do
       CONTAINERS_TO_STOP+=$(docker ps -a -q --filter name="${name}" 2>/dev/null || true)
