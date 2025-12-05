@@ -12,30 +12,19 @@ from docker.types import NetworkingConfig, EndpointConfig, DeviceRequest
 
 
 class AASEnv(gym.Env):
-    """
-    A simple 1D dynamical system (point mass).
-    
-    - State: [position, velocity] (2D)
-    - Action: [force] (1D)
-    - Goal: Stay at position 0.0
-    """
-    metadata = {"render_modes": ["human"], "render_fps": 20}
+    metadata = {"render_modes": ["human"]}
 
     def __init__(self, render_mode=None):
         super().__init__()
         
         self.max_steps = 1000  # Max steps per episode
         self.dt = 0.05         # Time step
-
-        # Observation Space: [position, velocity]
-        # position is in [-1, 1], velocity is in [-5, 5]
+        # Observation Space: [position, velocity], position is in [-1, 1], velocity is in [-5, 5]
         self.obs_low = np.array([-1.0, -5.0], dtype=np.float32)
         self.obs_high = np.array([1.0, 5.0], dtype=np.float32)
         self.observation_space = gym.spaces.Box(low=self.obs_low, high=self.obs_high, dtype=np.float32)
-
         # Action Space: [force] between -1.0 and 1.0
         self.action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=(1,), dtype=np.float32)
-
         # Internal state
         self.position = 0.0
         self.velocity = 0.0
@@ -124,21 +113,21 @@ class AASEnv(gym.Env):
         env_display = os.environ.get('DISPLAY', '')
         env_xdg = os.environ.get('XDG_RUNTIME_DIR', '')
         gpu_requests = [
-            DeviceRequest(count=-1, capabilities=[['gpu']]) # Translate "--gpus all"
+            DeviceRequest(count=-1, capabilities=[['gpu']]) # Replaces "--gpus all"
         ]
-        volume_binds = { # Translate "--volume /tmp/.X11-unix:/tmp/.X11-unix:rw"
+        volume_binds = { # Replaces "--volume /tmp/.X11-unix:/tmp/.X11-unix:rw"
             '/tmp/.X11-unix': {'bind': '/tmp/.X11-unix', 'mode': 'rw'} # Format: {'host_path': {'bind': 'container_path', 'mode': 'rw'}}
         }
-        device_binds = ['/dev/dri:/dev/dri:rwm'] # Translate "--device /dev/dri"
+        device_binds = ['/dev/dri:/dev/dri:rwm'] # Replaces "--device /dev/dri"
         #
         print(f"Creating Simulation Container ({self.SIM_CONT_NAME})...")
         self.simulation_container = self.client.containers.create(
             "simulation-image:latest",
             name=self.SIM_CONT_NAME,
-            tty=True, # -it
+            tty=True, # Replaces -it
             detach=True,
             auto_remove=True,
-            privileged=True, # --privileged
+            privileged=True, # Replaces --privileged
             volumes=volume_binds,
             devices=device_binds,
             device_requests=gpu_requests,
@@ -184,10 +173,10 @@ class AASEnv(gym.Env):
             air_cont = self.client.containers.create(
                 "aircraft-image:latest",
                 name=air_cont_name,
-                tty=True, # -it
+                tty=True, # Replaces -it
                 detach=True,
                 auto_remove=True,
-                privileged=True, # --privileged
+                privileged=True, # Replaces --privileged
                 volumes=volume_binds,
                 devices=device_binds,
                 device_requests=gpu_requests,
@@ -246,23 +235,21 @@ class AASEnv(gym.Env):
         ###########################################################################################
         # ZeroMQ REQ/REP to the ROS2 sim ##########################################################
         ###########################################################################################
-        # try:
-        #     reset = 9999.0 # Special action to reset state
-        #     # Serialize the action and send the REQ
-        #     action_payload = struct.pack('d', reset)
-        #     self.socket.send(action_payload)    
-        #     # Wait for the REP (synchronous block) this call will block until a reply is received or it times out
-        #     reply_bytes = self.socket.recv()
-        #     # Deserialize
-        #     unpacked = struct.unpack('ddii', reply_bytes)
-        #     pos, vel, sec, nanosec = unpacked
-        #     # print(f"Received reset state: Pos={pos}, Vel={vel} at time {sec}.{nanosec}")
-        #     self.position = pos
-        #     self.velocity = vel
-        # except zmq.error.Again:
-        #     print("ZMQ Error: Reply from container timed out.")
-        # except ValueError:
-        #     print("ZMQ Error: Reply format error. Received garbage state.")
+        try:
+            reset = 9999.0 # A special action to reset the environment
+            # Serialize the action and send the REQ
+            action_payload = struct.pack('d', reset)
+            self.socket.send(action_payload)
+            # Wait for the REP (synchronous block) this call will block until a reply is received or it times out
+            reply_bytes = self.socket.recv()
+            # Deserialize
+            unpacked = struct.unpack('iI', reply_bytes) # i = int32 (sec), I = uint32 (nanosec)
+            sec, nanosec = unpacked
+            # print(f"Received clock update: {sec}.{nanosec}")
+        except zmq.error.Again:
+            print("ZMQ Error: Reply from container timed out.")
+        except ValueError:
+            print("ZMQ Error: Reply format error. Received garbage state.")
         ###########################################################################################
         # Reset state to a random position near the center ########################################
         ###########################################################################################
@@ -287,7 +274,7 @@ class AASEnv(gym.Env):
         try:
             # Serialize the action and send the REQ
             action_payload = struct.pack('d', force)
-            self.socket.send(action_payload)    
+            self.socket.send(action_payload)
             # Wait for the REP (synchronous block) this call will block until a reply is received or it times out
             reply_bytes = self.socket.recv()
             # Deserialize

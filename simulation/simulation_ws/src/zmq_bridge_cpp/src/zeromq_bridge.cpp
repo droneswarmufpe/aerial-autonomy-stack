@@ -31,6 +31,10 @@ struct ClockPayload {
 class ZMQBridge : public rclcpp::Node {
 public:
     ZMQBridge() : Node("zmq_bridge_node"), context_(1), socket_(context_, zmq::socket_type::rep) {
+
+        this->declare_parameter("step_size", 250); // How many multiples of the timestep in the world SDF (250Hz/4ms for PX4, 500Hz/2ms for ArduPilot)
+        step_size_ = this->get_parameter("step_size").as_int();
+        RCLCPP_INFO(this->get_logger(), "Gazebo Multi-Step Size configured to: %d", step_size_);
         
         // 1. ZMQ Setup
         socket_.bind("tcp://*:5555"); // '*' binds to all interfaces (equivalent to 0.0.0.0)
@@ -82,6 +86,8 @@ private:
     bool clock_ready_ = false;
     ClockPayload current_clock_;
 
+    int step_size_;
+
     void clock_callback(const rosgraph_msgs::msg::Clock::SharedPtr msg) {
         std::lock_guard<std::mutex> lock(clock_mutex_);
         
@@ -121,7 +127,7 @@ private:
 
                     // 3. Step Gazebo
                     gz::msgs::WorldControl req;
-                    req.set_multi_step(500); // To be based on the timestep in the world SDF (250Hz/4ms for PX4, 500Hz/2ms for ArduPilot)
+                    req.set_multi_step(static_cast<unsigned int>(step_size_));
                     req.set_pause(true);
                     gz::msgs::Boolean rep;
                     bool result;
