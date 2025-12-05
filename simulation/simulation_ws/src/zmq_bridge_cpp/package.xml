@@ -11,7 +11,7 @@
 
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
-  <depend>geometry_msgs</depend>
+  <depend>rosgraph_msgs</depend>
   <depend>libzmq3-dev</depend>
   <!-- <depend>gz-transport13</depend> -->
   <!-- <depend>gz-msgs10</depend> -->

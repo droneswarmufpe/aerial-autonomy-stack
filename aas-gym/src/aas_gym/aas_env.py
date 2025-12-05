@@ -51,7 +51,7 @@ class AASEnv(gym.Env):
             raise RuntimeError("Could not connect to the Docker daemon. Ensure Docker is running.") from e
         
         self.AUTOPILOT = "px4"
-        self.HEADLESS = True
+        self.HEADLESS = True # Use False for debugging, set to True to disable GUI rendering
         self.CAMERA = True
         self.LIDAR = True
         #
@@ -284,22 +284,20 @@ class AASEnv(gym.Env):
         ###########################################################################################
         # ZeroMQ REQ/REP to the ROS2 sim ##########################################################
         ###########################################################################################
-        # try:
-        #     # Serialize the action and send the REQ
-        #     action_payload = struct.pack('d', force)
-        #     self.socket.send(action_payload)    
-        #     # Wait for the REP (synchronous block) this call will block until a reply is received or it times out
-        #     reply_bytes = self.socket.recv()
-        #     # Deserialize
-        #     unpacked = struct.unpack('ddii', reply_bytes)
-        #     pos, vel, sec, nanosec = unpacked
-        #     # print(f"Received state: Pos={pos}, Vel={vel} at time {sec}.{nanosec}")
-        #     self.position = pos
-        #     self.velocity = vel
-        # except zmq.error.Again:
-        #     print("ZMQ Error: Reply from container timed out.")
-        # except ValueError:
-        #     print("ZMQ Error: Reply format error. Received garbage state.")
+        try:
+            # Serialize the action and send the REQ
+            action_payload = struct.pack('d', force)
+            self.socket.send(action_payload)    
+            # Wait for the REP (synchronous block) this call will block until a reply is received or it times out
+            reply_bytes = self.socket.recv()
+            # Deserialize
+            unpacked = struct.unpack('iI', reply_bytes) # i = int32 (sec), I = uint32 (nanosec)
+            sec, nanosec = unpacked
+            # print(f"Received clock update: {sec}.{nanosec}")
+        except zmq.error.Again:
+            print("ZMQ Error: Reply from container timed out.")
+        except ValueError:
+            print("ZMQ Error: Reply format error. Received garbage state.")
         ###########################################################################################
         # Simple Euler integration ################################################################
         ###########################################################################################

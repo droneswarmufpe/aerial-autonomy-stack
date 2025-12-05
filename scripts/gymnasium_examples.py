@@ -52,7 +52,6 @@ def main():
         print(f"\nAverage Step Time: {(total_time / STEPS) * 1000:.3f} ms")
         print(f"Throughput: {(STEPS / total_time):.2f} steps/second")
         print(f"Time for 1,000,000 steps: {((total_time * (1000000/STEPS))/3600):.2f} hours")
-        print(f"Time to simulate 10 days at 50 Hz: {((10 * 24 * 60 * 60) * 50 * (total_time / STEPS) / 3600):.2f} hours")
         env.close()
 
     elif args.mode == "learn":

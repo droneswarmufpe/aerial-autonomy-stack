@@ -10,7 +10,7 @@
 // ROS 2 Includes
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/float64.hpp"
-#include "geometry_msgs/msg/vector3_stamped.hpp"
+#include "rosgraph_msgs/msg/clock.hpp"
 // Gazebo Includes (libgz-transport13-*, libgz-msgs10-dev)
 #include <gz/transport/Node.hh>
 #include <gz/msgs/world_control.pb.h>
@@ -20,15 +20,11 @@
 
 using namespace std::chrono_literals;
 
-// Structure matches Python struct.pack('ddii')
-// d = double (8 bytes), i = int (4 bytes)
-// Use #pragma pack to ensure no padding is added by compiler
+// Corresponds to Python struct.unpack('iI') (int32, uint32)
 #pragma pack(push, 1)
-struct StatePayload {
-    double x;
-    double y;
+struct ClockPayload {
     int32_t sec;
-    int32_t nanosec;
+    uint32_t nanosec;
 };
 #pragma pack(pop)
 
@@ -43,9 +39,9 @@ public:
         // 2. ROS 2 Setup
         publisher_ = this->create_publisher<std_msgs::msg::Float64>("/control_input", 10);
         
-        subscription_ = this->create_subscription<geometry_msgs::msg::Vector3Stamped>(
-            "/state", 10, 
-            std::bind(&ZMQBridge::state_callback, this, std::placeholders::_1));
+        subscription_ = this->create_subscription<rosgraph_msgs::msg::Clock>(
+            "/clock", 10, 
+            std::bind(&ZMQBridge::clock_callback, this, std::placeholders::_1));
 
         const char* env_val = std::getenv("WORLD");
         if (env_val == nullptr) {
@@ -73,7 +69,7 @@ private:
     zmq::socket_t socket_;
     
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr publisher_;
-    rclcpp::Subscription<geometry_msgs::msg::Vector3Stamped>::SharedPtr subscription_;
+    rclcpp::Subscription<rosgraph_msgs::msg::Clock>::SharedPtr subscription_;
     
     gz::transport::Node gz_node_;
     std::string service_topic_;
@@ -81,21 +77,19 @@ private:
     std::thread zmq_thread_;
     std::atomic<bool> running_;
 
-    std::mutex state_mutex_;
-    std::condition_variable state_cv_;
-    bool state_ready_ = false;
-    StatePayload current_state_;
+    std::mutex clock_mutex_;
+    std::condition_variable clock_cv_;
+    bool clock_ready_ = false;
+    ClockPayload current_clock_;
 
-    void state_callback(const geometry_msgs::msg::Vector3Stamped::SharedPtr msg) {
-        std::lock_guard<std::mutex> lock(state_mutex_);
+    void clock_callback(const rosgraph_msgs::msg::Clock::SharedPtr msg) {
+        std::lock_guard<std::mutex> lock(clock_mutex_);
         
-        current_state_.x = msg->vector.x;
-        current_state_.y = msg->vector.y;
-        current_state_.sec = msg->header.stamp.sec;
-        current_state_.nanosec = msg->header.stamp.nanosec;
+        current_clock_.sec = msg->clock.sec;
+        current_clock_.nanosec = msg->clock.nanosec;
         
-        state_ready_ = true;
-        state_cv_.notify_one(); // Signal the waiting ZMQ thread
+        clock_ready_ = true;
+        clock_cv_.notify_one(); // Signal the waiting ZMQ thread
     }
 
     void zmq_listener() {
@@ -116,10 +110,10 @@ private:
                     if (!res) continue;
                     double force = *static_cast<double*>(request.data()); // Get force (double)
 
-                    // 2. Reset state flag and Publish Action
+                    // 2. Reset ready flag and Publish Action
                     {
-                        std::lock_guard<std::mutex> lock(state_mutex_);
-                        state_ready_ = false;
+                        std::lock_guard<std::mutex> lock(clock_mutex_);
+                        clock_ready_ = false;
                     }
                     auto ros_msg = std_msgs::msg::Float64();
                     ros_msg.data = force;
@@ -127,7 +121,7 @@ private:
 
                     // 3. Step Gazebo
                     gz::msgs::WorldControl req;
-                    req.set_multi_step(1); // To be based on the timestep in the world SDF (250Hz/4ms for PX4, 500Hz/2ms for ArduPilot)
+                    req.set_multi_step(500); // To be based on the timestep in the world SDF (250Hz/4ms for PX4, 500Hz/2ms for ArduPilot)
                     req.set_pause(true);
                     gz::msgs::Boolean rep;
                     bool result;
@@ -137,20 +131,19 @@ private:
                         RCLCPP_WARN(this->get_logger(), "Gazebo service call failed or timed out.");
                     }
 
-                    // 4. Wait for ROS State
-                    std::unique_lock<std::mutex> lock(state_mutex_);
-                    bool received = state_cv_.wait_for(lock, 2000ms, [this]{ return state_ready_; }); // Wait up to 2 seconds for state_ready_ to become true
+                    // 4. Wait for ROS topic update
+                    std::unique_lock<std::mutex> lock(clock_mutex_);
+                    bool received = clock_cv_.wait_for(lock, 2000ms, [this]{ return clock_ready_; }); // Wait up to 2 seconds for clock_ready_ to become true
 
                     // 5. Send Reply
-                    zmq::message_t reply(sizeof(StatePayload));
+                    zmq::message_t reply(sizeof(ClockPayload));
                     if (received) {
                         // Copy struct directly into ZMQ message buffer
-                        std::memcpy(reply.data(), &current_state_, sizeof(StatePayload));
+                        std::memcpy(reply.data(), &current_clock_, sizeof(ClockPayload));
                     } else {
-                        RCLCPP_WARN(this->get_logger(), "State timeout!");
-                        // Send zeros or error code
-                        StatePayload empty = {0.0, 0.0, 0, 0};
-                        std::memcpy(reply.data(), &empty, sizeof(StatePayload));
+                        RCLCPP_WARN(this->get_logger(), "Update timeout!");
+                        ClockPayload empty = {0, 0};
+                        std::memcpy(reply.data(), &empty, sizeof(ClockPayload));
                     }
                     socket_.send(reply, zmq::send_flags::none);
 
