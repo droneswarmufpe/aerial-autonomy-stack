@@ -68,16 +68,15 @@ class AASEnv(gym.Env):
         self.SIM_CONT_NAME = f"simulation-container-inst{self.INSTANCE}"
         # self.GND_CONT_NAME = f"ground-container-inst{self.INSTANCE}"
         #
-        if not self.HEADLESS:
-            if shutil.which("xhost"):
-                print("Granting X Server access to Docker containers...")
-                try:
-                    subprocess.run(["xhost", "+local:docker"], check=True)
-                    print("X Server access granted.")
-                except subprocess.CalledProcessError as e:
-                    print(f"Warning: Could not configure xhost: {e}")
-            else:
-                print("Error: 'xhost' command not found.")
+        if shutil.which("xhost"):
+            print("Granting X Server access to Docker containers...")
+            try:
+                subprocess.run(["xhost", "+local:docker"], check=True)
+                print("X Server access granted.")
+            except subprocess.CalledProcessError as e:
+                print(f"Warning: Could not configure xhost: {e}")
+        else:
+            print("Error: 'xhost' command not found.")
         networks_config = [
             {"name": self.SIM_NET_NAME, "subnet_base": self.SIM_SUBNET},
             # {"name": self.AIR_NET_NAME, "subnet_base": self.AIR_SUBNET}
@@ -245,7 +244,7 @@ class AASEnv(gym.Env):
             # Deserialize
             unpacked = struct.unpack('iI', reply_bytes) # i = int32 (sec), I = uint32 (nanosec)
             sec, nanosec = unpacked
-            print(f"Clock update in reset(): {sec}.{nanosec}")
+            # print(f"Clock update in reset(): {sec}.{nanosec}")
         except zmq.error.Again:
             print("ZMQ Error: Reply from container timed out.")
         except ValueError:

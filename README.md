@@ -70,7 +70,7 @@ cd aerial-autonomy-stack/scripts/
 ```sh
 # 1. Start AAS
 cd aerial-autonomy-stack/scripts
-AUTOPILOT=px4 NUM_QUADS=1 NUM_VTOLS=1 WORLD=swiss_town RTF=1.0 ./sim_run.sh                   # Start a simulation, check the script for more options (note: ArduPilot SITL checks take ~40s before being ready to arm)
+AUTOPILOT=px4 NUM_QUADS=1 NUM_VTOLS=1 WORLD=swiss_town RTF=3.0 ./sim_run.sh                   # Start a simulation, check the script for more options (note: ArduPilot SITL checks take ~40s before being ready to arm)
 ```
 
 In any of the `QUAD` or `VTOL` Xterm terminals:
@@ -248,25 +248,25 @@ Included `WORLD`s:
 
 ## Gymnasium Environment
 
-Install [Anaconda](https://docs.conda.io/projects/conda/en/stable/user-guide/install/linux.html):
+Optionally, install [Anaconda](https://docs.conda.io/projects/conda/en/stable/user-guide/install/linux.html):
 ```sh
 wget https://repo.anaconda.com/archive/Anaconda3-2025.06-0-Linux-x86_64.sh
 bash Anaconda3-2025.06-0-Linux-x86_64.sh
+conda create -n aas python=3.13
+conda activate aas
 ```
 
 Install `aas-gym`:
 ```sh
+conda activate aas                                    # If using Anaconda
 cd aerial-autonomy-stack/aas-gym/
-conda create -n aas python=3.13
-conda activate aas
-pip3 install --upgrade pip
 pip3 install -e .
 ```
 
 Use as:
 ```sh
+conda activate aas                                    # If using Anaconda
 cd aerial-autonomy-stack/scripts
-conda activate aas
 python3 gymnasium_examples.py --mode step             # Manually step the simulation
 python3 gymnasium_examples.py --mode speed            # Check the simulation throughput
 ```
