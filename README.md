@@ -405,28 +405,29 @@ Distributed under the MIT License. See `LICENSE.txt` for more information. Copyr
 - QGC does not save roll and pitch in the telemetry bar for PX4 VTOLs (MAV_TYPE 22)
 - PX4 quad max tilt is limited by the anti-windup gain (zero it to deactivate it): const float arw_gain = 2.f / _gain_vel_p(0);
 
+## PX4/ArduPilot SITL/HITL architectures
+- https://docs.px4.io/main/en/simulation/
+- https://docs.px4.io/main/en/simulation/#sitl-simulation-environment
+- https://docs.px4.io/main/en/simulation/hitl.html
+- https://ardupilot.org/dev/docs/sitl-simulator-software-in-the-loop.html#sitl-architecture
+
 ## TODOs
 
 LiDAR-inertial Odometry and SLAM
 - LiDAR driver https://github.com/Livox-SDK/livox_ros_driver2 in aircraft-image (the LiDAR should publish on topic `/lidar_points` for KISS-ICP)
-- Integrate [SPARK-FAST-LIO](https://github.com/MIT-SPARK/spark-fast-lio) or [SuperOdom](https://github.com/superxslam/SuperOdom) as baselines
+- Integrate [SPARK-FAST-LIO](https://github.com/MIT-SPARK/spark-fast-lio) or [SuperOdom](https://github.com/superxslam/SuperOdom) as additional baselines
 - Create a 3D world.sdf for LIO-based navigation and mapping
 - Create a 3D world.sdf WITHOUT GPS PLUGIN (and configure PX4/ArduPilot accordingly) for LIO-based navigation and mapping
 - Add examples in the README.md showing exploration of these world with 3D mapping
+- Develop own/custom SLAM/collaborative SLAM approach
 - Study how to compare/use/fuse LIO with PX4/ArduPilot state estimation
 
-HITL/SITL architectures
-- https://docs.px4.io/main/en/simulation/
-- https://docs.px4.io/main/en/simulation/#sitl-simulation-environment
-- https://docs.px4.io/main/en/simulation/hitl.html add HITL for for Gazebo Harmonic
-- https://ardupilot.org/dev/docs/sitl-simulator-software-in-the-loop.html#sitl-architecture
-
-## Future Work / Ideas for Contributions
+## Future Work
 
 - Support for [NVIDIA DeepStream](https://developer.nvidia.com/deepstream-sdk) in the aircraft_ws YOLO node
 - Support for [Betaflight SITL](https://betaflight.com/docs/development/SITL) interfaced *via* UDP or [MultiWii Serial Protocol (MSP)](https://github.com/betaflight/betaflight/tree/master/src/main/msp)
-- Support for [ArduPilot's DDS interface](https://ardupilot.org/dev/docs/ros2-interfaces.html)
 - Support for a [Isaac Sim](https://github.com/isaac-sim/IsaacSim) higher fidelity rendering
 - Support for [JSBSim](https://github.com/JSBSim-Team/jsbsim) flight dynamics
+- Support for [ArduPilot's DDS interface](https://ardupilot.org/dev/docs/ros2-interfaces.html)
 
 -->

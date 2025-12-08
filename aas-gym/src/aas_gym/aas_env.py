@@ -47,26 +47,26 @@ class AASEnv(gym.Env):
         self.SIM_SUBNET = "10.42"
         self.AIR_SUBNET = "10.22"
         self.SIM_ID = "100"
-        # self.GROUND_ID = "101"
+        # self.GROUND_ID = "101" # Unused
         #
         self.NUM_QUADS = 1
         self.NUM_VTOLS = 0
         self.WORLD = "impalpable_greyness"
         #
-        self.GND_CONTAINER = False
+        self.GND_CONTAINER = False # Do NOT use the ground-image to run Zenoh (nor QGC)
         self.RTF = 0.0
         self.START_AS_PAUSED = True # Start the simulation paused and manually step with gz-sim WorldControl
         self.INSTANCE = 0
         #
         sim_parts = self.SIM_SUBNET.split('.')
         self.SIM_SUBNET = f"{sim_parts[0]}.{int(sim_parts[1]) + self.INSTANCE}"
-        # air_parts = self.AIR_SUBNET.split('.')
-        # self.AIR_SUBNET = f"{air_parts[0]}.{int(air_parts[1]) + self.INSTANCE}"
+        # air_parts = self.AIR_SUBNET.split('.') # Unused
+        # self.AIR_SUBNET = f"{air_parts[0]}.{int(air_parts[1]) + self.INSTANCE}" # Unused
         #
         self.SIM_NET_NAME = f"aas-sim-network-inst{self.INSTANCE}"
-        # self.AIR_NET_NAME = f"aas-air-network-inst{self.INSTANCE}"
+        # self.AIR_NET_NAME = f"aas-air-network-inst{self.INSTANCE}" # Unused
         self.SIM_CONT_NAME = f"simulation-container-inst{self.INSTANCE}"
-        # self.GND_CONT_NAME = f"ground-container-inst{self.INSTANCE}"
+        # self.GND_CONT_NAME = f"ground-container-inst{self.INSTANCE}" # Unused
         #
         if shutil.which("xhost"):
             print("Granting X Server access to Docker containers...")
@@ -79,7 +79,7 @@ class AASEnv(gym.Env):
             print("Error: 'xhost' command not found.")
         networks_config = [
             {"name": self.SIM_NET_NAME, "subnet_base": self.SIM_SUBNET},
-            # {"name": self.AIR_NET_NAME, "subnet_base": self.AIR_SUBNET}
+            # {"name": self.AIR_NET_NAME, "subnet_base": self.AIR_SUBNET} # Unused
         ]
         self.networks = {}
         for net_config in networks_config:
@@ -115,7 +115,7 @@ class AASEnv(gym.Env):
             DeviceRequest(count=-1, capabilities=[['gpu']]) # Replaces "--gpus all"
         ]
         volume_binds = { # Replaces "--volume /tmp/.X11-unix:/tmp/.X11-unix:rw"
-            '/tmp/.X11-unix': {'bind': '/tmp/.X11-unix', 'mode': 'rw'} # Format: {'host_path': {'bind': 'container_path', 'mode': 'rw'}}
+            '/tmp/.X11-unix': {'bind': '/tmp/.X11-unix', 'mode': 'rw'}
         }
         device_binds = ['/dev/dri:/dev/dri:rwm'] # Replaces "--device /dev/dri"
         #
@@ -197,6 +197,7 @@ class AASEnv(gym.Env):
                     # "GROUND_ID": self.GROUND_ID,
                     "GND_CONTAINER": str(self.GND_CONTAINER).lower(),
                     "ROS_DOMAIN_ID": str(i),
+                    "GYMNASIUM" : "true",
                 }
             )
             print(f"Connecting {air_cont_name} to {self.SIM_NET_NAME}...")

@@ -41,7 +41,7 @@ public:
         RCLCPP_INFO(this->get_logger(), "ZMQ REP socket bound to port 5555");
 
         // 2. ROS 2 Setup
-        publisher_ = this->create_publisher<std_msgs::msg::Float64>("/control_input", 10);
+        publisher_ = this->create_publisher<std_msgs::msg::Float64>("/action", 10);
         
         subscription_ = this->create_subscription<rosgraph_msgs::msg::Clock>(
             "/clock", 10, 
@@ -114,7 +114,7 @@ private:
                     zmq::message_t request;
                     auto res = socket_.recv(request, zmq::recv_flags::none);
                     if (!res) continue;
-                    double force = *static_cast<double*>(request.data()); // Get force (double)
+                    double action = *static_cast<double*>(request.data()); // Get action (double)
 
                     // 2. Reset ready flag and Publish Action
                     {
@@ -122,7 +122,7 @@ private:
                         clock_ready_ = false;
                     }
                     auto ros_msg = std_msgs::msg::Float64();
-                    ros_msg.data = force;
+                    ros_msg.data = action;
                     publisher_->publish(ros_msg);
 
                     // 3. Step Gazebo

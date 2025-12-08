@@ -180,5 +180,5 @@ windows:
   - zmq_bridge:
       layout: even-horizontal
       panes:
-        - ros2 run zmq_bridge_cpp zmq_bridge_node --ros-args -p step_size:=<%= autopilot == 'px4' ? 5 : 10 %>
+        - ros2 run zmq_bridge_cpp zmq_bridge_node --ros-args -p step_size:=<%= autopilot == 'px4' ? 250 : 500 %>
   <% end %>

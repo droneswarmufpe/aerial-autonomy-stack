@@ -18,6 +18,8 @@
   record_rosbag = ENV.fetch('RECORD_ROSBAG', 'false') == 'true'
 
   simulated_time = ENV.fetch('SIMULATED_TIME', 'false') == 'true'
+
+  gymnasium = ENV.fetch('GYMNASIUM', 'false') == 'true'
 %>
 
 name: drone
@@ -81,4 +83,12 @@ windows:
       layout: tiled
       panes:
         - mkdir -p /aas/rosbags && cd /aas/rosbags && ros2 bag record -a
+  <% end %>
+
+  <% if gymnasium %>
+  - gym_setup:
+      layout: even-horizontal
+      panes:
+        - >
+         "ros2 action send_goal /Drone<%= drone_id %>/takeoff_action autopilot_interface_msgs/action/Takeoff '{takeoff_altitude: 40.0, vtol_transition_heading: 330.0, vtol_loiter_nord: 200.0, vtol_loiter_east: 100.0, vtol_loiter_alt: 120.0}'"
   <% end %>
