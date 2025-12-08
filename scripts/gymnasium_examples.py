@@ -42,7 +42,7 @@ def main():
         env.close()
 
     elif args.mode == "speed":
-        STEPS = 20000
+        STEPS = 200
         print(f"Starting Speed Test ({STEPS} steps)")    
         obs, info = env.reset()
         start_time = time.time()        

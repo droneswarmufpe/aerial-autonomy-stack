@@ -7,6 +7,7 @@ import struct
 import os
 import subprocess
 import shutil
+import concurrent.futures
 
 from docker.types import NetworkingConfig, EndpointConfig, DeviceRequest
 
@@ -17,7 +18,7 @@ class AASEnv(gym.Env):
     def __init__(self, render_mode=None):
         super().__init__()
         
-        self.max_steps = 10000  # Max steps per episode
+        self.max_steps = 1000  # Max steps per episode
         self.dt = 0.05         # Time step
         # Observation Space: [position, velocity], position is in [-1, 1], velocity is in [-5, 5]
         self.obs_low = np.array([-1.0, -5.0], dtype=np.float32)
@@ -237,11 +238,13 @@ class AASEnv(gym.Env):
             self.socket.close()
         # Restart Docker containers
         try:
-            print("Restarting Simulation Container...")
-            self.simulation_container.restart()
-            print("Restarting Aircraft Containers...")
-            for air_cont in self.aircraft_containers:
-                air_cont.restart()
+            print("Restarting all containers in parallel...")
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                futures = [executor.submit(self.simulation_container.restart)]
+                for air_cont in self.aircraft_containers:
+                    futures.append(executor.submit(air_cont.restart))
+                for future in concurrent.futures.as_completed(futures):
+                    future.result()
         except Exception as e:
             print(f"Error restarting containers: {e}")
             raise e

@@ -34,7 +34,9 @@ public:
 
         this->declare_parameter("step_size", 250); // How many multiples of the timestep in the world SDF (250Hz/4ms for PX4, 500Hz/2ms for ArduPilot)
         step_size_ = this->get_parameter("step_size").as_int();
-        RCLCPP_INFO(this->get_logger(), "Gazebo Multi-Step Size configured to: %d", step_size_);
+        this->declare_parameter("physics_dt", 0.004); // Size of the physics timestep in seconds (4ms for PX4, 2ms for ArduPilot)
+        physics_dt_ = this->get_parameter("physics_dt").as_double();
+        RCLCPP_INFO(this->get_logger(), "Config: step size = %d, physics dt = %.4f", step_size_, physics_dt_);
         
         // 1. ZMQ Setup
         socket_.bind("tcp://*:5555"); // '*' binds to all interfaces (equivalent to 0.0.0.0)
@@ -88,6 +90,7 @@ private:
     double current_sim_time_ = 0.0;
 
     int step_size_;
+    double physics_dt_;
 
     void clock_callback(const rosgraph_msgs::msg::Clock::SharedPtr msg) {
         std::lock_guard<std::mutex> lock(clock_mutex_);
@@ -147,7 +150,7 @@ private:
                         while (rclcpp::ok() && running_) {
                             std::unique_lock<std::mutex> lock(clock_mutex_);
                             clock_cv_.wait(lock); // Wait for clock update
-                            if (current_sim_time_ >= 100.0) {
+                            if (current_sim_time_ >= 80.0) {
                                 break;
                             }
                         }
@@ -160,16 +163,20 @@ private:
                         auto ros_msg = std_msgs::msg::Float64();
                         ros_msg.data = action;
                         publisher_->publish(ros_msg);
-                        // B. Clear flag
+                        // B. Calculate Target Time
+                        double target_time;
                         {
                             std::lock_guard<std::mutex> lock(clock_mutex_);
+                            target_time = current_sim_time_ + (step_size_ * physics_dt_) - 0.0001;
                             clock_ready_ = false;
                         }
                         // C. Trigger Step
                         step_gazebo();
                         // D. Wait for Result
                         std::unique_lock<std::mutex> lock(clock_mutex_);
-                        received = clock_cv_.wait_for(lock, 2000ms, [this]{ return clock_ready_; }); // Wait up to 2 seconds for clock_ready_ to become true
+                        received = clock_cv_.wait_for(lock, 2000ms, [this, target_time]{
+                            return current_sim_time_ >= target_time;
+                        }); // Wait up to 2 seconds for clock_ready_ to become true
                     }
 
                     // 3. Send Reply
