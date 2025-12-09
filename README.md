@@ -206,7 +206,7 @@ Included `WORLD`s:
 > │   ├── deploy_build.sh                             # Build `Dockerfile.aircraft` for arm64/Orin
 > │   ├── deploy_run.sh                               # Start the aircraft docker on arm64/Orin or the ground docker on amd64 (deploy or HITL)
 > │   │
-> │   ├── gymnasium_examples.py                       # Examples for the Gymnasium aas-gym package
+> │   ├── gym_run.py                                  # Examples for the Gymnasium aas-gym package
 > │   │
 > │   ├── sim_build.sh                                # Build all dockerfiles for amd64/simulation
 > │   └── sim_run.sh                                  # Start the simulation (SITL or HITL)
@@ -285,18 +285,19 @@ cd aerial-autonomy-stack/aas-gym/
 pip3 install -e .
 ```
 
-Use as:
+Use with:
 ```sh
 conda activate aas                                    # If using Anaconda
 cd aerial-autonomy-stack/scripts
-python3 gymnasium_examples.py --mode step             # Manually step the simulation at 1Hz
-python3 gymnasium_examples.py --mode speed            # Check the simulation throughput at 50Hz
+python3 gym_run.py --mode step                        # Manually step AAS @1Hz
+python3 gym_run.py --mode single-env-speed            # Speed-up test @50Hz
+python3 gym_run.py --mode vector-env-speed            # Vectorized speed-up test @50Hz
 ```
 
 <!--
 
 TODO:
-python3 gymnasium_examples.py --mode learn            # Train and test a PPO agent
+python3 gym_run.py --mode learn            # Train and test a PPO agent
 
 Debug with:
 docker exec -it simulation-container-inst0 tmux attach

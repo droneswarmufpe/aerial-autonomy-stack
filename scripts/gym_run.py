@@ -10,17 +10,17 @@ from stable_baselines3.common.env_checker import check_env as sb3_check_env
 
 from aas_gym.aas_env import AASEnv
 
+# Register the environment so we can create it with gym.make()
+gym.register(
+    id="AASEnv-v0",
+    entry_point=AASEnv,
+)
+
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", type=str, default="learn", choices=["step", "speed", "learn"])
+    parser.add_argument("--mode", type=str, default="step", choices=["step", "single-env-speed", "vector-env-speed", "learn"])
     args = parser.parse_args()
-
-    # Register the environment so we can create it with gym.make()
-    gym.register(
-        id="AASEnv-v0",
-        entry_point=AASEnv,
-    )
 
     if args.mode == "step":
         env = gym.make("AASEnv-v0", gym_freq_hz=1, render_mode="human")
@@ -41,9 +41,9 @@ def main():
         print("\nClosing environment.")
         env.close()
 
-    elif args.mode == "speed":
+    elif args.mode == "single-env-speed":
         CTRL_FREQ_HZ = 50
-        env = gym.make("AASEnv-v0", instance=1, gym_freq_hz=CTRL_FREQ_HZ, render_mode="ansi")
+        env = gym.make("AASEnv-v0", instance=1, gym_freq_hz=CTRL_FREQ_HZ, render_mode="ansi") # "ansi" for progress bar, "human" for GUI
         TIME_TO_SIMULATE_SEC = 200
         STEPS = TIME_TO_SIMULATE_SEC * CTRL_FREQ_HZ
         print(f"Starting Speed Test ({STEPS} steps)")    
@@ -60,6 +60,30 @@ def main():
         print(f"Speedup: {(TIME_TO_SIMULATE_SEC / total_time):.2f}x wall-clock")
         print(f"Throughput: {(STEPS / total_time):.2f} steps/second")
         env.close()
+
+    elif args.mode == "vector-env-speed":
+        NUM_ENVS = 2 # Number of parallel environments (adjust based on CPU/RAM and GPU/VRAM usage, check with htop and nvidia-smi)
+        CTRL_FREQ_HZ = 50
+        TIME_TO_SIMULATE_SEC = 200        
+        STEPS_PER_ENV = TIME_TO_SIMULATE_SEC * CTRL_FREQ_HZ 
+        print(f"Starting parallel speed test with {NUM_ENVS} envs, stepping each for {STEPS_PER_ENV} steps")
+        def make_env(rank, freq_hz):
+            def _init():
+                return gym.make("AASEnv-v0", instance=rank, gym_freq_hz=freq_hz, render_mode=None)
+            return _init
+        env_fns = [make_env(i, CTRL_FREQ_HZ) for i in range(NUM_ENVS)]
+        envs = gym.vector.AsyncVectorEnv(env_fns)
+        obs, info = envs.reset()
+        start_time = time.time()
+        for _ in range(STEPS_PER_ENV):
+            actions = envs.action_space.sample() # Returns array of shape (NUM_ENVS, action_dim)
+            obs, rewards, terminateds, truncateds, infos = envs.step(actions) # AsyncVectorEnv automatically resets individual envs when they terminate/truncate
+        total_time = time.time() - start_time
+        total_steps = STEPS_PER_ENV * NUM_ENVS
+        print(f"\nTest completed in: {(total_time):.2f} sec")
+        print(f"Throughput: {(total_steps / total_time):.2f} steps/second")
+        print(f"Effective Speedup: {(total_steps / total_time) / CTRL_FREQ_HZ:.2f}x real-time (aggregate)")
+        envs.close()
 
     elif args.mode == "learn":
         print(f"TODO")

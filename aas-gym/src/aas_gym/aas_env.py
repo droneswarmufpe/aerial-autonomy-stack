@@ -47,12 +47,7 @@ class AASEnv(gym.Env):
         # Rendering
         self.render_mode = render_mode
 
-        # Docker setup
-        try:
-            self.client = docker.from_env()
-        except Exception as e:
-            raise RuntimeError("Could not connect to the Docker daemon. Ensure Docker is running.") from e
-        
+        # AAS Setup
         self.AUTOPILOT = "px4"
         self.HEADLESS = False if self.render_mode == "human" else True
         self.CAMERA = True
@@ -81,6 +76,23 @@ class AASEnv(gym.Env):
         # self.AIR_NET_NAME = f"aas-air-network-inst{self.INSTANCE}" # Unused
         self.SIM_CONT_NAME = f"simulation-container-inst{self.INSTANCE}"
         # self.GND_CONT_NAME = f"ground-container-inst{self.INSTANCE}" # Unused
+
+        # Docker setup
+        try:
+            self.client = docker.from_env()
+        except Exception as e:
+            raise RuntimeError("Could not connect to the Docker daemon. Ensure Docker is running.") from e
+        #
+        def force_container_cleanup(name): # Needed to use AsyncVectorEnv
+            try:
+                old_container = self.client.containers.get(name)
+                print(f"Found existing container '{name}'. Removing it...")
+                old_container.remove(force=True)
+                time.sleep(1.0)
+            except docker.errors.NotFound:
+                pass
+            except Exception as e:
+                print(f"Warning during cleanup of {name}: {e}")
         #
         if shutil.which("xhost"):
             print("Granting X Server access to Docker containers...")
@@ -133,6 +145,7 @@ class AASEnv(gym.Env):
         }
         device_binds = ['/dev/dri:/dev/dri:rwm'] # Replaces "--device /dev/dri"
         #
+        force_container_cleanup(self.SIM_CONT_NAME)
         print(f"Creating Simulation Container ({self.SIM_CONT_NAME})...")
         self.simulation_container = self.client.containers.create(
             "simulation-image:latest",
@@ -183,6 +196,7 @@ class AASEnv(gym.Env):
         self.aircraft_containers = []
         for i in range(1, self.NUM_QUADS + self.NUM_VTOLS + 1):            
             air_cont_name = f"aircraft-container-inst{self.INSTANCE}_{i}"
+            force_container_cleanup(air_cont_name)
             print(f"Creating Aircraft Container {air_cont_name}...")
             drone_type = "quad" if i <= self.NUM_QUADS else "vtol"
             air_cont = self.client.containers.create(
@@ -357,7 +371,7 @@ class AASEnv(gym.Env):
         # Docker clean-up (auto_remove=True in the creation step handles removal after stop)
         try:
             self.simulation_container.stop()
-            print(f"Simulation container stopped.")
+            print(f"Simulation container '{self.simulation_container.name}' stopped.")
         except Exception:
             pass
         for container in self.aircraft_containers:
