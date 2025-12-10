@@ -290,8 +290,8 @@ Use with:
 conda activate aas                                    # If using Anaconda
 cd aerial-autonomy-stack/scripts
 python3 gym_run.py --mode step                        # Manually step AAS @1Hz
-python3 gym_run.py --mode single-env-speed            # Speed-up test @50Hz
-python3 gym_run.py --mode vector-env-speed            # Vectorized speed-up test @50Hz
+python3 gym_run.py --mode single-env-speed            # Speed-up test @50Hz (10x RTF)
+python3 gym_run.py --mode vector-env-speed            # Vectorized speed-up test @50Hz (>20x RTF)
 ```
 
 <!--

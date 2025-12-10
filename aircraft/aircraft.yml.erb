@@ -86,23 +86,8 @@ windows:
   <% end %>
 
   <% if gymnasium %>
-  - gym_setup:
+  - gymnasium:
       layout: even-horizontal
       panes:
-        - >
-          echo "Waiting for takeoff action server..." &&
-          until ros2 action send_goal /Drone<%= drone_id %>/takeoff_action autopilot_interface_msgs/action/Takeoff
-          "{takeoff_altitude: 40.0, vtol_transition_heading: 330.0, vtol_loiter_nord: 100.0, vtol_loiter_east: 100.0, vtol_loiter_alt: 60.0}"
-          | grep "Goal accepted"; do
-            echo "Goal rejected or server not ready. Retrying in 1s..."
-            sleep 1
-          done &&
-          echo "Takeoff action initiated! Waiting for offboard action server..." &&
-          until ros2 action send_goal /Drone<%= drone_id %>/offboard_action autopilot_interface_msgs/action/Offboard
-          "{offboard_setpoint_type: 1, max_duration_sec: 1200.0}"
-          | grep "Goal accepted"; do
-            echo "Goal rejected or server not ready. Retrying in 1s..."
-            sleep 1
-          done &&
-          echo "Offboard action initiated!"
+        - python3 /aas/aircraft_resources/scripts/gymnasium_setup.py --drone_id <%= drone_id %> <%= simulated_time ? '--ros-args -p use_sim_time:=true' : '' %>
   <% end %>
