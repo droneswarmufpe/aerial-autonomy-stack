@@ -3,6 +3,8 @@ import gymnasium as gym
 import argparse
 import time
 import itertools
+import subprocess
+import shutil
 
 from gymnasium.utils.env_checker import check_env
 from stable_baselines3 import PPO
@@ -10,16 +12,16 @@ from stable_baselines3.common.env_checker import check_env as sb3_check_env
 
 from aas_gym.aas_env import AASEnv
 
+
 # Register the environment so we can create it with gym.make()
 gym.register(
     id="AASEnv-v0",
     entry_point=AASEnv,
 )
 
-
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", type=str, default="step", choices=["step", "single-env-speed", "vector-env-speed", "learn"])
+    parser.add_argument("--mode", type=str, default="step", choices=["step", "speedup", "vectorenv-speedup", "learn"])
     args = parser.parse_args()
 
     if args.mode == "step":
@@ -41,7 +43,7 @@ def main():
         print("\nClosing environment.")
         env.close()
 
-    elif args.mode == "single-env-speed":
+    elif args.mode == "speedup":
         CTRL_FREQ_HZ = 50
         env = gym.make("AASEnv-v0", instance=1, gym_freq_hz=CTRL_FREQ_HZ, render_mode="ansi") # "ansi" for progress bar, "human" for GUI
         TIME_TO_SIMULATE_SEC = 200
@@ -61,7 +63,7 @@ def main():
         print(f"Throughput: {(STEPS / total_time):.2f} steps/second")
         env.close()
 
-    elif args.mode == "vector-env-speed":
+    elif args.mode == "vectorenv-speedup":
         NUM_ENVS = 2 # Number of parallel environments (adjust based on CPU/RAM and GPU/VRAM usage, check with htop and nvidia-smi)
         CTRL_FREQ_HZ = 50
         TIME_TO_SIMULATE_SEC = 200        
@@ -75,6 +77,7 @@ def main():
         envs = gym.vector.AsyncVectorEnv(env_fns)
         obs, info = envs.reset()
         start_time = time.time()
+        print(f"Running the test with render_mode=None")
         for _ in range(STEPS_PER_ENV):
             actions = envs.action_space.sample() # Returns array of shape (NUM_ENVS, action_dim)
             obs, rewards, terminateds, truncateds, infos = envs.step(actions) # AsyncVectorEnv automatically resets individual envs when they terminate/truncate
@@ -132,5 +135,23 @@ def main():
     else:
         print(f"Unknown mode: {args.mode}")
 
+def configure_host_x11():
+    if not shutil.which("xhost"):
+        print("Error: 'xhost' command not found. GUI rendering may fail.")
+        return
+    try: # Check if already configured
+        output = subprocess.check_output(["xhost"], text=True)
+        if "LOCAL:" in output or "local:docker" in output:
+            return # Already configured, return silently
+    except subprocess.CalledProcessError:
+        pass
+    print("Granting X Server access to Docker containers...")
+    try:
+        subprocess.run(["xhost", "+local:docker"], check=True)
+        print("X Server access granted.")
+    except subprocess.CalledProcessError as e:
+        print(f"Warning: Could not configure xhost: {e}")
+
 if __name__ == '__main__':
+    configure_host_x11()
     main()

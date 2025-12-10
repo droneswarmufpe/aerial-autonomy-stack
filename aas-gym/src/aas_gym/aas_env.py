@@ -77,6 +77,17 @@ class AASEnv(gym.Env):
         self.SIM_CONT_NAME = f"simulation-container-inst{self.INSTANCE}"
         # self.GND_CONT_NAME = f"ground-container-inst{self.INSTANCE}" # Unused
 
+        # X Server access (this is redundancy for configure_host_x11() in gym_run.py)
+        if shutil.which("xhost"):
+            try:
+                current_acls = subprocess.check_output(["xhost"], text=True)
+                if "LOCAL:" not in current_acls and "local:docker" not in current_acls:
+                    print("Granting X Server access to Docker containers...")
+                    subprocess.run(["xhost", "+local:docker"], check=True)
+                    print("X Server access granted.")
+            except subprocess.CalledProcessError as e:
+                print(f"Warning: Could not configure xhost: {e}")
+
         # Docker setup
         try:
             self.client = docker.from_env()
@@ -94,15 +105,6 @@ class AASEnv(gym.Env):
             except Exception as e:
                 print(f"Warning during cleanup of {name}: {e}")
         #
-        if shutil.which("xhost"):
-            print("Granting X Server access to Docker containers...")
-            try:
-                subprocess.run(["xhost", "+local:docker"], check=True)
-                print("X Server access granted.")
-            except subprocess.CalledProcessError as e:
-                print(f"Warning: Could not configure xhost: {e}")
-        else:
-            print("Error: 'xhost' command not found.")
         networks_config = [
             {"name": self.SIM_NET_NAME, "subnet_base": self.SIM_SUBNET},
             # {"name": self.AIR_NET_NAME, "subnet_base": self.AIR_SUBNET} # Unused
@@ -249,9 +251,6 @@ class AASEnv(gym.Env):
         self.ZMQ_IP = f"{self.SIM_SUBNET}.90.{self.SIM_ID}"
         self.zmq_context = zmq.Context()
         self.socket = self.zmq_context.socket(zmq.REQ)
-        # self.socket.setsockopt(zmq.RCVTIMEO, 10 * 1000) # 1000 ms = 1 seconds
-        # self.socket.connect(f"tcp://{self.ZMQ_IP}:{self.ZMQ_PORT}")
-        # print(f"ZeroMQ socket connected to {self.ZMQ_IP}:{self.ZMQ_PORT}")
 
     def _get_obs(self):
         return np.array([self.sim_sec, self.sim_nanosec], dtype=np.float64)
@@ -351,11 +350,6 @@ class AASEnv(gym.Env):
 
     def _render_frame(self):
         bar_width = 40        
-        # current_time = self.sim_sec + (self.sim_nanosec * 1e-9) - self.GYM_INIT_DURATION
-        # progress = min(max(current_time / self.MAX_EPISODE_LENGTH_SEC, 0.0), 1.0)        
-        # filled_len = int(bar_width * progress)
-        # bar = '=' * filled_len + '-' * (bar_width - filled_len)        
-        # print(f"\r[{bar}] {current_time:6.2f}s / {self.MAX_EPISODE_LENGTH_SEC:.0f}s", end="")
         current_abs_time = self.sim_sec + (self.sim_nanosec * 1e-9)
         start_time = getattr(self, 'start_sim_sec', 0.0)
         episode_time = current_abs_time - start_time
@@ -366,7 +360,7 @@ class AASEnv(gym.Env):
 
     def close(self):
         if self.render_mode == "ansi":
-            print()  # Add a newline after the final render
+            print() # Add a newline after the final render
         
         # Docker clean-up (auto_remove=True in the creation step handles removal after stop)
         try:

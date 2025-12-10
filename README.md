@@ -278,7 +278,7 @@ conda create -n aas python=3.13
 conda activate aas
 ```
 
-Install the `aas-gym` package (having completed the steps in ["Installation"](#installation)):
+Install the `aas-gym` package (after completing the steps in ["Installation"](#installation)):
 ```sh
 conda activate aas                                    # If using Anaconda
 cd aerial-autonomy-stack/aas-gym/
@@ -290,14 +290,14 @@ Use with:
 conda activate aas                                    # If using Anaconda
 cd aerial-autonomy-stack/scripts
 python3 gym_run.py --mode step                        # Manually step AAS @1Hz
-python3 gym_run.py --mode single-env-speed            # Speed-up test @50Hz (10x RTF)
-python3 gym_run.py --mode vector-env-speed            # Vectorized speed-up test @50Hz (>20x RTF)
+python3 gym_run.py --mode speedup                     # Speed-up test @50Hz (10x RTF)
+python3 gym_run.py --mode vectorenv-speedup           # Vectorized speed-up test @50Hz (>20x RTF)
 ```
 
 <!--
 
 TODO:
-python3 gym_run.py --mode learn            # Train and test a PPO agent
+python3 gym_run.py --mode learn                       # Train and test a PPO agent
 
 Debug with:
 docker exec -it simulation-container-inst0 tmux attach
