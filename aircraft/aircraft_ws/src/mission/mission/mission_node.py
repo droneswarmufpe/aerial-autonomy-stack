@@ -299,8 +299,8 @@ class MissionNode(Node):
                 self.get_logger().error(f"Service call failed: {response.message}")
                 self.mission_step = -1
                 return
-            self.get_logger().info(f"Service call successful: {response.success}")
-            self.mission_step += 1  # Advance the mission step
+            self.get_logger().info(f'Service call successful: {response.success}')
+            self.mission_step += 1 # Advance the mission step
         except Exception as e:
             self.get_logger().error(f'Service call failed: {e}')
             self.mission_step = -1
