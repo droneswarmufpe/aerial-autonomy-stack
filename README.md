@@ -27,7 +27,7 @@
 
 </details>
 
-https://github.com/user-attachments/assets/c194ada6-2996-4bfa-99e9-32b45e29281d
+https://github.com/user-attachments/assets/57e5bc91-8bee-4bae-8f81-a9aacef471e7
 
 ## Installation
 
