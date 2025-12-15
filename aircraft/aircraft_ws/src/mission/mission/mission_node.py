@@ -18,7 +18,7 @@ from vision_msgs.msg import Detection2DArray
 from px4_msgs.msg import VehicleGlobalPosition, AirspeedValidated
 
 from ground_system_msgs.msg import SwarmObs
-from state_sharing.msg import SharedState 
+from state_sharing.msg import SharedState
 from autopilot_interface_msgs.action import Land, Offboard, Takeoff, Orbit
 from autopilot_interface_msgs.srv import SetSpeed, SetReposition
 
@@ -102,12 +102,12 @@ class MissionNode(Node):
         )
         self.printout_timer = self.create_timer(
             3.0, # 0.33Hz
-            self.printout_callback, 
+            self.printout_callback,
             callback_group=self.timer_callback_group
         )
         self.conops_timer = self.create_timer(
             1.0, # 1Hz
-            self.conops_callback, 
+            self.conops_callback,
             callback_group=self.timer_callback_group
         )
 
@@ -137,11 +137,11 @@ class MissionNode(Node):
             self.lat = msg.lat
             self.lon = msg.lon
             self.alt_msl = msg.alt
-    
+
     def airspeed_validated_callback(self, msg): # Mutally exclusive with vfr_hud_callback
         with self.data_lock:
             self.airspeed = msg.true_airspeed_m_s
-    
+
     def mavros_global_position_callback(self, msg):  # Mutally exclusive with px4_global_position_callback
         with self.data_lock:
             self.lat = msg.latitude
@@ -199,7 +199,7 @@ class MissionNode(Node):
 
     def state_sharing_callback(self, msg):
         # A single callback for all drone state topics
-        with self.data_lock: 
+        with self.data_lock:
             now = self.get_clock().now()
             self.drone_states[msg.drone_id] = (msg, now)
 
@@ -295,6 +295,10 @@ class MissionNode(Node):
     def service_response_callback(self, future):
         try:
             response = future.result()
+            if not response.success:
+                self.get_logger().error(f"Service call failed: {response.message}")
+                self.mission_step = -1
+                return
             self.get_logger().info(f'Service call successful: {response.success}')
             self.mission_step += 1 # Advance the mission step
         except Exception as e:
@@ -369,7 +373,7 @@ class MissionNode(Node):
                 repo_req.north = random.uniform(-10.0, 10.0)
                 repo_req.altitude = random.uniform(30.0, 60.0)
                 if os.getenv('AUTOPILOT', '') == 'px4':
-                    time.sleep(1.5) # Quick and dirty way to make sure the autopilot is fully out of Takeoff mode 
+                    time.sleep(1.5) # Quick and dirty way to make sure the autopilot is fully out of Takeoff mode
                 self.call_service(self._reposition_client, repo_req)
                 self.cat_repo_start_time = self.get_clock().now()
             elif self.mission_step == 4:
@@ -421,9 +425,9 @@ def main(args=None):
         default='yalla',
         help="Specify the concept of operations."
     )
-        
+
     cli_args, ros_args = parser.parse_known_args()
-    
+
     rclpy.init(args=ros_args)
     mission_node = MissionNode(conops=cli_args.conops)
 
