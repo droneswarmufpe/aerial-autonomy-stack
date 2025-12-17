@@ -32,58 +32,86 @@ https://github.com/user-attachments/assets/57e5bc91-8bee-4bae-8f81-a9aacef471e7
 ## Overview
 
 ```mermaid
-graph LR
+flowchart LR
+    classDef bridge fill:#ffebd6,stroke:#f5a623,stroke-width:2px;
+    classDef algo fill:#e1f5fe,stroke:#0277bd,stroke-width:2px;
+    classDef resource fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
 
-    subgraph air ["[N#nbsp;x]#nbsp;aircraft#nbsp;container#nbsp;(amd64/arm64)"]
-        offboard_control(offboard_control)
-        autopilot_interface(autopilot_interface)
-        mission(mission)
-        state_sharing(state_sharing)
-        yolo_py(yolo_py)
-        kiss_icp(kiss_icp)
-        zenoh_air(zenoh-bridge-ros2dds)
-        ap_link("uxrce_dds_agent <br/>OR mavros")
+    subgraph aas [" "]
+        direction LR
 
-        mission --> autopilot_interface
-        yolo_py --> offboard_control
-        kiss_icp --> offboard_control
-        offboard_control -- /reference --> autopilot_interface
-        ap_link --> state_sharing
-        ap_link <--> autopilot_interface
-        state_sharing -- /state_sharing_drone_n --> zenoh_air
+        repor(((aerial-autonomy-stack)))
+
+        subgraph air ["[N#nbsp;x]#nbsp;✈️#nbsp;aircraft#nbsp;container(s)#nbsp;(amd64/arm64)"]
+            direction TB
+            
+            zenoh_air{{zenoh-bridge}}:::bridge
+            ap_link{{"uxrce_dds <br/> or MAVROS"}}:::bridge
+            
+            subgraph control [Control]
+                direction LR
+                offboard_control(offboard_control):::algo
+                autopilot_interface(autopilot_interface):::algo
+                mission(mission):::algo
+            end
+
+            subgraph perception [Perception]
+                yolo_py[/yolo_py/]:::algo
+                kiss_icp[/kiss_icp/]:::algo
+            end
+            
+            state_sharing[/state_sharing\]:::algo
+
+            mission --> autopilot_interface
+            yolo_py --> offboard_control
+            kiss_icp --> offboard_control
+            offboard_control -- /reference --> autopilot_interface
+            ap_link <--> autopilot_interface
+            ap_link --> state_sharing
+            state_sharing -- /state_sharing_drone_n --> zenoh_air
+        end
+
+        subgraph gnd ["💻#nbsp;ground#nbsp;container#nbsp;(amd64)"]
+            direction TB
+
+            ground_system(ground_system):::algo
+            qgc(QGroundControl):::resource
+            zenoh_gnd{{zenoh-bridge}}:::bridge
+
+            ground_system -- /tracks --> zenoh_gnd
+            ground_system ~~~ qgc
+            qgc ~~~ zenoh_gnd   
+        end
+
+        subgraph sim ["🎮#nbsp;simulation#nbsp;container#nbsp;(amd64)"]
+            sitl["[N x] PX4 or <br/> ArduPilot SITL"]:::resource
+            gz[Gazebo Sim]:::resource
+            
+            sitl <--> |"gz_bridge OR ardupilot_gazebo"| gz
+        end
 
     end
 
-    subgraph gnd ["ground#nbsp;container#nbsp;(amd64)"]
-        ground_system(ground_system)
-        qgc(QGroundControl)
-        zenoh_gnd(zenoh-bridge-ros2dds)
+    gz --> |"gz_gst_bridge <br/> [SIM_NET]"| yolo_py
+    gz --> |"/lidar_points <br/> [SIM_NET]"| kiss_icp
+    
+    sitl <--> |"UDP <br/> [SIM_NET]"| ap_link
 
-        zenoh_gnd <-- TCP [AIR_NET] --> zenoh_air
-        ground_system -- /tracks --> zenoh_gnd
-    end
+    sitl <--> |"MAVLink <br/> [SIM_NET]"| qgc 
+    sitl --> |"MAVLink <br/> [SIM_NET]"| ground_system
 
-    subgraph sim ["simulation#nbsp;container#nbsp;(amd64)"]
-        sitl("[N x] PX4 OR <br/>ArduPilot SITL")
-        gz(Gazebo Sim)
+    zenoh_gnd <-.-> |"TCP <br/> [AIR_NET]"| zenoh_air
 
-        gz -- gz_gst_bridge [SIM_NET] --> yolo_py
-        gz -- /lidar_points [SIM_NET] --> kiss_icp
-        sitl <-- gz_bridge OR adupilot_gazebo --> gz
-        sitl <-- MAVLink [SIM_NET] --> qgc 
-        sitl -- MAVLink [SIM_NET] --> ground_system
-        sitl <-- UDP [SIM_NET] --> ap_link
-    end
+    style aas fill:#e1f0ff,stroke:#666,stroke-width:1px,stroke-dasharray: 5 5
+    style air fill:#f9f9f9,stroke:#666,stroke-width:1px,stroke-dasharray: 5 5
+    style gnd fill:#f9f9f9,stroke:#666,stroke-width:1px,stroke-dasharray: 5 5
+    style sim fill:#f9f9f9,stroke:#666,stroke-width:1px,stroke-dasharray: 5 5
 
-style air fill:#e8b7b5,stroke:#333,stroke-width:0px
-style gnd fill:#7cbb8b,stroke:#333,stroke-width:0px
-style sim fill:#b5d4f1,stroke:#333,stroke-width:0px
+    style perception fill:#eeeeee,stroke:#666,stroke-width:1px,stroke-dasharray: 5 5
+    style control fill:#eeeeee,stroke:#666,stroke-width:1px,stroke-dasharray: 5 5
 
-classDef default fill:#0,stroke:#333,stroke-width:2px,color:black;
-linkStyle default stroke:#fffff,stroke-width:2px;
-
-linkStyle 9,10,12,13,14 stroke:blue,stroke-width:4px;
-linkStyle 7 stroke:red,stroke-width:4px;
+    linkStyle 16 stroke:blue,stroke-width:4px;
+    linkStyle 11,12,13,14,15 stroke:red,stroke-width:4px;
 ```
 
 <details>
