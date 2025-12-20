@@ -275,7 +275,7 @@ python3 /aas/simulation_resources/scripts/gz_wind.py --stop_wind
 > ```
 > </details>
 > <details>
-> <summary>Tip 4: <b>develop within running containers</b> <i>(click to expand)</i></summary>
+> <summary>Tip 3: <b>develop within running containers</b> <i>(click to expand)</i></summary>
 > 
 > Launching the `sim_run.sh` script with `DEV=true`, does **not** start the simulation and mounts folders `[aircraft|ground|simulation]_resources`, `[aircraft|ground]_ws/src` as volumes to more easily track, commit, push changes while building and testing them within the containers:
 > 
@@ -310,7 +310,7 @@ python3 /aas/simulation_resources/scripts/gz_wind.py --stop_wind
 > To end the simulation, in each terminal detach Tmux with `Ctrl + b`, then `d`; kill all lingering processes with `tmux kill-server && pkill -f gz`
 > </details>
 > <details>
-> <summary>Tip 3: periodically run <b>Docker cleanups</b> <i>(click to expand)</i></summary>
+> <summary>Tip 4: periodically run <b>Docker cleanups</b> <i>(click to expand)</i></summary>
 >
 > ```sh
 > docker ps -a                          # List containers
