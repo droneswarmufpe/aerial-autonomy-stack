@@ -31,7 +31,7 @@ jobs:
 
       - name: Install aas-gym package
         run: |
-          cd aerial-autonomy-stack/aas-gym/          
+          cd ./aas-gym/          
           pip install -e .
 
       - name: Check for dependency conflicts

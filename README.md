@@ -356,6 +356,12 @@ cd aerial-autonomy-stack/aas-gym/
 pip3 install -e .
 ```
 
+<div align="right">
+  <a href="https://github.com/JacopoPan/aerial-autonomy-stack/actions/workflows/aas-gym-pip-install.yml">
+    <img src="https://github.com/JacopoPan/aerial-autonomy-stack/actions/workflows/aas-gym-pip-install.yml/badge.svg" alt="aircraft-image arm64">
+  </a>
+</div>
+
 Use with:
 ```sh
 conda activate aas                                    # If using Anaconda
