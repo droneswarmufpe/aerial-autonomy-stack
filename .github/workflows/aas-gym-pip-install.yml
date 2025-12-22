@@ -1,0 +1,41 @@
+name: aas-gym pip install
+
+on:
+  schedule:
+    - cron: '0 3 * * 6'
+  workflow_dispatch: {}
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  install-check:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash -el {0}
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Conda with Python 3.13
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          activate-environment: aas
+          python-version: 3.13
+          auto-activate-base: false
+          use-only-tar-bz2: true 
+
+      - name: Install aas-gym package
+        run: |
+          cd aerial-autonomy-stack/aas-gym/          
+          pip install -e .
+
+      - name: Check for dependency conflicts
+        run: pip check
+
+      - name: Verify Import
+        run: python -c "import aas_gym; print('Successfully imported aas_gym')"
