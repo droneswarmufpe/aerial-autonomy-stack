@@ -101,6 +101,30 @@ public:
     ArdupilotInterface();
 
 private:
+    // Constants - Reposition service
+    static constexpr int REPOSITION_REQ_DELAY_MS = 100; // Delay in ms between repeated change mode requests and repeated target pose publications
+    static constexpr int REPOSITION_PUB_RETRIES = 3; // Number of time the target pose is published
+    // Constants - Action Handle Accepted (Landing, Offboard, Orbit, Takeoff)
+    static constexpr int ACTION_LOOP_RATE_HZ = 100; // Frequency of the while loops in long duration action handles for takeoff, landing, orbit, and offboard
+    static constexpr double ACTION_REQ_DELAY_SEC = 1.0; // Delay between successive service requests in long duration action handles
+    // Constants - Landing
+    static constexpr double MC_LAND_INIT_DIST_THRESH = 5.0; // Distance (m) from home, for a multicopter, to start the final landing descent
+    static constexpr double VTOL_LAND_LOITER_DIST = 300.0; // Distance (m) from home, for a VTOL, of the pre-landing loiter descent
+    static constexpr double VTOL_LAND_LOITER_RADIUS = 150.0; // Radius (m), for a VTOL, of the pre-landing loiter descent
+    static constexpr double VTOL_LAND_LOITER_ALT = 150.0; // Initial altitude (m), for a VTOL, of the pre-landing loiter descent
+    static constexpr double VTOL_LAND_LOITER_EXIT_DIST_THRESH = 30.0; // Threshold (m) in X-Y to exit the pre-landing loiter descent
+    static constexpr double VTOL_LAND_LOITER_EXIT_ALT_THRESH = 10.0; // Threshold (m) in Z to exit the pre-landing loiter descent
+    static constexpr double VTOL_LAND_LOITER_EXIT_HEADING_THRESH = 10.0; // Threshold (deg) in desired approach heading to exit the pre-landing loiter descent
+    static constexpr double LAND_COMPLETED_ALT_THRESH = 2.0; // Altitude (m) from home, for a multicopter or VTOL, to consider the landing action complete
+    // Constants - Orbit
+    static constexpr int ORBIT_MIN_POINTS = 8; // Minimum number of points in a orbit
+    static constexpr double ORBIT_POINT_SPACING = 15.0; // Target spacing (m) between points in a orbit
+    // Constants - Takeoff
+    static constexpr double MC_TAKEOFF_COMPLETED_RATIO = 0.9; // Percentage of the target altitude, for a multicopter, to consider the takeoff action complete
+    static constexpr double VTOL_TAKEOFF_ALT_THRESH = 2.0; // Altitude (m) to switch to state VTOL_TAKEOFF_HEADING (Unused)
+    static constexpr double VTOL_TAKEOFF_TRANSITION_WAIT_SEC = 10.0; // Time in seconds to wait in CRUISE mode before sending the VTOL takeoff loiter mission
+    static constexpr double VTOL_TAKEOFF_LOITER_RADIUS = 200.0; // Radius (m), for a VTOL, of the post-takeoff loiter
+
     std::shared_mutex node_data_mutex_;
     const GeographicLib::Geodesic& geod = GeographicLib::Geodesic::WGS84();
 

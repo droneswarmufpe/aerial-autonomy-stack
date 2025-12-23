@@ -134,7 +134,7 @@ void GroundSystem::publish_swarm_obs()
 
         ground_system_msgs::msg::DroneObs drone_msg;
         drone_msg.id = id;
-        drone_msg.label = (id == 2) ? 48 : 0; // Hardcode drone 2 as 48, the talking dead
+        drone_msg.label = (id == 2) ? 48 : 0; // HARDCODED: example where drone 2 is given label 48, the talking dead
 
         drone_msg.latitude_deg = add_noise(track.lat, POS_STD_DEV_DEG);
         drone_msg.longitude_deg = add_noise(track.lon, POS_STD_DEV_DEG);
