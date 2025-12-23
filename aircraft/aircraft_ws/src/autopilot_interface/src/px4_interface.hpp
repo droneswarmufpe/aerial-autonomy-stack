@@ -69,6 +69,28 @@ public:
     PX4Interface();
 
 private:
+    // Constants - Action Handle Accepted (Landing, Offboard, Orbit, Takeoff)
+    static constexpr int ACTION_LOOP_RATE_HZ = 100; // Frequency of the while loops in long duration action handles for takeoff, landing, orbit, and offboard
+    // Constants - Landing
+    static constexpr double LAND_INIT_DIST_THRESH = 3.0; // Distance (m) from home, for a multicopter or VTOL, to start the final landing descent
+    static constexpr double VTOL_LAND_LOITER_DIST = 300.0; // Distance (m) from home, for a VTOL, of the pre-landing loiter descent
+    static constexpr double VTOL_LAND_LOITER_RADIUS = 150.0; // Radius (m), for a VTOL, of the pre-landing loiter descent
+    static constexpr double VTOL_LAND_LOITER_ALT_HIGH = 150.0; // Initial altitude (m), for a VTOL, of the pre-landing loiter descent
+    static constexpr double VTOL_LAND_LOITER_ALT_LOW = 65.0; // Final altitude (m), for a VTOL, of the pre-landing loiter descent
+    static constexpr double VTOL_LAND_LOITER_STARTED_DIST_THRESH = 50.0; // Threshold (m) in X-Y to consider the pre-landing loiter descent started
+    static constexpr double VTOL_LAND_LOITER_EXIT_DIST_THRESH = 30.0; // Threshold (m) in X-Y to exit the pre-landing loiter descent
+    static constexpr double VTOL_LAND_LOITER_EXIT_ALT_THRESH = 10.0; // Threshold (m) in Z to exit the pre-landing loiter descent
+    static constexpr double VTOL_LAND_FAKE_REPOSITION_DISTANCE = 600.0; // Reposition point (m) behind home, must be greater than NAV_LOITER_RAD (e.g. 500m). NOTE: it will not be reached because the VTOL will transition and land at home
+    static constexpr double VTOL_LAND_TRANSITION_START_DISTANCE = 120.0; // Distance (m) from home to start the transition, affected by the platforms's cruise speed, mass, wind
+    // Constants - Orbit
+    static constexpr double MC_ORBIT_SPEED_MS = 5.0; // Tangential speed (m/s) of the orbit for quads
+    // Constants - Takeoff
+    static constexpr double MC_TAKEOFF_COMPLETED_RATIO = 0.9; // Percentage of the target altitude, for a multicopter, to consider the takeoff action complete
+    static constexpr double VTOL_TAKEOFF_TRANSITION_WAIT_SEC = 10.0; // Time in seconds to wait after the transition before sending the VTOL takeoff loiter
+    static constexpr double VTOL_TAKEOFF_LOITER_RADIUS = 200.0; // Radius (m), for a VTOL, of the post-takeoff loiter
+    // Constants - Abort Action Handle (Landing, Offboard, Orbit, Takeoff)
+    static constexpr double ABORT_REPOSITION_ALT = 100.0; // Altitude (m) of the hover/loiter triggered when aborting an action
+
     std::shared_mutex node_data_mutex_;
     const GeographicLib::Geodesic& geod = GeographicLib::Geodesic::WGS84();
 
