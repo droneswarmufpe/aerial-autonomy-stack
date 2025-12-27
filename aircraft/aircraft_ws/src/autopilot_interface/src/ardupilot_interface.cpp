@@ -325,7 +325,7 @@ void ArdupilotInterface::set_reposition_callback(const std::shared_ptr<autopilot
         return;
     }
 
-    // Change mode to GUIDED if in CIRCLE mode from a orbit
+    // Change mode to GUIDED if in AUTO mode for a orbit
     while (aircraft_fsm_state_ == ArdupilotInterfaceState::MC_ORBIT) { // TODO: lock variable read
         auto set_mode_request = std::make_shared<SetMode::Request>();
         set_mode_request->custom_mode = "GUIDED";
