@@ -10,6 +10,7 @@ import argparse
 import threading
 import random
 import time
+import yaml
 
 from action_msgs.msg import GoalStatus
 from sensor_msgs.msg import NavSatFix
@@ -23,8 +24,20 @@ from autopilot_interface_msgs.action import Land, Offboard, Takeoff, Orbit
 from autopilot_interface_msgs.srv import SetSpeed, SetReposition
 
 class MissionNode(Node):
-    def __init__(self, conops):
+    def __init__(self, mission_file):
         super().__init__('mission_node')
+
+        self.mission_plan = []
+        self.get_logger().info(f"Loading conops from: {mission_file}")
+        try:
+            with open(mission_file, 'r') as f:
+                data = yaml.safe_load(f)
+                self.mission_plan = data.get('steps', [])
+                self.get_logger().info(f"Loaded {len(self.mission_plan)} steps.")
+        except Exception as e:
+            self.get_logger().error(f"Failed to load mission file: {e}")
+            self.mission_plan = []
+
         self.conops = conops
         self.get_logger().info(f"Missioning with CONOPS: {self.conops}")
 
@@ -306,130 +319,214 @@ class MissionNode(Node):
             self.mission_step = -1
 
     def conops_callback(self):
-        if self.active_mission_goal_handle is not None:
-            return # Do nothing while an action is active
+        # If mission_step is negative, mission failed.
+        if self.mission_step == -1:
+            self.get_logger().info("Mission in FAILED state.")
+            self.conops_timer.cancel()
+            return
 
-        ################################################################################
-        if self.conops == 'plan_A':
-            self.get_logger().info("[Plan A] Plan A is classified")
-        ################################################################################
-        elif self.conops == 'plan_B':
-            self.get_logger().info("[Plan B] There is no Plan B")
-        ################################################################################
-        elif self.conops == 'yalla':
-            if self.mission_step == -1:
-                self.get_logger().info("[Yalla] Mission failed")
-                self.conops_timer.cancel() # Stop this timer
-                return
-            elif self.mission_step == 0:
-                self.get_logger().info("[Yalla] Taking off")
-                self.mission_step = 1 # Dummy step to wait for takeoff completion
-                takeoff_goal = Takeoff.Goal()
-                takeoff_goal.takeoff_altitude = 40.0
-                takeoff_goal.vtol_transition_heading = 300.0
-                takeoff_goal.vtol_loiter_nord = 100.0
-                takeoff_goal.vtol_loiter_east = 100.0
-                takeoff_goal.vtol_loiter_alt = 120.0
-                self.send_goal(self._takeoff_client, takeoff_goal)
-            elif self.mission_step == 2:
-                self.get_logger().info("[Yalla] Orbiting")
-                self.mission_step = 3 # Dummy step to wait for orbit completion
-                orbit_goal = Orbit.Goal()
-                orbit_goal.east = -100.0
-                orbit_goal.north = 50.0
-                orbit_goal.altitude = 50.0
-                orbit_goal.radius = 80.0
-                self.send_goal(self._orbit_client, orbit_goal)
-                self.yalla_orbit_start_time = self.get_clock().now()
-            elif self.mission_step == 4:
-                elapsed_time = self.get_clock().now() - self.yalla_orbit_start_time
-                if (elapsed_time.nanoseconds / 1e9) > 45.0: # Start landing 45 sec after the orbit
-                    self.get_logger().info("[Yalla] Landing")
-                    self.mission_step = 5 # Dummy step to wait for landing completion
-                    land_goal = Land.Goal()
-                    land_goal.landing_altitude = 60.0
-                    land_goal.vtol_transition_heading = 60.0
-                    self.send_goal(self._land_client, land_goal)
-            elif self.mission_step == 6:
-                self.get_logger().info("[Yalla] Mission complete")
-                self.conops_timer.cancel() # Stop this timer
-        ################################################################################
-        elif self.conops == 'cat':
-            if self.mission_step == -1:
-                self.get_logger().info("[Cat] Mission failed")
-                self.conops_timer.cancel() # Stop this timer
-                return
-            elif self.mission_step == 0:
-                self.get_logger().info("[Cat] Taking off")
-                self.mission_step = 1 # Dummy step to wait for takeoff completion
-                takeoff_goal = Takeoff.Goal()
-                takeoff_goal.takeoff_altitude = 20.0
-                self.send_goal(self._takeoff_client, takeoff_goal)
-            elif self.mission_step == 2:
-                self.get_logger().info("[Cat] Repositioning")
-                self.mission_step = 3 # Dummy step to wait for reposition completion
-                repo_req = SetReposition.Request()
-                repo_req.east = random.uniform(-100.0, 100.0)
-                repo_req.north = random.uniform(-10.0, 10.0)
-                repo_req.altitude = random.uniform(30.0, 60.0)
-                if os.getenv('AUTOPILOT', '') == 'px4':
-                    time.sleep(1.5) # Quick and dirty way to make sure the autopilot is fully out of Takeoff mode
-                self.call_service(self._reposition_client, repo_req)
-                self.cat_repo_start_time = self.get_clock().now()
-            elif self.mission_step == 4:
-                elapsed_time = self.get_clock().now() - self.cat_repo_start_time
-                if (elapsed_time.nanoseconds / 1e9) > 15.0: # Start landing 15 sec after the reposition
-                    self.get_logger().info("[Cat] Offboarding")
-                    self.mission_step = 5 # Dummy step to wait for offboard completion
-                    offboard_goal = Offboard.Goal()
-                    offboard_goal.offboard_setpoint_type = 2 if os.getenv('AUTOPILOT', '') == 'px4' else 3 # 2: PX4 trajectory reference, 3: ArduPilot velocity
-                    offboard_goal.max_duration_sec = 180.0
-                    self.send_goal(self._offboard_client, offboard_goal)
-                    # TODO: add termination
-        ################################################################################
-        elif self.conops == 'mouse':
-            if self.mission_step == -1:
-                self.get_logger().info("[Mouse] Mission failed")
-                self.conops_timer.cancel() # Stop this timer
-                return
-            elif self.mission_step == 0:
-                self.get_logger().info("[Mouse] Taking off")
-                self.mission_step = 1 # Dummy step to wait for takeoff completion
-                takeoff_goal = Takeoff.Goal()
-                takeoff_goal.takeoff_altitude = 20.0
-                self.send_goal(self._takeoff_client, takeoff_goal)
-            elif self.mission_step == 2:
-                self.get_logger().info("[Mouse] Orbiting")
-                self.mission_step = 3 # Dummy step to wait for orbit completion
-                orbit_goal = Orbit.Goal()
-                orbit_goal.east = random.uniform(-100.0, 100.0)
-                orbit_goal.north = random.uniform(0.0, 200.0)
-                orbit_goal.altitude = random.uniform(40.0, 60.0)
-                orbit_goal.radius = 20.0
-                self.send_goal(self._orbit_client, orbit_goal)
-                self.mouse_orbit_start_time = self.get_clock().now()
-            elif self.mission_step == 4:
-                elapsed_time = self.get_clock().now() - self.mouse_orbit_start_time
-                if (elapsed_time.nanoseconds / 1e9) > 30.0: # Start a new orbit after 30 sec
-                    self.mission_step = 2 # Go back to reposition
-        ################################################################################
+        # If mission_step is ODD, WAITING for an action/service to complete
+        if self.mission_step % 2 != 0:
+            # Special handling for 'wait' type actions which don't use callbacks
+            step_idx = (self.mission_step - 1) // 2
+            if step_idx < len(self.mission_plan):
+                current_action = self.mission_plan[step_idx]
+                if current_action['action'] == 'wait':
+                    duration = current_action['params'].get('duration', 0.0)
+                    elapsed = (self.get_clock().now() - self.wait_start_time).nanoseconds / 1e9
+                    if elapsed >= duration:
+                        self.get_logger().info(f"Wait of {duration}s completed.")
+                        self.mission_step += 1 # Advance to next even number
+            return
+
+        # If mission_step is EVEN, ready to trigger a NEW action
+        step_idx = self.mission_step // 2
+        
+        if step_idx >= len(self.mission_plan):
+            self.get_logger().info("Mission Complete!")
+            self.conops_timer.cancel()
+            return
+
+        step = self.mission_plan[step_idx]
+        action_type = step['action']
+        params = step.get('params', {})
+
+        self.get_logger().info(f"Executing step {step_idx}: {action_type}")
+
+        if action_type == 'takeoff':
+            self.mission_step += 1 # Enter wait state
+            goal = Takeoff.Goal()
+            goal.takeoff_altitude = float(params.get('altitude', 20.0))
+            goal.vtol_transition_heading = float(params.get('vtol_transition_heading', 0.0))
+            goal.vtol_loiter_nord = float(params.get('vtol_loiter_nord', 100.0))
+            goal.vtol_loiter_east = float(params.get('vtol_transition_heading', 100.0))
+            goal.vtol_transition_heading = float(params.get('vtol_loiter_alt', 120.0))
+            self.send_goal(self._takeoff_client, goal)
+        
+        elif action_type == 'land':
+            self.mission_step += 1
+            goal = Land.Goal()
+            goal.landing_altitude = float(params.get('altitude', 0.0))
+            self.send_goal(self._land_client, goal)
+        
+        elif action_type == 'orbit':
+            self.mission_step += 1
+            goal = Orbit.Goal()
+            goal.east = float(params.get('east', 0.0))
+            goal.north = float(params.get('north', 0.0))
+            goal.altitude = float(params.get('altitude', 20.0))
+            goal.radius = float(params.get('radius', 10.0))
+            self.send_goal(self._orbit_client, goal)
+            
+        elif action_type == 'offboard':
+            self.mission_step += 1
+            goal = Offboard.Goal()
+            goal.offboard_setpoint_type = int(params.get('type', 1))
+            goal.max_duration_sec = float(params.get('duration', 10.0))
+            self.send_goal(self._offboard_client, goal)
+
+        elif action_type == 'reposition':
+            self.mission_step += 1
+            req = SetReposition.Request()
+            req.east = float(params.get('east', 0.0))
+            req.north = float(params.get('north', 0.0))
+            req.altitude = float(params.get('altitude', 20.0))
+            self.call_service(self._reposition_client, req)
+            
+        elif action_type == 'speed':
+            self.mission_step += 1
+            req = SetSpeed.Request()
+            req.speed = float(params.get('speed', 5.0))
+            self.call_service(self._speed_client, req)
+
+        elif action_type == 'wait':
+            self.mission_step += 1
+            self.wait_start_time = self.get_clock().now()
+            self.get_logger().info(f"Waiting for {params.get('duration', 0)} seconds...")
+
         else:
-            self.get_logger().info(f"Unknown CONOPS: {self.conops}")
+            self.get_logger().error(f"Unknown action: {action_type}")
+            self.mission_step = -1
+
+    # def conops_callback(self):
+    #     if self.active_mission_goal_handle is not None:
+    #         return # Do nothing while an action is active
+
+    #     ################################################################################
+    #     if self.conops == 'plan_A':
+    #         self.get_logger().info("[Plan A] Plan A is classified")
+    #     ################################################################################
+    #     elif self.conops == 'plan_B':
+    #         self.get_logger().info("[Plan B] There is no Plan B")
+    #     ################################################################################
+    #     elif self.conops == 'yalla':
+    #         if self.mission_step == -1:
+    #             self.get_logger().info("[Yalla] Mission failed")
+    #             self.conops_timer.cancel() # Stop this timer
+    #             return
+    #         elif self.mission_step == 0:
+    #             self.get_logger().info("[Yalla] Taking off")
+    #             self.mission_step = 1 # Dummy step to wait for takeoff completion
+    #             takeoff_goal = Takeoff.Goal()
+    #             takeoff_goal.takeoff_altitude = 40.0
+    #             takeoff_goal.vtol_transition_heading = 300.0
+    #             takeoff_goal.vtol_loiter_nord = 100.0
+    #             takeoff_goal.vtol_loiter_east = 100.0
+    #             takeoff_goal.vtol_loiter_alt = 120.0
+    #             self.send_goal(self._takeoff_client, takeoff_goal)
+    #         elif self.mission_step == 2:
+    #             self.get_logger().info("[Yalla] Orbiting")
+    #             self.mission_step = 3 # Dummy step to wait for orbit completion
+    #             orbit_goal = Orbit.Goal()
+    #             orbit_goal.east = -100.0
+    #             orbit_goal.north = 50.0
+    #             orbit_goal.altitude = 50.0
+    #             orbit_goal.radius = 80.0
+    #             self.send_goal(self._orbit_client, orbit_goal)
+    #             self.yalla_orbit_start_time = self.get_clock().now()
+    #         elif self.mission_step == 4:
+    #             elapsed_time = self.get_clock().now() - self.yalla_orbit_start_time
+    #             if (elapsed_time.nanoseconds / 1e9) > 45.0: # Start landing 45 sec after the orbit
+    #                 self.get_logger().info("[Yalla] Landing")
+    #                 self.mission_step = 5 # Dummy step to wait for landing completion
+    #                 land_goal = Land.Goal()
+    #                 land_goal.landing_altitude = 60.0
+    #                 land_goal.vtol_transition_heading = 60.0
+    #                 self.send_goal(self._land_client, land_goal)
+    #         elif self.mission_step == 6:
+    #             self.get_logger().info("[Yalla] Mission complete")
+    #             self.conops_timer.cancel() # Stop this timer
+    #     ################################################################################
+    #     elif self.conops == 'cat':
+    #         if self.mission_step == -1:
+    #             self.get_logger().info("[Cat] Mission failed")
+    #             self.conops_timer.cancel() # Stop this timer
+    #             return
+    #         elif self.mission_step == 0:
+    #             self.get_logger().info("[Cat] Taking off")
+    #             self.mission_step = 1 # Dummy step to wait for takeoff completion
+    #             takeoff_goal = Takeoff.Goal()
+    #             takeoff_goal.takeoff_altitude = 20.0
+    #             self.send_goal(self._takeoff_client, takeoff_goal)
+    #         elif self.mission_step == 2:
+    #             self.get_logger().info("[Cat] Repositioning")
+    #             self.mission_step = 3 # Dummy step to wait for reposition completion
+    #             repo_req = SetReposition.Request()
+    #             repo_req.east = random.uniform(-100.0, 100.0)
+    #             repo_req.north = random.uniform(-10.0, 10.0)
+    #             repo_req.altitude = random.uniform(30.0, 60.0)
+    #             if os.getenv('AUTOPILOT', '') == 'px4':
+    #                 time.sleep(1.5) # Quick and dirty way to make sure the autopilot is fully out of Takeoff mode
+    #             self.call_service(self._reposition_client, repo_req)
+    #             self.cat_repo_start_time = self.get_clock().now()
+    #         elif self.mission_step == 4:
+    #             elapsed_time = self.get_clock().now() - self.cat_repo_start_time
+    #             if (elapsed_time.nanoseconds / 1e9) > 15.0: # Start landing 15 sec after the reposition
+    #                 self.get_logger().info("[Cat] Offboarding")
+    #                 self.mission_step = 5 # Dummy step to wait for offboard completion
+    #                 offboard_goal = Offboard.Goal()
+    #                 offboard_goal.offboard_setpoint_type = 2 if os.getenv('AUTOPILOT', '') == 'px4' else 3 # 2: PX4 trajectory reference, 3: ArduPilot velocity
+    #                 offboard_goal.max_duration_sec = 180.0
+    #                 self.send_goal(self._offboard_client, offboard_goal)
+    #                 # TODO: add termination
+    #     ################################################################################
+    #     elif self.conops == 'mouse':
+    #         if self.mission_step == -1:
+    #             self.get_logger().info("[Mouse] Mission failed")
+    #             self.conops_timer.cancel() # Stop this timer
+    #             return
+    #         elif self.mission_step == 0:
+    #             self.get_logger().info("[Mouse] Taking off")
+    #             self.mission_step = 1 # Dummy step to wait for takeoff completion
+    #             takeoff_goal = Takeoff.Goal()
+    #             takeoff_goal.takeoff_altitude = 20.0
+    #             self.send_goal(self._takeoff_client, takeoff_goal)
+    #         elif self.mission_step == 2:
+    #             self.get_logger().info("[Mouse] Orbiting")
+    #             self.mission_step = 3 # Dummy step to wait for orbit completion
+    #             orbit_goal = Orbit.Goal()
+    #             orbit_goal.east = random.uniform(-100.0, 100.0)
+    #             orbit_goal.north = random.uniform(0.0, 200.0)
+    #             orbit_goal.altitude = random.uniform(40.0, 60.0)
+    #             orbit_goal.radius = 20.0
+    #             self.send_goal(self._orbit_client, orbit_goal)
+    #             self.mouse_orbit_start_time = self.get_clock().now()
+    #         elif self.mission_step == 4:
+    #             elapsed_time = self.get_clock().now() - self.mouse_orbit_start_time
+    #             if (elapsed_time.nanoseconds / 1e9) > 30.0: # Start a new orbit after 30 sec
+    #                 self.mission_step = 2 # Go back to reposition
+    #     ################################################################################
+    #     else:
+    #         self.get_logger().info(f"Unknown CONOPS: {self.conops}")
 
 def main(args=None):
     parser = argparse.ArgumentParser(description="Mission Node.")
-    parser.add_argument(
-        '--conops',
-        type=str,
-        choices=['plan_A', 'plan_B', 'yalla', 'cat', 'mouse'], # TODO: add as needed
-        default='yalla',
-        help="Specify the concept of operations."
-    )
+    parser.add_argument('--conops', type=str, default='/aas/aircraft_resources/missions/test_mission.yaml', help="Path to YAML mission file")
 
     cli_args, ros_args = parser.parse_known_args()
 
     rclpy.init(args=ros_args)
-    mission_node = MissionNode(conops=cli_args.conops)
+    mission_node = MissionNode(mission_file=cli_args.conops)
 
     executor = MultiThreadedExecutor() # Or set MultiThreadedExecutor(num_threads=4)
     executor.add_node(mission_node)

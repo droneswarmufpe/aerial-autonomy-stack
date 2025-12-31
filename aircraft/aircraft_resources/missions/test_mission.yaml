@@ -1,0 +1,26 @@
+mission_name: "test_mission"
+# Options: takeoff, land, orbit, offboard, reposition, wait, speed
+steps:
+  - action: takeoff
+    params:
+      altitude: 20.0
+      
+  - action: wait
+    params:
+      duration: 5.0
+      
+  - action: orbit
+    params:
+      east: 50.0
+      north: 50.0
+      altitude: 40.0
+      radius: 30.0
+      
+  - action: wait
+    params:
+      duration: 30.0 # Orbit for 30 seconds
+      
+  - action: land
+    params:
+      altitude: 0.0
+      heading: 0.0
