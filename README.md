@@ -480,12 +480,6 @@ Distributed under the MIT License. See `LICENSE.txt` for more information. Copyr
 - QGC does not save roll and pitch in the telemetry bar for PX4 VTOLs (MAV_TYPE 22)
 - PX4 quad max tilt is limited by the anti-windup gain (zero it to deactivate it): const float arw_gain = 2.f / _gain_vel_p(0);
 
-## PX4/ArduPilot SITL/HITL architectures
-- https://docs.px4.io/main/en/simulation/
-- https://docs.px4.io/main/en/simulation/#sitl-simulation-environment
-- https://docs.px4.io/main/en/simulation/hitl.html
-- https://ardupilot.org/dev/docs/sitl-simulator-software-in-the-loop.html#sitl-architecture
-
 ## TODOs
 
 LiDAR-inertial Odometry and SLAM
@@ -496,13 +490,5 @@ LiDAR-inertial Odometry and SLAM
 - Add examples in the README.md showing exploration of these world with 3D mapping
 - Develop own/custom SLAM/collaborative SLAM approach
 - Study how to compare/use/fuse LIO with PX4/ArduPilot state estimation
-
-## Future Work
-
-- Support for [NVIDIA DeepStream](https://developer.nvidia.com/deepstream-sdk) in the aircraft_ws YOLO node
-- Support for [Betaflight SITL](https://betaflight.com/docs/development/SITL) interfaced *via* UDP or [MultiWii Serial Protocol (MSP)](https://github.com/betaflight/betaflight/tree/master/src/main/msp)
-- Support for a [Isaac Sim](https://github.com/isaac-sim/IsaacSim) higher fidelity rendering
-- Support for [JSBSim](https://github.com/JSBSim-Team/jsbsim) flight dynamics
-- Support for [ArduPilot's DDS interface](https://ardupilot.org/dev/docs/ros2-interfaces.html)
 
 -->
