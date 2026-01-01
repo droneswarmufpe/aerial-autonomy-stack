@@ -39,7 +39,9 @@ class MissionNode(Node):
             self.mission_plan = []
 
         self.mission_step = 0 # Track the advancement of the mission
+        self.last_executed_step = -1 # To avoid re-executing the same step
         self.active_mission_goal_handle = None # Hold the goal handle of the active action
+        self.wait_start_time = None # For "wait" mission steps
 
         self.own_drone_id = None
         drone_id_str = os.environ.get('DRONE_ID') # Get id from ENV VAR
@@ -316,43 +318,47 @@ class MissionNode(Node):
             self.mission_step = -1
 
     def conops_callback(self):
-        # If mission_step is negative, the mission failed
-        if self.mission_step == -1:
-            self.get_logger().info("Mission in FAILED state.")
+        # If an ROS Action is running, do nothing
+        if self.active_mission_goal_handle is not None:
+            return
+
+        # If a "Wait" is active, check time: if still waiting, return. If done, clear wait and proceed
+        if self.wait_start_time is not None:
+            elapsed = (self.get_clock().now() - self.wait_start_time).nanoseconds / 1e9
+            if elapsed < self.current_wait_duration:
+                return # Still waiting
+            else:
+                self.get_logger().info(f"Wait complete")
+                self.wait_start_time = None # Clear the wait flag
+                self.mission_step += 1 # Advance to next step
+
+        # End the mission
+        if (self.mission_step >= len(self.mission_plan)) or (self.mission_step == -1):
+            if self.mission_step == -1:
+                self.get_logger().info("Mission Failed")
+            else:
+                self.get_logger().info("Mission Complete")
             self.conops_timer.cancel()
+            rclpy.shutdown()
             return
 
-        # If mission_step is ODD:
-        # Either do nothing and wait for an action/service callback to complete (and increment self.mission_step)
-        # Or handle the 'wait' actions here, incrementing self.mission_step when thte wait is over
-        if self.mission_step % 2 != 0: 
-            step_idx = (self.mission_step - 1) // 2
-            if step_idx < len(self.mission_plan):
-                current_action = self.mission_plan[step_idx]
-                if current_action['action'] == 'wait':
-                    duration = current_action['params'].get('duration', 0.0)
-                    elapsed = (self.get_clock().now() - self.wait_start_time).nanoseconds / 1e9
-                    if elapsed >= duration:
-                        self.get_logger().info(f"Wait of {duration}s completed.")
-                        self.mission_step += 1 # Advance to next even number/mission step after a wait
+        # Avoid executing the same step more than once
+        if self.mission_step == self.last_executed_step:
             return
 
-        # If mission_step is EVEN, trigger a NEW action
-        step_idx = self.mission_step // 2
-        
-        if step_idx >= len(self.mission_plan):
-            self.get_logger().info("Mission Complete!")
-            self.conops_timer.cancel()
-            return
-
-        step = self.mission_plan[step_idx]
+        # Continue the mission
+        step = self.mission_plan[self.mission_step]
         action_type = step['action']
         params = step.get('params', {})
+        self.get_logger().info(f"Executing step {self.mission_step}: {action_type}")
+        self.last_executed_step = self.mission_step
 
-        self.get_logger().info(f"Executing step {step_idx}: {action_type}")
+        if action_type == 'wait':
+            self.wait_start_time = self.get_clock().now()
+            self.current_wait_duration = float(params.get('duration', 0.0))
+            return
 
-        if action_type == 'takeoff':
-            self.mission_step += 1 # Increment to an ODD counter to indicate am action is in progress
+        elif action_type == 'takeoff':
             goal = Takeoff.Goal()
             goal.takeoff_altitude = float(params.get('takeoff_altitude', 20.0))
             goal.vtol_transition_heading = float(params.get('vtol_transition_heading', 0.0))
@@ -362,14 +368,12 @@ class MissionNode(Node):
             self.send_goal(self._takeoff_client, goal)
         
         elif action_type == 'land':
-            self.mission_step += 1 # Increment to an ODD counter to indicate am action is in progress
             goal = Land.Goal()
             goal.landing_altitude = float(params.get('landing_altitude', 20.0))
             goal.vtol_transition_heading = float(params.get('vtol_transition_heading', 0.0))
             self.send_goal(self._land_client, goal)
-        
+
         elif action_type == 'orbit':
-            self.mission_step += 1 # Increment to an ODD counter to indicate am action is in progress
             goal = Orbit.Goal()
             goal.east = float(params.get('east', 0.0))
             goal.north = float(params.get('north', 0.0))
@@ -378,14 +382,12 @@ class MissionNode(Node):
             self.send_goal(self._orbit_client, goal)
             
         elif action_type == 'offboard':
-            self.mission_step += 1 # Increment to an ODD counter to indicate am action is in progress
             goal = Offboard.Goal()
             goal.offboard_setpoint_type = int(params.get('offboard_setpoint_type', 0))
             goal.max_duration_sec = float(params.get('max_duration_sec', 10.0))
             self.send_goal(self._offboard_client, goal)
 
         elif action_type == 'reposition':
-            self.mission_step += 1 # Increment to an ODD counter to indicate am action is in progress
             req = SetReposition.Request()
             req.east = float(params.get('east', 0.0))
             req.north = float(params.get('north', 0.0))
@@ -393,15 +395,9 @@ class MissionNode(Node):
             self.call_service(self._reposition_client, req)
             
         elif action_type == 'speed':
-            self.mission_step += 1 # Increment to an ODD counter to indicate am action is in progress
             req = SetSpeed.Request()
             req.speed = float(params.get('speed', 15.0))
             self.call_service(self._speed_client, req)
-
-        elif action_type == 'wait':
-            self.mission_step += 1 # Increment to an ODD counter to indicate am action is in progress
-            self.wait_start_time = self.get_clock().now()
-            self.get_logger().info(f"Waiting for {params.get('duration', 0)} seconds...")
 
         else:
             self.get_logger().error(f"Unknown action: {action_type}")
@@ -426,7 +422,8 @@ def main(args=None):
     finally:
         executor.shutdown()
         mission_node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 if __name__ == "__main__":
     main()
