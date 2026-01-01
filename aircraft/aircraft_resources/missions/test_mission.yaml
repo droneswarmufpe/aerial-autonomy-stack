@@ -27,7 +27,7 @@ steps:
 
 #  - action: offboard
 #    params:
-#      offboard_setpoint_type: 0.0
+#      offboard_setpoint_type: 0
 #      max_duration_sec: 10.0
 
 #  - action: reposition
