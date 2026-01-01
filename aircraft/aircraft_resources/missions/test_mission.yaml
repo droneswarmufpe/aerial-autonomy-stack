@@ -1,26 +1,42 @@
-mission_name: "test_mission"
-# Options: takeoff, land, orbit, offboard, reposition, wait, speed
 steps:
   - action: takeoff
     params:
-      altitude: 20.0
-      
-  - action: wait
-    params:
-      duration: 5.0
+      takeoff_altitude: 40.0
+      vtol_transition_heading: 300.0
+      vtol_loiter_nord: 100.0
+      vtol_loiter_east: 100.0
+      vtol_loiter_alt: 120.0
       
   - action: orbit
     params:
-      east: 50.0
+      east: -100.0
       north: 50.0
-      altitude: 40.0
-      radius: 30.0
+      altitude: 50.0
+      radius: 80.0
       
   - action: wait
     params:
-      duration: 30.0 # Orbit for 30 seconds
+      duration: 45.0 # Orbit for 45 seconds
       
   - action: land
     params:
-      altitude: 0.0
-      heading: 0.0
+      landing_altitude: 60.0
+      vtol_transition_heading: 60.0
+
+# Other actions/services examples
+
+#  - action: offboard
+#    params:
+#      offboard_setpoint_type: 0.0
+#      max_duration_sec: 10.0
+
+#  - action: reposition
+#    params:
+#      east: 150.0
+#      north: -75.0
+#      altitude: 80.0
+
+#  - action: speed
+#    params:
+#      speed: 15.0
+   
