@@ -142,8 +142,11 @@ class AASEnv(gym.Env):
         gpu_requests = [
             DeviceRequest(count=-1, capabilities=[['gpu']]) # Replaces "--gpus all"
         ]
-        volume_binds = { # Replaces "--volume /tmp/.X11-unix:/tmp/.X11-unix:rw"
-            '/tmp/.X11-unix': {'bind': '/tmp/.X11-unix', 'mode': 'rw'}
+        self.ZMQ_IPC_SOCKET_DIR = '/tmp/aas_zmq_sockets'
+        os.makedirs(self.ZMQ_IPC_SOCKET_DIR, exist_ok=True)
+        volume_binds = {
+            '/tmp/.X11-unix': {'bind': '/tmp/.X11-unix', 'mode': 'rw'}, # Replaces "--volume /tmp/.X11-unix:/tmp/.X11-unix:rw"
+            self.ZMQ_IPC_SOCKET_DIR: {'bind': self.ZMQ_IPC_SOCKET_DIR, 'mode': 'rw'} # For ZMQ IPC sockets
         }
         device_binds = ['/dev/dri:/dev/dri:rwm'] # Replaces "--device /dev/dri"
         #
@@ -180,8 +183,9 @@ class AASEnv(gym.Env):
                 "GND_CONTAINER": str(self.GND_CONTAINER).lower(),
                 "ROS_DOMAIN_ID": self.SIM_ID,
                 "GYMNASIUM" : "true",
-                "GYM_FREQ_HZ" : self.GYM_FREQ_HZ,
-                "GYM_INIT_DURATION" : self.GYM_INIT_DURATION,
+                "GYM_FREQ_HZ" : str(self.GYM_FREQ_HZ),
+                "GYM_INIT_DURATION" : str(self.GYM_INIT_DURATION),
+                "INSTANCE": str(self.INSTANCE),
             }
         )
         print(f"Connecting {self.SIM_CONT_NAME} to {self.SIM_NET_NAME}...")
@@ -248,11 +252,13 @@ class AASEnv(gym.Env):
             self.aircraft_containers.append(air_cont)
         print("Docker setup complete. All containers are running and connected.")
 
-        # ZeroMQ Setup
-        self.ZMQ_PORT = 5555
-        self.ZMQ_IP = f"{self.SIM_SUBNET}.90.{self.SIM_ID}"
+        # ZeroMQ setup
         self.zmq_context = zmq.Context()
         self.socket = self.zmq_context.socket(zmq.REQ)
+        self.ZMQ_TRANSPORT = "tcp" # "tcp" or "ipc", also uncomment the corresponding block in zero_bridge.cpp
+        if self.ZMQ_TRANSPORT == "tcp":
+            self.ZMQ_PORT = 5555
+            self.ZMQ_IP = f"{self.SIM_SUBNET}.90.{self.SIM_ID}"
 
     def _get_obs(self):
         return np.array([self.sim_sec, self.sim_nanosec], dtype=np.float64)
@@ -281,8 +287,15 @@ class AASEnv(gym.Env):
         # Establish ZeroMQ connection
         self.socket = self.zmq_context.socket(zmq.REQ)
         self.socket.setsockopt(zmq.RCVTIMEO, 10 * 1000) # 1000 ms = 1 seconds
-        self.socket.connect(f"tcp://{self.ZMQ_IP}:{self.ZMQ_PORT}")
-        print(f"ZeroMQ socket connected to {self.ZMQ_IP}:{self.ZMQ_PORT}")
+        if self.ZMQ_TRANSPORT == "tcp":
+            self.socket.connect(f"tcp://{self.ZMQ_IP}:{self.ZMQ_PORT}")
+            print(f"ZeroMQ socket connected to {self.ZMQ_IP}:{self.ZMQ_PORT}")
+        elif self.ZMQ_TRANSPORT == "ipc":
+            ipc_file = f"{self.ZMQ_IPC_SOCKET_DIR}/bridge_inst{self.INSTANCE}.ipc"
+            self.socket.connect(f"ipc://{ipc_file}")
+            print(f"ZeroMQ socket connected via IPC: {ipc_file}")
+        else:
+            raise ValueError(f"Invalid ZMQ_TRANSPORT: {self.ZMQ_TRANSPORT}")
         ###########################################################################################
         # ZeroMQ REQ/REP to the ROS2 sim ##########################################################
         ###########################################################################################
