@@ -102,7 +102,7 @@ param set-default COM_RC_OVERRIDE 1 # Enable RC stick override of auto (0) and/o
 # Tilt limits
 param set-default MPC_MAN_TILT_MAX 70.0
 param set-default MPC_TILTMAX_AIR 89.0
-# Accelaration limits
+# Acceleration limits
 param set-default MPC_ACC_HOR 10.0
 param set-default MPC_ACC_HOR_MAX 10.0
 # Speed limits

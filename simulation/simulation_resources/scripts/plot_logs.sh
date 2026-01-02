@@ -27,8 +27,8 @@ if [[ -n "$NUM_DRONES" && "$NUM_DRONES" =~ ^[0-9]+$ ]]; then
         SIM_ID=$(echo "$SIM_SUBNET_IP" | awk -F'.' '{print $NF}')
 
         cd /aas/github_apps/flight_review/
-        /px4rf-env/bin/python3 ./app/setup_db.py
-        /px4rf-env/bin/python3 ./app/serve.py --allow-websocket-origin=${SIM_SUBNET}.90.${SIM_ID}:5006 2>/dev/null & # Starting flight_review (suppress "Address already in use" when running this script more than once)
+        /px4fr-env/bin/python3 ./app/setup_db.py
+        /px4fr-env/bin/python3 ./app/serve.py --allow-websocket-origin=${SIM_SUBNET}.90.${SIM_ID}:5006 2>/dev/null & # Starting flight_review (suppress "Address already in use" when running this script more than once)
         sleep 2
         for i in $(seq 0 $((NUM_DRONES - 1))); do
             log_dir="/aas/github_apps/PX4-Autopilot/build/px4_sitl_default/rootfs/$i/log"
