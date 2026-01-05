@@ -91,12 +91,12 @@ def main(args=None):
         if not takeoff_success:
             spin_wait(node, 2.0) # Simulation time
 
-    # Offboard
-    offboard_success = False
-    while not offboard_success:
-        offboard_success = node.send_offboard()
-        if not offboard_success:
-            spin_wait(node, 1.0) # Simulation time
+    # # Offboard
+    # offboard_success = False
+    # while not offboard_success:
+    #     offboard_success = node.send_offboard()
+    #     if not offboard_success:
+    #         spin_wait(node, 1.0) # Simulation time
 
     node.destroy_node()
     rclpy.shutdown()
