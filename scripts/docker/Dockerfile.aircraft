@@ -100,16 +100,11 @@ RUN /yolo-env/bin/pip3 install --no-cache-dir --upgrade pip && \
     /yolo-env/bin/pip3 install --no-cache-dir --resume-retries 5 ultralytics onnx
 # Check YOLO with $ /yolo-env/bin/python3 -c "import ultralytics; print(ultralytics.__version__)"
 
-# Save the model weights (ONNX, Opset 12), class names, and download a sample video for testing
+# Test ONNX export (WARNING: removing this step from this stage can break px4_msgs build in later stages)
 WORKDIR /aas/yolo
-# Model options (from fastest to most accurate, <10MB to >100MB): yolov8n, yolov8s, yolov8m, yolov8l, yolov8x
-# Export standard 640 static (for Jetson deployment) as yolov8n_640.onnx and smaller 320 static (for SITL/HITL) as yolov8n_320.onnx
-RUN /yolo-env/bin/python3 -c "from ultralytics import YOLO; YOLO('yolov8n.pt').export(format='onnx', opset=12, imgsz=640)" && \
-    mv yolov8n.onnx yolov8n_640.onnx && \
-    /yolo-env/bin/python3 -c "from ultralytics import YOLO; YOLO('yolov8n.pt').export(format='onnx', opset=12, imgsz=320)" && \
-    mv yolov8n.onnx yolov8n_320.onnx && \
-    /yolo-env/bin/python3 -c "import json; from ultralytics import YOLO; print(json.dumps(YOLO('yolov8n.pt').names))" | grep '{' > coco.json && \
-    rm yolov8n.pt
+RUN /yolo-env/bin/python3 -c "from ultralytics import YOLO; YOLO('yolov8n.pt').export(format='onnx', opset=12)" && \
+    mv yolov8n.onnx unused.onnx
+# Download a sample video for testing
 RUN wget https://github.com/intel-iot-devkit/sample-videos/raw/master/person-bicycle-car-detection.mp4 -O /sample.mp4
 
 # Add GStreamer, Python OpenCV packages
@@ -194,6 +189,17 @@ RUN apt-get update && \
 # Stage 7 - 17+GB ##############################################################
 ################################################################################
 FROM ros2-px4msgs-dds-mavros-yolo-kissicp-zenoh-image AS aircraft-dev-image
+
+# Save the YOLO model weights (ONNX, Opset 12) and class names
+WORKDIR /aas/yolo
+# Model options (from fastest to most accurate, <10MB to >100MB): yolov8n, yolov8s, yolov8m, yolov8l, yolov8x
+# Export standard 640 static (for Jetson deployment) as yolov8n_640.onnx and smaller 320 static (for SITL/HITL) as yolov8n_320.onnx
+RUN /yolo-env/bin/python3 -c "from ultralytics import YOLO; YOLO('yolov8n.pt').export(format='onnx', opset=12, imgsz=640)" && \
+    mv yolov8n.onnx yolov8n_640.onnx && \
+    /yolo-env/bin/python3 -c "from ultralytics import YOLO; YOLO('yolov8n.pt').export(format='onnx', opset=12, imgsz=320)" && \
+    mv yolov8n.onnx yolov8n_320.onnx && \
+    /yolo-env/bin/python3 -c "import json; from ultralytics import YOLO; print(json.dumps(YOLO('yolov8n.pt').names))" | grep '{' > coco.json && \
+    rm yolov8n.pt
 
 # Install PlotJuggler
 RUN apt-get update && \
