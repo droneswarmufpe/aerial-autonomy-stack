@@ -48,19 +48,18 @@ class AASEnv(gym.Env):
         self.render_mode = render_mode
 
         # AAS Setup
-        self.AUTOPILOT = "px4"
-        self.HEADLESS = False if self.render_mode == "human" else True
+        self.HEADLESS = False if self.render_mode == "human" else True # Only display GUIs if render_mode is "human"
+        self.AUTOPILOT = "px4" # "px4" or "ardupilot"
         self.CAMERA = True
         self.LIDAR = True
+        self.NUM_QUADS = 1
+        self.NUM_VTOLS = 0
+        self.WORLD = "impalpable_greyness"
         #
         self.SIM_SUBNET = "10.42"
         self.AIR_SUBNET = "10.22"
         self.SIM_ID = "100"
         # self.GROUND_ID = "101" # Unused
-        #
-        self.NUM_QUADS = 1
-        self.NUM_VTOLS = 0
-        self.WORLD = "impalpable_greyness"
         #
         self.GND_CONTAINER = False # Do NOT use the ground-image to run Zenoh (nor QGC)
         self.RTF = 15.0 # Note: RTFs > 10 can destabilize PX4/ArduPilot SITL
