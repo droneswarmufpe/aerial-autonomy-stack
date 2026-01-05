@@ -44,48 +44,63 @@ def main():
         env.close()
 
     elif args.mode == "speedup":
+        REPETITIONS = 1
         CTRL_FREQ_HZ = 50
         env = gym.make("AASEnv-v0", instance=1, gym_freq_hz=CTRL_FREQ_HZ, render_mode="ansi") # "ansi" for progress bar, "human" for GUI
         TIME_TO_SIMULATE_SEC = 200
         STEPS = TIME_TO_SIMULATE_SEC * CTRL_FREQ_HZ
-        print(f"Starting Speed Test ({STEPS} steps)")    
-        obs, info = env.reset()
-        start_time = time.time()        
-        for _ in range(STEPS):
-            action = env.action_space.sample()            
-            obs, reward, terminated, truncated, info = env.step(action)
-            if terminated or truncated:
-                obs, info = env.reset()
-        total_time = time.time() - start_time
-        print(f"\nTest completed in: {(total_time):.2f} sec")
-        print(f"Average Step Time: {(total_time / STEPS) * 1000:.3f} ms")
-        print(f"Speedup: {(TIME_TO_SIMULATE_SEC / total_time):.2f}x wall-clock")
-        print(f"Throughput: {(STEPS / total_time):.2f} steps/second")
+        print(f"Starting speed test: {REPETITIONS} runs of {STEPS} steps each.")
+        run_times = []
+        for i in range(REPETITIONS):
+            obs, info = env.reset()
+            start_time = time.time()
+            for _ in range(STEPS):
+                action = env.action_space.sample()
+                obs, reward, terminated, truncated, info = env.step(action)
+                if terminated or truncated:
+                    obs, info = env.reset()
+            duration = time.time() - start_time
+            run_times.append(duration)
+        avg_time = np.mean(run_times)
+        std_time = np.std(run_times)
+        avg_speedup = TIME_TO_SIMULATE_SEC / avg_time
+        avg_throughput = STEPS / avg_time
+        print(f"\nAvg Duration:       {avg_time:.2f}s ± {std_time:.2f}s")
+        print(f"Avg Step Time:      {(avg_time / STEPS) * 1000:.3f} ms")
+        print(f"Avg Speedup:        {avg_speedup:.2f}x wall-clock")
+        print(f"Avg Throughput:     {avg_throughput:.2f} steps/second")
         env.close()
 
     elif args.mode == "vectorenv-speedup":
+        REPETITIONS = 1
         NUM_ENVS = 2 # Number of parallel environments (adjust based on CPU/RAM and GPU/VRAM usage, check with htop and nvidia-smi)
         CTRL_FREQ_HZ = 50
         TIME_TO_SIMULATE_SEC = 200        
         STEPS_PER_ENV = TIME_TO_SIMULATE_SEC * CTRL_FREQ_HZ 
-        print(f"Starting parallel speed test with {NUM_ENVS} envs, stepping each for {STEPS_PER_ENV} steps")
+        print(f"Starting parallel speed test: {REPETITIONS} runs with {NUM_ENVS} envs, stepping each for {STEPS_PER_ENV} steps")
         def make_env(rank, freq_hz):
             def _init():
                 return gym.make("AASEnv-v0", instance=rank, gym_freq_hz=freq_hz, render_mode=None)
             return _init
         env_fns = [make_env(i, CTRL_FREQ_HZ) for i in range(NUM_ENVS)]
         envs = gym.vector.AsyncVectorEnv(env_fns)
-        obs, info = envs.reset()
-        start_time = time.time()
         print(f"Running the test with render_mode=None")
-        for _ in range(STEPS_PER_ENV):
-            actions = envs.action_space.sample() # Returns array of shape (NUM_ENVS, action_dim)
-            obs, rewards, terminateds, truncateds, infos = envs.step(actions) # AsyncVectorEnv automatically resets individual envs when they terminate/truncate
-        total_time = time.time() - start_time
-        total_steps = STEPS_PER_ENV * NUM_ENVS
-        print(f"\nTest completed in: {(total_time):.2f} sec")
-        print(f"Throughput: {(total_steps / total_time):.2f} steps/second")
-        print(f"Effective Speedup: {(total_steps / total_time) / CTRL_FREQ_HZ:.2f}x real-time (aggregate)")
+        run_times = []
+        for i in range(REPETITIONS):
+            obs, info = envs.reset()
+            start_time = time.time()
+            for _ in range(STEPS_PER_ENV):
+                actions = envs.action_space.sample() # Returns array of shape (NUM_ENVS, action_dim)
+                obs, rewards, terminateds, truncateds, infos = envs.step(actions) # AsyncVectorEnv automatically resets individual envs when they terminate/truncate
+            duration = time.time() - start_time
+            run_times.append(duration)
+        avg_time = np.mean(run_times)
+        std_time = np.std(run_times)
+        avg_speedup = (TIME_TO_SIMULATE_SEC * NUM_ENVS) / avg_time
+        avg_throughput = (STEPS_PER_ENV * NUM_ENVS) / avg_time
+        print(f"\nAvg Duration:       {avg_time:.2f}s ± {std_time:.2f}s")
+        print(f"Avg Speedup:        {avg_speedup:.2f}x wall-clock")
+        print(f"Avg Throughput:     {avg_throughput:.2f} steps/second")
         envs.close()
 
     elif args.mode == "learn":
