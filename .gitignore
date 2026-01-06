@@ -4,7 +4,7 @@
 /aircraft/aircraft_resources/missions/mouse.yaml
 /aas-gym/ppo_agent.zip
 /github_clones/
-/scripts/table.sh
+/scripts/aas-table.sh
 
 ### C++ .gitignore
 
