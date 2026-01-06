@@ -96,7 +96,7 @@ class YoloInferenceNode(Node):
                 "udpsrc port=5600 ! "
                 "application/x-rtp, media=(string)video, encoding-name=(string)H264 ! "
                 "rtph264depay ! "
-                "avdec_h264 threads=4 ! " # Use CPU decoder, threads=0 for autodetection
+                "avdec_h264 ! " # Use CPU decoder
                 "videoconvert ! "
                 "video/x-raw, format=BGR ! appsink"
             )

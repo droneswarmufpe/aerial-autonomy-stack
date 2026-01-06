@@ -93,7 +93,7 @@ int main(int argc, char **argv) {
         std::cout << "Using NVIDIA GPU Encoder (nvh264enc)\n";
         pipeline_str = "appsrc name=gz_source ! queue max-size-buffers=1 leaky=downstream ! "
                         "videoconvert ! "
-                        "nvh264enc preset=low-latency-hq zerolatency=true rc-mode=cbr bitrate=2048 qp-range=15,35 gop-size=60 ! "
+                        "nvh264enc preset=low-latency-hq zerolatency=true rc-mode=cbr bitrate=2048 qp-min=15 qp-max=35 gop-size=60 ! "
                         "rtph264pay config-interval=1 mtu=1400 ! udpsink sync=false " + ip_port;
     } else {
         std::cout << "Using CPU Encoder (x264enc)\n";
