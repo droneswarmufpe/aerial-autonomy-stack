@@ -16,9 +16,14 @@ class AASEnv(gym.Env):
     metadata = {"render_modes": ["human", "ansi"]}
 
     def __init__(self,
-                    instance: int=0,
-                    gym_freq_hz: int=50,
-                    render_mode=None):
+            instance: int=0,
+            gym_freq_hz: int=50,
+            autopilot: str="px4",
+            camera: bool=True,
+            lidar: bool=True,
+            num_quads: int=1,
+            render_mode=None
+        ):
         super().__init__()
 
         self.GYM_FREQ_HZ = gym_freq_hz
@@ -49,10 +54,10 @@ class AASEnv(gym.Env):
 
         # AAS Setup
         self.HEADLESS = False if self.render_mode == "human" else True # Only display GUIs if render_mode is "human"
-        self.AUTOPILOT = "px4" # "px4" or "ardupilot"
-        self.CAMERA = True
-        self.LIDAR = True
-        self.NUM_QUADS = 1
+        self.AUTOPILOT = autopilot
+        self.CAMERA = camera
+        self.LIDAR = lidar
+        self.NUM_QUADS = num_quads
         self.NUM_VTOLS = 0
         self.WORLD = "impalpable_greyness"
         #

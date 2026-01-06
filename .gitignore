@@ -1,9 +1,10 @@
-/github_clones/
 /aircraft/aircraft_ws/src/ground_system_msgs/
 /aircraft/aircraft_resources/comms/zenoh_config_air.json5
 /aircraft/aircraft_resources/missions/cat*.yaml
 /aircraft/aircraft_resources/missions/mouse.yaml
 /aas-gym/ppo_agent.zip
+/github_clones/
+/scripts/table.sh
 
 ### C++ .gitignore
 
