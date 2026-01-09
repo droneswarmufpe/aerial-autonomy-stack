@@ -214,7 +214,7 @@ AUTOPILOT=px4 NUM_QUADS=1 NUM_VTOLS=1 WORLD=swiss_town RTF=3.0 ./sim_run.sh     
 In any of the `QUAD` or `VTOL` Xterm terminals:
 ```sh
 # 2. Fly
-ros2 run mission mission --ros-args -r __ns:=/Drone$DRONE_ID -p use_sim_time:=true            # This mission is a simple takeoff, followed by an orbit, and landing for any vehicle
+ros2 run mission mission --ros-args -r __ns:=/Drone$DRONE_ID -p use_sim_time:=true            # This mission is a defined in /aircraft/aircraft_resources/missions/test_mission.yaml
 ```
 
 In the `Simulation`'s Xterm terminal:
