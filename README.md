@@ -79,7 +79,7 @@ flowchart TB
             yolo_py --> |"/detections"| offboard_control
             offboard_control --> |"/reference"| autopilot_interface
             mission --> |"ros2 action/srv"| autopilot_interface
-            zenoh_air --> |"/state_sharing_drone_n"| state_sharing
+            zenoh_air <--> |"/state_sharing_drone_n"| state_sharing
         end
 
         repo(((aerial#nbsp;autonomy#nbsp;stack)))
