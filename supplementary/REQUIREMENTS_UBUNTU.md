@@ -19,6 +19,8 @@ nvidia-smi                          # Should report "Driver Version: 580.65.06, 
 
 # Set NVIDIA Performance Mode
 sudo prime-select nvidia            # Reboot and check in Ubuntu's "Settings" -> "About" -> "Graphics" is your NVIDIA card
+# For laptops with hybrid graphics, it is recommended to also go to "Settings" -> "Power"
+# Then, select  the "Performance" "Power Mode" and disable all "Power Saving Options"
 
 sudo apt install -y mesa-utils
 glxinfo | grep "OpenGL renderer"    # Check the GPU is the OpenGL renderer

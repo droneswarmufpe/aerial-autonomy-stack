@@ -343,7 +343,7 @@ To create a new mission, re-implement [`test_mission.yaml`](/aircraft/aircraft_r
 
 Using a Python `venv` or a [`conda`](https://docs.conda.io/projects/conda/en/stable/user-guide/install/linux.html) environment is optional but recommended:
 ```sh
-wget https://repo.anaconda.com/archive/Anaconda3-2025.06-0-Linux-x86_64.sh
+wget https://repo.anaconda.com/archive/Anaconda3-2025.06-0-Linux-x86_64.sh # Or a newer version in https://repo.anaconda.com/archive/
 bash Anaconda3-2025.06-0-Linux-x86_64.sh
 conda create -n aas python=3.13
 conda activate aas
