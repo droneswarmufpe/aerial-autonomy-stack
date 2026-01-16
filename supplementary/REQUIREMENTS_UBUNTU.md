@@ -18,7 +18,9 @@ sudo apt update && sudo apt upgrade
 nvidia-smi                          # Should report "Driver Version: 580.65.06, CUDA Version: 13.0"
 
 # Set NVIDIA Performance Mode
-sudo prime-select nvidia            # Reboot and check in Ubuntu's "Settings" -> "About" -> "Graphics" is your NVIDIA card
+sudo prime-select nvidia            # Alternatively, use `nvidia-settings` -> "PRIME profiles" -> "NVIDIA (Performance Mode)"
+# Reboot and check in Ubuntu's "Settings" -> "About" -> "Graphics" is your NVIDIA card
+# `nvidia-smi` will show applications like Firefox and VSCode as Type G processes
 # For laptops with hybrid graphics, it is recommended to also go to "Settings" -> "Power"
 # Then, select  the "Performance" "Power Mode" and disable all "Power Saving Options"
 

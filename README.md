@@ -171,7 +171,7 @@ aerial-autonomy-stack
 
 ## Installation
 
-> AAS is tested on Ubuntu 22.04 with `nvidia-driver-580` using an i7-11 with 16GB RAM and RTX 3060
+> AAS is tested on Ubuntu 22.04/24.04 with `nvidia-driver-580` using an i7-11 with 16GB RAM and RTX 3060
 > 
 > On Ubuntu, read [`REQUIREMENTS_UBUNTU.md`](/supplementary/REQUIREMENTS_UBUNTU.md) to setup the requirements (Docker Engine, `nvidia-ctk`)
 >
