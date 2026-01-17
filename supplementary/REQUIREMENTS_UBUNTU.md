@@ -1,6 +1,6 @@
 # Pre-installation Steps for AAS on Ubuntu
 
-> These instructions are tested using Ubuntu 22.04.5 LTS
+> These instructions are tested using Ubuntu 22.04.5 LTS and Ubuntu 24.04.3 LTS
 
 ## Install Ubuntu with NVIDIA Driver
 
