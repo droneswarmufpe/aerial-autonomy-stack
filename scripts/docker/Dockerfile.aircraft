@@ -49,36 +49,36 @@ RUN rosdep init
 ################################################################################
 # Stage 2 - 8GB ################################################################
 ################################################################################
-FROM ros2-image AS ros2-px4msgs-image
+# FROM ros2-image AS ros2-px4msgs-image
 
-# Build PX4 messages
-COPY /github_clones/px4_msgs /aas/github_ws/src/px4_msgs
-WORKDIR /aas/github_ws
-RUN rosdep update
-RUN rosdep install --from-paths src --ignore-src --rosdistro humble -y
-# Explicitly use bash, not sh, to source and build the workspace
-RUN bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install"
+# # Build PX4 messages
+# COPY /github_clones/px4_msgs /aas/github_ws/src/px4_msgs
+# WORKDIR /aas/github_ws
+# RUN rosdep update
+# RUN rosdep install --from-paths src --ignore-src --rosdistro humble -y
+# # Explicitly use bash, not sh, to source and build the workspace
+# RUN bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install"
 
-################################################################################
-# Stage 3 - 8.5GB ##############################################################
-################################################################################
-FROM ros2-px4msgs-image AS ros2-px4msgs-dds-image
+# ################################################################################
+# # Stage 3 - 8.5GB ##############################################################
+# ################################################################################
+# FROM ros2-px4msgs-image AS ros2-px4msgs-dds-image
 
-# XRCE-DDS
-# Based on https://micro-xrce-dds.docs.eprosima.com/en/latest/installation.html#installing-the-agent-standalone
-COPY /github_clones/Micro-XRCE-DDS-Agent /aas/github_apps/Micro-XRCE-DDS-Agent
-WORKDIR /aas/github_apps/Micro-XRCE-DDS-Agent
-RUN mkdir build && cd build && \
-    cmake .. -DCMAKE_BUILD_TYPE=Release && \
-    make -j$(nproc) && \
-    make install && \
-    ldconfig
-# Run with $ MicroXRCEAgent udp4 -p 8888
+# # XRCE-DDS
+# # Based on https://micro-xrce-dds.docs.eprosima.com/en/latest/installation.html#installing-the-agent-standalone
+# COPY /github_clones/Micro-XRCE-DDS-Agent /aas/github_apps/Micro-XRCE-DDS-Agent
+# WORKDIR /aas/github_apps/Micro-XRCE-DDS-Agent
+# RUN mkdir build && cd build && \
+#     cmake .. -DCMAKE_BUILD_TYPE=Release && \
+#     make -j$(nproc) && \
+#     make install && \
+#     ldconfig
+# # Run with $ MicroXRCEAgent udp4 -p 8888
 
 ################################################################################
 # Stage 4 - 8.5GB ##############################################################
 ################################################################################
-FROM ros2-px4msgs-dds-image AS ros2-px4msgs-dds-mavros-image
+FROM ros2-image AS ros2-mavros-image
 
 # MAVROS
 RUN apt-get update && \
@@ -91,7 +91,7 @@ RUN /opt/ros/humble/lib/mavros/install_geographiclib_datasets.sh
 ################################################################################
 # Stage 5 - 15GB ###############################################################
 ################################################################################
-FROM ros2-px4msgs-dds-mavros-image AS ros2-px4msgs-dds-mavros-yolo-image
+FROM ros2-mavros-image AS ros2-mavros-yolo-image
 
 # Install YOLOv8 and ONNX in virtual environment /yolo-env/
 # See https://github.com/ultralytics/ultralytics/blob/main/README.md and https://onnxruntime.ai/getting-started
@@ -124,13 +124,13 @@ RUN pip3 install --no-cache-dir --upgrade pip \
 ################################################################################
 # Alternate stage for ONNX Runtime GPU: use CUDA in sim, TensorRT on Orin ######
 ################################################################################
-FROM ros2-px4msgs-dds-mavros-yolo-image AS image-with-onnxruntime-gpu_amd64
+FROM ros2-mavros-yolo-image AS image-with-onnxruntime-gpu_amd64
 # Add ONNX Runtime with GPU (CUDA) support for system Python
 RUN pip3 install --no-cache-dir --upgrade pip && \
     pip3 install --no-cache-dir --resume-retries 5 onnxruntime-gpu
 # Check with $ python3 -c "import onnxruntime as ort; print(ort.__version__); print(ort.get_available_providers())"
 
-FROM ros2-px4msgs-dds-mavros-yolo-image AS image-with-onnxruntime-gpu_arm64
+FROM ros2-mavros-yolo-image AS image-with-onnxruntime-gpu_arm64
 # Build ONNX Runtime from source with Jetson (TensorRT) support for system Python
 # Based on https://onnxruntime.ai/docs/build/eps.html#nvidia-jetson-tx1tx2nanoxavierorin
 # CMAKE_CUDA_ARCHITECTURES=87 based on: https://developer.nvidia.com/cuda-gpus
@@ -164,7 +164,7 @@ ENV PYTHONPATH=/aas/github_apps/onnxruntime/build/Linux/Release
 ################################################################################
 # Stage 6 - 16GB ###############################################################
 ################################################################################
-FROM image-with-onnxruntime-gpu_${TARGETARCH} AS ros2-px4msgs-dds-mavros-yolo-kissicp-zenoh-image
+FROM image-with-onnxruntime-gpu_${TARGETARCH} AS ros2-mavros-yolo-kissicp-zenoh-image
 
 # Install KISS-ICP
 RUN pip3 install --no-cache-dir --upgrade "cmake>=3.24"
@@ -188,7 +188,7 @@ RUN apt-get update && \
 ################################################################################
 # Stage 7 - 17+GB ##############################################################
 ################################################################################
-FROM ros2-px4msgs-dds-mavros-yolo-kissicp-zenoh-image AS aircraft-dev-image
+FROM ros2-mavros-yolo-kissicp-zenoh-image AS aircraft-dev-image
 
 # Save the YOLO model weights (ONNX, Opset 12) and class names
 WORKDIR /aas/yolo
@@ -213,7 +213,7 @@ COPY ground/ground_ws/src/ground_system_msgs /aas/aircraft_ws/src/ground_system_
 COPY aircraft/aircraft_ws/src /aas/aircraft_ws/src
 WORKDIR /aas/aircraft_ws
 RUN rosdep update
-RUN rosdep install --from-paths src/ --ignore-src --rosdistro humble -y --skip-keys "px4_msgs"
+RUN rosdep install --from-paths src/ --ignore-src --rosdistro humble -y
 # Explicitly use bash, not sh, to source and build the workspace
 RUN bash -c "source /opt/ros/humble/setup.bash && source /aas/github_ws/install/setup.bash && colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release"
 
@@ -221,8 +221,7 @@ RUN bash -c "source /opt/ros/humble/setup.bash && source /aas/github_ws/install/
 COPY aircraft/aircraft_resources/ /aas/aircraft_resources
 COPY aircraft/aircraft_resources/patches/kiss_icp.rviz /aas/github_ws/src/kiss-icp/ros/rviz/kiss_icp.rviz
 COPY aircraft/aircraft_resources/patches/apm_pluginlists.yaml /opt/ros/humble/share/mavros/launch/apm_pluginlists.yaml
-RUN ln -s /aas/aircraft_resources/patches/cancellable_action.py /usr/local/bin/cancellable_action
-RUN chmod +x /aas/aircraft_resources/patches/cancellable_action.py
+
 
 # Source the workspaces
 RUN echo "source /aas/github_ws/install/setup.bash" >> /root/.bashrc

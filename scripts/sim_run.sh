@@ -4,7 +4,7 @@
 set -e
 
 # Set up the simulation
-AUTOPILOT="${AUTOPILOT:-px4}" # Options: px4 (default), ardupilot
+AUTOPILOT="${AUTOPILOT:-ardupilot}" # Options: ardupilot, px4 (removed support)
 HEADLESS="${HEADLESS:-false}" # Options: true, false (default)
 CAMERA="${CAMERA:-true}" # Options: true (default), false
 LIDAR="${LIDAR:-true}" # Options: true (default), false 
