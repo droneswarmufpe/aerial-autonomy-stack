@@ -3,8 +3,6 @@
 #include <mutex>
 #include <cmath>
 
-#include <px4_msgs/msg/vehicle_global_position.hpp>
-#include <px4_msgs/msg/vehicle_local_position.hpp>
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <mavros_msgs/msg/vfr_hud.hpp>
@@ -15,7 +13,7 @@ class StateSharingNode : public rclcpp::Node
 public:
     StateSharingNode() : Node("state_sharing_node")
     {
-        this->declare_parameter<std::string>("autopilot", "px4");
+        this->declare_parameter<std::string>("autopilot", "ardupilot");
         this->declare_parameter<int>("drone_id", 1);
         autopilot = this->get_parameter("autopilot").as_string();
         drone_id_ = this->get_parameter("drone_id").as_int();
@@ -38,17 +36,7 @@ public:
         qos_profile_sub.keep_last(10);  // History: KEEP_LAST with depth 10
         qos_profile_sub.reliability(rclcpp::ReliabilityPolicy::BestEffort);
 
-        if (autopilot == "px4")
-        {
-            subscription_global_px4_ = this->create_subscription<px4_msgs::msg::VehicleGlobalPosition>(
-                "/Drone" + std::to_string(drone_id_) + "/fmu/out/vehicle_global_position",
-                qos_profile_sub, std::bind(&StateSharingNode::px4_global_pos_callback, this, std::placeholders::_1), subscriber_options);
-
-            subscription_local_px4_ = this->create_subscription<px4_msgs::msg::VehicleLocalPosition>(
-                "/Drone" + std::to_string(drone_id_) + "/fmu/out/vehicle_local_position",
-                qos_profile_sub, std::bind(&StateSharingNode::px4_local_pos_callback, this, std::placeholders::_1), subscriber_options);
-        }
-        else
+        if (autopilot == "ardupilot")
         {
             subscription_navsat_apm_ = this->create_subscription<sensor_msgs::msg::NavSatFix>(
                 "/mavros/global_position/global", 
@@ -77,29 +65,11 @@ private:
     rclcpp::CallbackGroup::SharedPtr callback_group_subscriber_;
 
     rclcpp::Publisher<state_sharing::msg::SharedState>::SharedPtr publisher_;
-    rclcpp::Subscription<px4_msgs::msg::VehicleGlobalPosition>::SharedPtr subscription_global_px4_;
-    rclcpp::Subscription<px4_msgs::msg::VehicleLocalPosition>::SharedPtr subscription_local_px4_;
     rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr subscription_navsat_apm_;
     rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr subscription_vel_apm_;
     rclcpp::Subscription<mavros_msgs::msg::VfrHud>::SharedPtr subscription_hud_apm_;
     rclcpp::TimerBase::SharedPtr timer_;
 
-    void px4_global_pos_callback(const px4_msgs::msg::VehicleGlobalPosition::SharedPtr msg)
-    {
-        std::lock_guard<std::mutex> lock(data_mutex_);
-        latest_state_.latitude_deg = msg->lat;
-        latest_state_.longitude_deg = msg->lon;
-        latest_state_.altitude_m = msg->alt; // This is AMSL altitude
-    }
-
-    void px4_local_pos_callback(const px4_msgs::msg::VehicleLocalPosition::SharedPtr msg)
-    {
-        std::lock_guard<std::mutex> lock(data_mutex_);
-        latest_state_.vx = msg->vx;
-        latest_state_.vy = msg->vy;
-        latest_state_.vz = msg->vz;
-        latest_state_.heading_deg = msg->heading * (180.0 / M_PI); // Convert radians to degrees
-    }
 
     void ardupilot_navsat_callback(const sensor_msgs::msg::NavSatFix::SharedPtr msg)
     {
