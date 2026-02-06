@@ -63,15 +63,26 @@ windows:
         - >
           <% if simulated_time %>
           sudo sed -i '0,/ros__parameters:/s/ros__parameters:/ros__parameters:\n    use_sim_time: true/' /opt/ros/humble/share/mavros/launch/apm_config.yaml && 
-          ros2 launch mavros apm.launch fcu_url:=udp://<%= "#{sim_subnet}.90.#{drone_id}" %>:8888@8888 tgt_system:=<%= drone_id %>
+          ros2 launch mavros apm.launch fcu_url:=udp://<%= "#{sim_subnet}.90.#{drone_id}" %>:14571@14571 tgt_system:=<%= drone_id %>
           <% else %>
           python3 /aas/aircraft_resources/patches/request_mavlink_streams.py --device '/dev/ttyTHS1' --baudrate 921600 --target-system <%= drone_id %> --target-component 1 --rate 4 &&
           ros2 launch mavros apm.launch fcu_url:=/dev/ttyTHS1:921600 tgt_system:=<%= drone_id %>
           <% end %>
-  <% end %>
         - >
           erb /aas/aircraft_resources/comms/zenoh_config_air.json5.erb > /aas/aircraft_resources/comms/zenoh_config_air.json5 &&
           zenoh-bridge-ros2dds -e tcp/<%= gnd_container ? "#{air_subnet}.90.#{ground_id}" : "#{sim_subnet}.90.#{sim_id}" %>:7447 -c /aas/aircraft_resources/comms/zenoh_config_air.json5
+
+  - mavlink_router:
+      layout: even-horizontal
+      panes:
+        - >
+          <% if simulated_time %>
+          mavlink-routerd -t 0 -e <%= "#{sim_subnet}.90.#{drone_id}" %>:14572 -e <%= "#{sim_subnet}.90.#{drone_id}" %>:14571 <%= "#{sim_subnet}.90.#{drone_id}" %>:14570
+          <% else %>
+          mavlink-routerd -t 0 -e <%= "#{sim_subnet}.90.#{drone_id}" %>:14572 -e <%= "#{sim_subnet}.90.#{drone_id}" %>:14571 /dev/ttyACM0:57600
+          <% end %>
+        
+  <% end %>
 
   <% if record_rosbag %>
   - logging:
