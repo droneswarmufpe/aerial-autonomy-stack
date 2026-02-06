@@ -173,10 +173,33 @@ WORKDIR /aas/github_ws
 # Explicitly use bash, not sh, to source and build the workspace
 RUN bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release"
 
+# MAVProxy 
+RUN apt update \
+    && apt install -y --no-install-recommends \
+        python3-dev python3-opencv python3-wxgtk4.0 python3-pip python3-matplotlib python3-lxml python3-pygame \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
+RUN pip3 install --no-cache-dir --upgrade pip \
+    && pip3 install --no-cache-dir --resume-retries 5 "numpy<2" future mavproxy 
+    
 # Add pymavlink for debugging and testing
 RUN pip3 install --no-cache-dir --upgrade pip \
     && pip3 install --no-cache-dir --resume-retries 5 pymavlink pyserial
 # Check with $ python3 -c "import pymavlink; print(pymavlink.__version__)"
+
+# Install mavlink-router 
+# TODO: Check arm64 compatibility
+RUN apt update \
+    && apt install -y --no-install-recommends \
+        git meson ninja-build pkg-config gcc g++ systemd \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
+COPY /github_clones/mavlink-router /aas/github_apps/mavlink-router
+WORKDIR /aas/github_apps/mavlink-router
+RUN meson setup build . --buildtype=release \
+    && ninja -C build \
+    && ninja -C build install
+# Check with $ mavlink-routerd --version
 
 # Install Zenoh
 RUN echo "deb [trusted=yes] https://download.eclipse.org/zenoh/debian-repo/ /" | sudo tee -a /etc/apt/sources.list > /dev/null

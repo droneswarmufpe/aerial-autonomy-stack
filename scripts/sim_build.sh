@@ -28,6 +28,7 @@ REPOS=( # Format: "URL;BRANCH;LOCAL_DIR_NAME"
   "https://github.com/PX4/flight_review.git;main;flight_review"
   # Ground image
   "https://github.com/mavlink/c_library_v2;master;c_library_v2"
+  "https://github.com/mavlink-router/mavlink-router;master;mavlink-router"
   # Aircraft image
   # Add repos for PDS-Swarm
   # "https://github.com/microsoft/onnxruntime.git;v1.22.1;onnxruntime" # Only for the deployment build
