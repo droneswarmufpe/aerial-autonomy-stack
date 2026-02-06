@@ -3,14 +3,15 @@
 # Exit immediately if a command exits with a non-zero status
 set -e
 
-if [ "$#" -ne 2 ]; then
-  echo "Usage: $0 <num_quads> <num_vtols>"
-  echo "Example: ./_create_ardupilot_models.sh 2 1"
+if [ "$#" -ne 3 ]; then
+  echo "Usage: $0 <num_quads> <num_vtols> <camera_pitch>"
+  echo "Example: ./_create_ardupilot_models.sh 2 1 -1.5707"
   exit 1
 fi
 
 NUM_QUADS=$1
 NUM_VTOLS=$2
+CAMERA_PITCH=$3
 
 BASE_PORT=9002
 
@@ -45,6 +46,8 @@ create_model() {
 
     sed -i "s/<model name=\"${BASE_MODEL_NAME}\">/<model name=\"${NEW_MODEL_NAME}\">/g" "${NEW_MODEL_DIR}/model.sdf"
     sed -i "s/<fdm_port_in>${BASE_PORT}<\/fdm_port_in>/<fdm_port_in>$(($BASE_PORT + ($DRONE_ID - 1) * 10))<\/fdm_port_in>/g" "${NEW_MODEL_DIR}/model.sdf"
+    # Set camera pitch
+    sed -i "s|<!--CAMERA_PITCH_PLACEHOLDER-->|${CAMERA_PITCH}|g" "${NEW_MODEL_DIR}/model.sdf"
 
     DEST_PARAMS="${NEW_MODEL_DIR}/ardupilot-4.6.params"
     cp "${BASE_MODEL_PATH}/ardupilot-4.6.params" "$DEST_PARAMS"
