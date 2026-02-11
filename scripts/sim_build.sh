@@ -31,6 +31,12 @@ REPOS=( # Format: "URL;BRANCH;LOCAL_DIR_NAME"
   "https://github.com/mavlink-router/mavlink-router;master;mavlink-router"
   # Aircraft image
   # Add repos for PDS-Swarm
+  # FIX: (mateus) clonei manualmente pq por aqui reclamava de incorrect access rights
+  #"git@github.com:droneswarmufpe/Chorus.git;main;Chorus"
+  #"git@github.com:droneswarmufpe/MAVKit.git;main;MAVKit"
+  #"https://github.com/droneswarmufpe/RoboChart2Python-PDS;main;RoboChart2Python-PDS"
+  #"git@github.com:droneswarmufpe/Sistemas.git;main;Sistemas"
+  # TODO: add SARP cloning here
   # "https://github.com/microsoft/onnxruntime.git;v1.22.1;onnxruntime" # Only for the deployment build
   "https://github.com/PRBonn/kiss-icp.git;main;kiss-icp"
 )
