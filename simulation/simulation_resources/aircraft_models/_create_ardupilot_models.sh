@@ -44,6 +44,7 @@ create_model() {
     cp "$BASE_MODEL_PATH"/model.config "$NEW_MODEL_DIR"/
 
     sed -i "s/<model name=\"${BASE_MODEL_NAME}\">/<model name=\"${NEW_MODEL_NAME}\">/g" "${NEW_MODEL_DIR}/model.sdf"
+    sed -i "s|<topic>/${BASE_MODEL_NAME}|<topic>/${NEW_MODEL_NAME}|g" "${NEW_MODEL_DIR}/model.sdf"
     sed -i "s/<fdm_port_in>${BASE_PORT}<\/fdm_port_in>/<fdm_port_in>$(($BASE_PORT + ($DRONE_ID - 1) * 10))<\/fdm_port_in>/g" "${NEW_MODEL_DIR}/model.sdf"
 
     DEST_PARAMS="${NEW_MODEL_DIR}/ardupilot-4.6.params"
