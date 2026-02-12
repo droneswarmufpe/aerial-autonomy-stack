@@ -15,7 +15,6 @@ windows:
       layout: even-horizontal
       panes:
         - clear && echo "So nice to have you with us, this is the ground container."
-        - ros2 run ground_system ground_system --ros-args -p num_drones:=<%= num_quads + num_vtols %> -p base_port:=14540 -p rate:=1.0 <%= simulated_time ? ' -p use_sim_time:=True' : '' %>
 
   - zenoh_and_qgc:
       layout: even-horizontal

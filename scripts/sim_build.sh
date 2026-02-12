@@ -23,15 +23,20 @@ mkdir -p "$CLONE_DIR"
 
 REPOS=( # Format: "URL;BRANCH;LOCAL_DIR_NAME"
   # Simulation image
-  "https://github.com/PX4/PX4-Autopilot.git;v1.16.0;PX4-Autopilot"
   "https://github.com/ArduPilot/ardupilot.git;Copter-4.6.2;ardupilot"
   "https://github.com/ArduPilot/ardupilot_gazebo.git;main;ardupilot_gazebo"
   "https://github.com/PX4/flight_review.git;main;flight_review"
   # Ground image
   "https://github.com/mavlink/c_library_v2;master;c_library_v2"
+  "https://github.com/mavlink-router/mavlink-router;master;mavlink-router"
   # Aircraft image
-  "https://github.com/PX4/px4_msgs.git;release/1.16;px4_msgs"
-  "https://github.com/eProsima/Micro-XRCE-DDS-Agent.git;master;Micro-XRCE-DDS-Agent"
+  # Add repos for PDS-Swarm
+  # FIX: (mateus) clonei manualmente pq por aqui reclamava de incorrect access rights
+  #"git@github.com:droneswarmufpe/Chorus.git;main;Chorus"
+  #"git@github.com:droneswarmufpe/MAVKit.git;main;MAVKit"
+  #"https://github.com/droneswarmufpe/RoboChart2Python-PDS;main;RoboChart2Python-PDS"
+  #"git@github.com:droneswarmufpe/Sistemas.git;main;Sistemas"
+  # TODO: add SARP cloning here
   # "https://github.com/microsoft/onnxruntime.git;v1.22.1;onnxruntime" # Only for the deployment build
   "https://github.com/PRBonn/kiss-icp.git;main;kiss-icp"
 )

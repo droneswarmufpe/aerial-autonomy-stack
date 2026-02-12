@@ -33,9 +33,9 @@ class ZMQBridge : public rclcpp::Node {
 public:
     ZMQBridge() : Node("zmq_bridge_node"), context_(1), socket_(context_, zmq::socket_type::rep) {
 
-        this->declare_parameter("step_size", 250); // How many multiples of the timestep in the world SDF (250Hz/4ms for PX4, 500Hz/2ms for ArduPilot)
+        this->declare_parameter("step_size", 500); // How many multiples of the timestep in the world SDF (250Hz/4ms for PX4, 500Hz/2ms for ArduPilot)
         step_size_ = this->get_parameter("step_size").as_int();
-        this->declare_parameter("physics_dt", 0.004); // Size of the physics timestep in seconds (4ms for PX4, 2ms for ArduPilot)
+        this->declare_parameter("physics_dt", 0.002); // Size of the physics timestep in seconds (4ms for PX4, 2ms for ArduPilot)
         physics_dt_ = this->get_parameter("physics_dt").as_double();
         RCLCPP_INFO(this->get_logger(), "Config: step size = %d, physics dt = %.4f", step_size_, physics_dt_);
         this->declare_parameter("init_duration", 80.0); // Duration to run unpaused during reset (seconds)

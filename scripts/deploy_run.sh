@@ -4,7 +4,7 @@
 set -e
 
 # Set up the aircraft
-AUTOPILOT="${AUTOPILOT:-px4}" # Options: px4 (default), ardupilot
+AUTOPILOT="${AUTOPILOT:-ardupilot}" # Options: ardupilot, px4 (removed)
 HEADLESS="${HEADLESS:-true}" # Options: true (default), false 
 CAMERA="${CAMERA:-true}" # Options: true (default), false
 LIDAR="${LIDAR:-true}" # Options: true (default), false

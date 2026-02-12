@@ -479,7 +479,7 @@
       <include>
         <uri>model://sensor_camera</uri>
         <name>simple_camera</name>
-        <pose>.175 0 -0.075 0 0 0</pose>
+        <pose>.175 0 -0.075 0 <!--CAMERA_PITCH_PLACEHOLDER--> 0</pose>
       </include>
       <joint name="CameraJoint" type="fixed">
         <parent>base_link</parent>

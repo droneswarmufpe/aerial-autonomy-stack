@@ -10,7 +10,6 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>rclcpp</depend>
-  <depend>px4_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
   

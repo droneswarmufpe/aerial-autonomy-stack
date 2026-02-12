@@ -18,7 +18,7 @@ class AASEnv(gym.Env):
     def __init__(self,
             instance: int=0,
             gym_freq_hz: int=50,
-            autopilot: str="px4",
+            autopilot: str="ardupilot",
             camera: bool=True,
             lidar: bool=True,
             num_quads: int=1,
