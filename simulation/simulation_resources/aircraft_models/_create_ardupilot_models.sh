@@ -47,6 +47,12 @@ create_model() {
     sed -i "s|<topic>/${BASE_MODEL_NAME}|<topic>/${NEW_MODEL_NAME}|g" "${NEW_MODEL_DIR}/model.sdf"
     sed -i "s/<fdm_port_in>${BASE_PORT}<\/fdm_port_in>/<fdm_port_in>$(($BASE_PORT + ($DRONE_ID - 1) * 10))<\/fdm_port_in>/g" "${NEW_MODEL_DIR}/model.sdf"
 
+    ### Payload plugin adaptations
+    # Update topic tags: <topic>/base_model_name/... -> <topic>/new_model_name/...
+    sed -i "s|<topic>/${BASE_MODEL_NAME}/|<topic>/${NEW_MODEL_NAME}/|g" "${NEW_MODEL_DIR}/model.sdf"
+    sed -i "s|topic=\"/${BASE_MODEL_NAME}/|topic=\"/${NEW_MODEL_NAME}/|g" "${NEW_MODEL_DIR}/model.sdf"
+    sed -i "s|<cmd_topic>/${BASE_MODEL_NAME}/|<cmd_topic>/${NEW_MODEL_NAME}/|g" "${NEW_MODEL_DIR}/model.sdf"
+    
     DEST_PARAMS="${NEW_MODEL_DIR}/ardupilot-4.6.params"
     cp "${BASE_MODEL_PATH}/ardupilot-4.6.params" "$DEST_PARAMS"
 }

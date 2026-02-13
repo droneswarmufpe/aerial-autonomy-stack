@@ -24,7 +24,7 @@
           </particle_emitter>
 
           <inertial>
-            <mass>0.6</mass>
+            <mass>0.2</mass>
             <inertia>
               <ixx>0.017</ixx><ixy>0</ixy><ixz>0</ixz>
               <iyy>0.017</iyy><iyz>0</iyz><izz>0.009</izz>
@@ -41,7 +41,7 @@
         
       </model>
 
-      <!-- gz topic -t /model/iris_with_ardupilot_{N}/drop -m gz.msgs.Empty -p "" -->
+      <!-- gz topic -t /iris_with_ardupilot_{N}/drop -m gz.msgs.Empty -p "" -->
       <plugin
         filename="gz-sim-detachable-joint-system"
         name="gz::sim::systems::DetachableJoint">
@@ -803,6 +803,26 @@
         <controlVelocitySlowdownSim>1</controlVelocitySlowdownSim>
       </control>
 
+      <!-- Servo channel for payload drop -->
+      <control channel="8">
+        <type>COMMAND</type>
+        <jointName>iris::CameraJoint</jointName>
+        <cmd_topic>/iris_with_ardupilot/gripper/cmd</cmd_topic>
+        <multiplier>2000</multiplier>
+        <servo_min>1000</servo_min>
+        <servo_max>2000</servo_max>
+        <offset>0</offset>
+      </control>
+
+    </plugin>
+
+    <!-- Triggered publisher: converts servo command to drop signal -->
+    <plugin filename="gz-sim-triggered-publisher-system"
+      name="gz::sim::systems::TriggeredPublisher">
+      <input type="gz.msgs.Double" topic="/iris_with_ardupilot/gripper/cmd">
+        <match field="data">2000</match>
+      </input>
+      <output type="gz.msgs.Empty" topic="/iris_with_ardupilot/drop"/>
     </plugin>
 
   </model>
