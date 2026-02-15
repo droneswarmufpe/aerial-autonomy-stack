@@ -1,8 +1,0 @@
-float64 east
-float64 north
-float64 altitude
-float64 radius
----
-bool success
----
-string message

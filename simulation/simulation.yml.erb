@@ -1,8 +1,9 @@
 <% 
-  autopilot = ENV.fetch('AUTOPILOT', 'px4')
+  autopilot = ENV.fetch('AUTOPILOT', 'ardupilot')
   headless = ENV.fetch('HEADLESS', 'false') == 'true'
   camera = ENV.fetch('CAMERA', 'true') == 'true'
   lidar = ENV.fetch('LIDAR', 'true') == 'true'
+  camera_pitch = ENV.fetch('CAMERA_PITCH', '1.5707').to_f 
 
   sim_subnet = ENV.fetch('SIM_SUBNET', '10.42')
   ground_id = ENV.fetch('GROUND_ID', '101')
@@ -57,7 +58,7 @@ windows:
           <% end %>
           sed -i 's|<real_time_factor>1.0</real_time_factor>|<%= rtf_string %>|' /aas/simulation_resources/simulation_worlds/<%= world %>.sdf &&
           <% if autopilot == 'ardupilot' %>
-          /aas/simulation_resources/aircraft_models/_create_ardupilot_models.sh <%= num_quads %> <%= num_vtols %>  &&
+          /aas/simulation_resources/aircraft_models/_create_ardupilot_models.sh <%= num_quads %> <%= num_vtols %> <%= camera_pitch %> &&
           /aas/simulation_resources/simulation_worlds/_create_ardupilot_world.sh <%= num_quads %> <%= num_vtols %> <%= world %>.sdf &&
           GZ_SIM_SYSTEM_PLUGIN_PATH=/aas/github_apps/ardupilot_gazebo/build:$GZ_SIM_SYSTEM_PLUGIN_PATH 
           <% end %>
@@ -103,9 +104,9 @@ windows:
           --speedup <%= speedup %>
           --add-param-file=/aas/simulation_resources/aircraft_models/<%= model_name %>/ardupilot-4.6.params
           -l $(python3 /aas/simulation_resources/patches/extract_spherical_coords.py /aas/simulation_resources/simulation_worlds/<%= world %>.sdf)
-          --out=udp:<%= "#{sim_subnet}.90.#{drone_id}" %>:8888
+          --out=udp:<%= "#{sim_subnet}.90.#{drone_id}" %>:14570 
           <% if gnd_container %>
-          --out=udp:<%= "#{sim_subnet}.90.#{ground_id}" %>:<%= 14550 + sitl_instance %> --out=udp:<%= "#{sim_subnet}.90.#{ground_id}" %>:<%= 14540 + sitl_instance %>
+          --out=udp:<%= "#{sim_subnet}.90.#{ground_id}" %>:<%= 14550 + sitl_instance %>
           <% else %>
           --out=udp:127.0.0.1:<%= 14550 + sitl_instance %>
           <% end %>

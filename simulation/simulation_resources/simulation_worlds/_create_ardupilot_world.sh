@@ -49,8 +49,7 @@ DRONE_ID=0
 # Loop for quads
 for i in $(seq 1 $NUM_QUADS); do
   DRONE_ID=$((DRONE_ID + 1))
-  MODEL_XML="    <include>\n      <uri>model://iris_with_ardupilot_${DRONE_ID}</uri>\n      <pose degrees=\"true\">$(( (i-1) * 2 )) $(( (i-1) * 2 )) 0.75 0 0 0</pose>\n    </include>\n"
-  ALL_MODELS_XML+=$MODEL_XML
+  MODEL_XML="    <include>\n      <uri>model://iris_with_ardupilot_${DRONE_ID}</uri>\n      <pose degrees=\"true\">$(( (i-1) * 2 )) $(( -1 + (i-1) * 2 )) 0.75 0 0 0</pose>\n    </include>\n"  ALL_MODELS_XML+=$MODEL_XML
 done
 
 # Loop for VTOLs

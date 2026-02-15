@@ -6,7 +6,7 @@ from rclpy.node import Node
 from rclpy.action import ActionClient
 from rclpy.duration import Duration
 
-from autopilot_interface_msgs.action import Takeoff, Offboard
+# from autopilot_interface_msgs.action import Takeoff, Offboard
 
 
 class GymnasiumSetup(Node):
@@ -14,8 +14,8 @@ class GymnasiumSetup(Node):
         super().__init__('gymnasium_setup_node')
         self.drone_id = drone_id
         
-        self.takeoff_client = ActionClient(self, Takeoff, f'/Drone{drone_id}/takeoff_action')
-        self.offboard_client = ActionClient(self, Offboard, f'/Drone{drone_id}/offboard_action')
+        # self.takeoff_client = ActionClient(self, Takeoff, f'/Drone{drone_id}/takeoff_action')
+        # self.offboard_client = ActionClient(self, Offboard, f'/Drone{drone_id}/offboard_action')
 
     def wait_for_server(self, client, name):
         self.get_logger().info(f'Waiting for {name} action server...')
@@ -24,49 +24,49 @@ class GymnasiumSetup(Node):
         self.get_logger().info(f'{name} server is ready.')
 
     def send_takeoff(self):
-        self.wait_for_server(self.takeoff_client, 'Takeoff')
+        # self.wait_for_server(self.takeoff_client, 'Takeoff')
         
-        goal_msg = Takeoff.Goal()
-        goal_msg.takeoff_altitude = 40.0
-        goal_msg.vtol_transition_heading = 330.0
-        goal_msg.vtol_loiter_nord = 100.0
-        goal_msg.vtol_loiter_east = 100.0
-        goal_msg.vtol_loiter_alt = 60.0
+        # goal_msg = Takeoff.Goal()
+        # goal_msg.takeoff_altitude = 40.0
+        # goal_msg.vtol_transition_heading = 330.0
+        # goal_msg.vtol_loiter_nord = 100.0
+        # goal_msg.vtol_loiter_east = 100.0
+        # goal_msg.vtol_loiter_alt = 60.0
 
         self.get_logger().info('Sending Takeoff Goal...')
         
-        send_goal_future = self.takeoff_client.send_goal_async(goal_msg)
-        rclpy.spin_until_future_complete(self, send_goal_future)
-        goal_handle = send_goal_future.result()
+        # send_goal_future = self.takeoff_client.send_goal_async(goal_msg)
+        # rclpy.spin_until_future_complete(self, send_goal_future)
+        # goal_handle = send_goal_future.result()
 
-        if not goal_handle.accepted:
-            self.get_logger().error('Takeoff Goal Rejected! Retrying...')
-            return False
+        # if not goal_handle.accepted:
+        #     self.get_logger().error('Takeoff Goal Rejected! Retrying...')
+        #     return False
 
-        self.get_logger().info('Takeoff Goal Accepted. Waiting for result...')
+        # self.get_logger().info('Takeoff Goal Accepted. Waiting for result...')
         
-        get_result_future = goal_handle.get_result_async()
-        rclpy.spin_until_future_complete(self, get_result_future)
+        # get_result_future = goal_handle.get_result_async()
+        # rclpy.spin_until_future_complete(self, get_result_future)
         
         return True
 
     def send_offboard(self):
-        self.wait_for_server(self.offboard_client, 'Offboard')
+        # self.wait_for_server(self.offboard_client, 'Offboard')
 
-        goal_msg = Offboard.Goal()
-        goal_msg.offboard_setpoint_type = 1 # 1 is PX4 rates reference
-        goal_msg.max_duration_sec = 1200.0 # 20' of offboard mode
+        # goal_msg = Offboard.Goal()
+        # goal_msg.offboard_setpoint_type = 1 # 1 is PX4 rates reference
+        # goal_msg.max_duration_sec = 1200.0 # 20' of offboard mode
 
         self.get_logger().info('Sending Offboard Goal...')
-        send_goal_future = self.offboard_client.send_goal_async(goal_msg)
-        rclpy.spin_until_future_complete(self, send_goal_future)
-        goal_handle = send_goal_future.result()
+        # send_goal_future = self.offboard_client.send_goal_async(goal_msg)
+        # rclpy.spin_until_future_complete(self, send_goal_future)
+        # goal_handle = send_goal_future.result()
 
-        if not goal_handle.accepted:
-            self.get_logger().error('Offboard Goal Rejected.')
-            return False
+        # if not goal_handle.accepted:
+        #     self.get_logger().error('Offboard Goal Rejected.')
+        #     return False
         
-        self.get_logger().info('Offboard Mode Active.')
+        # self.get_logger().info('Offboard Mode Active.')
         return True
 
 def spin_wait(node, seconds):

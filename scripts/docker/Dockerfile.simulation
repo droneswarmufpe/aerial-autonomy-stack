@@ -101,18 +101,18 @@ RUN apt update \
 ################################################################################
 # Stage 4 - 13GB ###############################################################
 ################################################################################
-FROM ros2-qgc-zenoh-gz-image AS ros2-qgc-zenoh-gz-px4-image
+# FROM ros2-qgc-zenoh-gz-image AS ros2-qgc-zenoh-gz-px4-image
 
-# PX4 SITL (NOTE: install PX4 tools first to avoid conflicts with ArduPilot, build later to customize)
-# Based on https://docs.px4.io/main/en/dev_setup/dev_env_linux_ubuntu.html
-COPY /github_clones/PX4-Autopilot /aas/github_apps/PX4-Autopilot
-WORKDIR /aas/github_apps/PX4-Autopilot
-RUN bash ./Tools/setup/ubuntu.sh --no-sim-tools
+# # PX4 SITL (NOTE: install PX4 tools first to avoid conflicts with ArduPilot, build later to customize)
+# # Based on https://docs.px4.io/main/en/dev_setup/dev_env_linux_ubuntu.html
+# COPY /github_clones/PX4-Autopilot /aas/github_apps/PX4-Autopilot
+# WORKDIR /aas/github_apps/PX4-Autopilot
+# RUN bash ./Tools/setup/ubuntu.sh --no-sim-tools
 
 ################################################################################
 # Stage 5 - 18GB ###############################################################
 ################################################################################
-FROM ros2-qgc-zenoh-gz-px4-image AS ros2-qgc-zenoh-gz-px4-ardupilot-image
+FROM ros2-qgc-zenoh-gz-image AS ros2-qgc-zenoh-gz-ardupilot-image
 
 # ArduPilot SITL (temporarily as arduuser, then re chown to root)
 # Based on https://ardupilot.org/dev/docs/building-setup-linux.html#building-setup-linux
@@ -137,8 +137,14 @@ RUN apt update \
         libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
+# MAVProxy 
+RUN apt update \
+    && apt install -y --no-install-recommends \
+        python3-dev python3-opencv python3-wxgtk4.0 python3-pip python3-matplotlib python3-lxml python3-pygame \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
 RUN pip3 install --no-cache-dir --upgrade pip \
-    && pip3 install --no-cache-dir --resume-retries 5 "numpy<2" mavproxy
+    && pip3 install --no-cache-dir --resume-retries 5 "numpy<2" future mavproxy 
 ENV GZ_VERSION=harmonic
 RUN mkdir build && cd build && \
     cmake .. -DCMAKE_BUILD_TYPE=Release && \
@@ -159,33 +165,33 @@ RUN find /temp_folder -type f -regex '.*/[0-9]+_.*' -exec cp {} /airframes/ \;
 ################################################################################
 # Stage 6 - 19GB ###############################################################
 ################################################################################
-FROM ros2-qgc-zenoh-gz-px4-ardupilot-image AS ros2-qgc-zenoh-gz-px4custom-ardupilot-image
+# FROM ros2-qgc-zenoh-gz-ardupilot-image AS ros2-qgc-zenoh-gz-px4custom-ardupilot-image
 
-# Apply PX4 patch (DDS Agent on custom IP, ...) created with $ git diff > ../px4-v1.16.0.patch
-COPY simulation/simulation_resources/patches/px4-v1.16.0.patch /aas/github_apps/px4-v1.16.0.patch
-WORKDIR /aas/github_apps/PX4-Autopilot
-RUN git apply ../px4-v1.16.0.patch
+# # Apply PX4 patch (DDS Agent on custom IP, ...) created with $ git diff > ../px4-v1.16.0.patch
+# COPY simulation/simulation_resources/patches/px4-v1.16.0.patch /aas/github_apps/px4-v1.16.0.patch
+# WORKDIR /aas/github_apps/PX4-Autopilot
+# RUN git apply ../px4-v1.16.0.patch
 
-# Replace dds_topics.yaml with custom topics
-COPY simulation/simulation_resources/patches/dds_topics.yaml /aas/github_apps/PX4-Autopilot/src/modules/uxrce_dds_client/dds_topics.yaml
+# # Replace dds_topics.yaml with custom topics
+# COPY simulation/simulation_resources/patches/dds_topics.yaml /aas/github_apps/PX4-Autopilot/src/modules/uxrce_dds_client/dds_topics.yaml
 
-# Add PX4 Airframes ROMFS
-COPY --from=airframe_filter_stage /airframes/ /aas/github_apps/PX4-Autopilot/ROMFS/px4fmu_common/init.d-posix/airframes/
-WORKDIR /aas/github_apps/PX4-Autopilot/ROMFS/px4fmu_common/init.d-posix/airframes
-RUN rm -f CMakeLists.txt && \
-    echo "px4_add_romfs_files(" >> CMakeLists.txt && \
-    find ./ -type f -printf '%f\n' | sed 's/^/  /' >> CMakeLists.txt && \
-    echo ")" >> CMakeLists.txt
+# # Add PX4 Airframes ROMFS
+# COPY --from=airframe_filter_stage /airframes/ /aas/github_apps/PX4-Autopilot/ROMFS/px4fmu_common/init.d-posix/airframes/
+# WORKDIR /aas/github_apps/PX4-Autopilot/ROMFS/px4fmu_common/init.d-posix/airframes
+# RUN rm -f CMakeLists.txt && \
+#     echo "px4_add_romfs_files(" >> CMakeLists.txt && \
+#     find ./ -type f -printf '%f\n' | sed 's/^/  /' >> CMakeLists.txt && \
+#     echo ")" >> CMakeLists.txt
 
-# Build PX4 SITL
-WORKDIR /aas/github_apps/PX4-Autopilot
-RUN make px4_sitl
-# Run with $ /aas/github_apps/PX4-Autopilot/build/px4_sitl_default/bin/px4
+# # Build PX4 SITL
+# WORKDIR /aas/github_apps/PX4-Autopilot
+# RUN make px4_sitl
+# # Run with $ /aas/github_apps/PX4-Autopilot/build/px4_sitl_default/bin/px4
 
 ################################################################################
 # Stage 7 - 20GB ###############################################################
 ################################################################################
-FROM ros2-qgc-zenoh-gz-px4custom-ardupilot-image AS ros2-qgc-zenoh-gz-px4custom-ardupilot-gst-pymavlink-image
+FROM ros2-qgc-zenoh-gz-ardupilot-image AS ros2-qgc-zenoh-gz-ardupilot-gst-pymavlink-image
 
 # Add GStreamer packages to stream the cameras to the aircraft containers
 RUN apt update \
@@ -204,7 +210,7 @@ RUN pip3 install --no-cache-dir --upgrade pip \
 ################################################################################
 # Stage 8 - 21+GB ##############################################################
 ################################################################################
-FROM ros2-qgc-zenoh-gz-px4custom-ardupilot-gst-pymavlink-image AS simulation-dev-image
+FROM ros2-qgc-zenoh-gz-ardupilot-gst-pymavlink-image AS simulation-dev-image
 
 # Install wmctrl and xrandr to resize Gazebo window
 RUN apt update \
@@ -213,16 +219,16 @@ RUN apt update \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install https://github.com/PX4/flight_review
-RUN apt-get update && \
-    apt-get install -y sqlite3 libfftw3-bin libfftw3-dev \
-    && apt clean \
-    && rm -rf /var/lib/apt/lists/*
-COPY /github_clones/flight_review /aas/github_apps/flight_review
-WORKDIR /aas/github_apps/flight_review/app
-RUN python3 -m venv /px4fr-env
-RUN /px4fr-env/bin/pip3 install --no-cache-dir --upgrade pip && \
-    /px4fr-env/bin/pip3 install --no-cache-dir --resume-retries 5 -r requirements.txt
+# # Install https://github.com/PX4/flight_review
+# RUN apt-get update && \
+#     apt-get install -y sqlite3 libfftw3-bin libfftw3-dev \
+#     && apt clean \
+#     && rm -rf /var/lib/apt/lists/*
+# COPY /github_clones/flight_review /aas/github_apps/flight_review
+# WORKDIR /aas/github_apps/flight_review/app
+# RUN python3 -m venv /px4fr-env
+# RUN /px4fr-env/bin/pip3 install --no-cache-dir --upgrade pip && \
+#     /px4fr-env/bin/pip3 install --no-cache-dir --resume-retries 5 -r requirements.txt
 
 # Install ZeroMQ
 RUN apt-get update && \
