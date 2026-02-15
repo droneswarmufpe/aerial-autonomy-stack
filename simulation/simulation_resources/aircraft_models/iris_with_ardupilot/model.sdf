@@ -8,21 +8,6 @@
       <model name="B1">
         <pose>-0.140 0.0 -0.15 0 0 0</pose>
         <link name='body'>
-          <particle_emitter name="emitter" type="box">
-            <emitting>true</emitting>
-            <size>3 3 0</size>
-            <particle_size>0.005 0.005 0.005</particle_size>
-            <lifetime>4</lifetime>
-            <min_velocity>0.1</min_velocity>
-            <max_velocity>0.2</max_velocity>
-            <scale_rate>0.1</scale_rate>
-            <rate>15</rate>
-            <material>
-              <diffuse>1.0 0.0 0.0</diffuse>
-              <specular>1.0 0.0 0.0</specular>
-            </material>
-          </particle_emitter>
-
           <inertial>
             <mass>0.2</mass>
             <inertia>
@@ -38,6 +23,17 @@
             <geometry><box><size>0.03 0.03 0.05</size></box></geometry>
           </collision>
         </link>
+
+        <include>
+          <uri>model://fog_generator</uri>
+          <name>fog_emitter</name>
+          <pose>0 0 0 0 0 0</pose>
+        </include>
+
+        <joint name="fog_joint" type="fixed">
+            <parent>body</parent>
+            <child>fog_emitter::fog_link</child>
+        </joint>
         
       </model>
 
@@ -546,6 +542,10 @@
     </model>
 
     <!-- plugins -->
+    <plugin
+      filename="gz-sim-particle-emitter-system"
+      name="gz::sim::systems::ParticleEmitter">
+    </plugin>
     <plugin filename="gz-sim-joint-state-publisher-system"
       name="gz::sim::systems::JointStatePublisher">
     </plugin>
@@ -825,5 +825,16 @@
       <output type="gz.msgs.Empty" topic="/iris_with_ardupilot/drop"/>
     </plugin>
 
+    <!-- Triggered publisher: Smoke ON (using correct ParticleEmitter message types) -->
+    <plugin filename="gz-sim-triggered-publisher-system"
+      name="gz::sim::systems::TriggeredPublisher">
+      <input type="gz.msgs.Double" topic="/iris_with_ardupilot/gripper/cmd">
+        <match field="data">2000</match>
+      </input>
+      <output type="gz.msgs.ParticleEmitter" topic="/model/iris_with_ardupilot/model/iris/model/B1/model/fog_emitter/link/fog_link/particle_emitter/emitter/cmd">
+        emitting: {data: true}
+      </output>
+    </plugin>
+    
   </model>
 </sdf>

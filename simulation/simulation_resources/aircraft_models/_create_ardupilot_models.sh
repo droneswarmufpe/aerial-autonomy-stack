@@ -53,6 +53,10 @@ create_model() {
     sed -i "s|topic=\"/${BASE_MODEL_NAME}/|topic=\"/${NEW_MODEL_NAME}/|g" "${NEW_MODEL_DIR}/model.sdf"
     sed -i "s|<cmd_topic>/${BASE_MODEL_NAME}/|<cmd_topic>/${NEW_MODEL_NAME}/|g" "${NEW_MODEL_DIR}/model.sdf"
     
+    # Specific replacement for the particle emitter topic path to support multiple drones
+    # Matches /model/iris_with_ardupilot/model/... -> /model/iris_with_ardupilot_N/model/...
+    sed -i "s|/model/${BASE_MODEL_NAME}/model/|/model/${NEW_MODEL_NAME}/model/|g" "${NEW_MODEL_DIR}/model.sdf"
+
     DEST_PARAMS="${NEW_MODEL_DIR}/ardupilot-4.6.params"
     cp "${BASE_MODEL_PATH}/ardupilot-4.6.params" "$DEST_PARAMS"
 }
