@@ -1,4 +1,3 @@
-
 <?xml version="1.0" ?>
 <sdf version="1.6">
   <model name="fog_generator">
@@ -21,9 +20,9 @@
         <emitting>false</emitting>
         <size>5 5 0</size>
         <particle_size>1 1 1</particle_size>
-        <lifetime>5</lifetime>
+        <lifetime>7</lifetime>
         <min_velocity>0.1</min_velocity>
-        <max_velocity>0.2</max_velocity>
+        <max_velocity>0.5</max_velocity>
         <scale_rate>0.5</scale_rate>
         <rate>5</rate>
         <material>
