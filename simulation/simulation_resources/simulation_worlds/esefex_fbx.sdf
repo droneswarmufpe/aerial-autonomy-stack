@@ -5,7 +5,7 @@
     <!-- Gazebo/PX4 pyhsics, it is overridden when using Ardupilot -->
     <physics type="ode">
       <max_step_size>0.004</max_step_size>
-      <real_time_factor>3</real_time_factor>
+      <real_time_factor>1.0</real_time_factor>
       <real_time_update_rate>250</real_time_update_rate>
     </physics>
     <plugin name="gz::sim::systems::Physics" filename="gz-sim-physics-system">
@@ -393,10 +393,10 @@
     </model>
 
     <include>
-      <uri>https://fuel.gazebosim.org/1.0/saiaravind19/models/helipad</uri>
-      <!-- <pose> 0 0 -1.56 0 0 0.26 </pose> -->
-      <!-- <pose> 50.0 -68.5 -1.48 0 0 0.26 </pose> -->
-      <pose> 0 0 -1.56 0 0 0.26 </pose>
+        <uri>model://ime-target</uri>
+        <name>ime-target_1</name>
+        <pose degrees="true"> 10 -20 0 90 0 0</pose>
+        <static>false</static>
     </include>
 
   </world>
