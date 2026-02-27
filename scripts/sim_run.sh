@@ -17,12 +17,12 @@ GROUND_ID="${GROUND_ID:-101}" # Last byte of the simulation container IP (defaul
 #
 NUM_QUADS="${NUM_QUADS:-2}" # Number of quadcopters (default = 1)
 NUM_VTOLS="${NUM_VTOLS:-0}" # Number of VTOLs (default = 0)
-WORLD="${WORLD:-apple_orchard}" # Options: impalpable_greyness (default), apple_orchard, shibuya_crossing, swiss_town
+WORLD="${WORLD:-esefex_fbx}" # Options: impalpable_greyness (default), apple_orchard, shibuya_crossing, swiss_town
 #
 DEV="${DEV:false}" # Options: true, false (default)
 HITL="${HITL:-false}" # Options: true, false (default)
 GND_CONTAINER="${GND_CONTAINER:-true}" # Options: true (default), false
-RTF="${RTF:-1.0}" # Real-time factor (default = 1.0), set to <=0.0 for as fast as possible execution
+RTF="${RTF:-3.0}" # Real-time factor (default = 1.0), set to <=0.0 for as fast as possible execution
 START_AS_PAUSED="${START_AS_PAUSED:-false}" # Options: true, false (default)
 INSTANCE="${INSTANCE:-0}" # Integer ID to make docker network/container names unique as well as offsetting the second byte of the subnets (default = 0)
 # Set unique subnets and container/network names based on INSTANCE

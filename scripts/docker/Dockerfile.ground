@@ -133,11 +133,13 @@ COPY ground/ground_resources/patches/QGroundControl.ini /home/qgcuser/.config/QG
 RUN echo "source /aas/ground_ws/install/setup.bash" >> /root/.bashrc
 # If needed (but already in .bashrc) $ source /opt/ros/humble/setup.bash && source /aas/ground_ws/install/setup.bash
 
+SHELL ["/bin/bash", "-c"]
+
 ## Infra de Software Install
 # Install Chorus
 COPY /github_clones/Chorus /infra_sw/Chorus
 WORKDIR /infra_sw/Chorus
-RUN pip install -e .
+RUN source /opt/ros/humble/setup.bash && pip install -e .
 
 # Install MAVKit
 COPY /github_clones/MAVKit /infra_sw/MAVKit

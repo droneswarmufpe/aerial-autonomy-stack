@@ -184,7 +184,7 @@ RUN pip3 install --no-cache-dir --upgrade pip \
     
 # Add pymavlink for debugging and testing
 RUN pip3 install --no-cache-dir --upgrade pip \
-    && pip3 install --no-cache-dir --resume-retries 5 pymavlink pyserial utm
+    && pip3 install --no-cache-dir --resume-retries 5 pymavlink pyserial utm pymap3d
 # Check with $ python3 -c "import pymavlink; print(pymavlink.__version__)"
 
 # Install mavlink-router 
@@ -252,11 +252,14 @@ RUN echo "source /aas/github_ws/install/setup.bash" >> /root/.bashrc
 RUN echo "source /aas/aircraft_ws/install/setup.bash" >> /root/.bashrc
 # If needed (but already in .bashrc) $ source /opt/ros/humble/setup.bash && source /aas/github_ws/install/setup.bash && source /aas/aircraft_ws/install/setup.bash
 
+SHELL ["/bin/bash", "-c"]
+
 ## Infra de Software Install
 # Install Chorus
 COPY /github_clones/Chorus /infra_sw/Chorus
 WORKDIR /infra_sw/Chorus
-RUN pip install -e .
+RUN source /opt/ros/humble/setup.bash && pip install -e .
+
 
 # Install MAVKit
 COPY /github_clones/MAVKit /infra_sw/MAVKit
