@@ -105,6 +105,7 @@ windows:
           --add-param-file=/aas/simulation_resources/aircraft_models/<%= model_name %>/ardupilot-4.6.params
           -l $(python3 /aas/simulation_resources/patches/extract_spherical_coords.py /aas/simulation_resources/simulation_worlds/<%= world %>.sdf)
           --out=udp:<%= "#{sim_subnet}.90.#{drone_id}" %>:14570 
+          --out=tcpin:0.0.0.0:<%= 5800 + sitl_instance %>
           <% if gnd_container %>
           --out=udp:<%= "#{sim_subnet}.90.#{ground_id}" %>:<%= 14550 + sitl_instance %>
           <% else %>

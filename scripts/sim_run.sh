@@ -118,7 +118,6 @@ PARENT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 
 # --volume ${PARENT_DIR}/simulation/simulation_resources/aircraft_models:/aas/simulation_resources/aircraft_models \
 # Launch the simulation container
-# não pecisa rebuildar quando mexe no script agr
 DOCKER_CMD="docker run -it --rm \
   --volume ${PARENT_DIR}/aircraft/aircraft_resources/Projeto-Enxame-Drones:/aas/aircraft_resources/Projeto-Enxame-Drones \
   --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
@@ -152,6 +151,7 @@ if [[ "$HITL" == "false" ]]; then
     sleep 1.0 # Limit resource usage
     # Launch the ground container
     DOCKER_CMD="docker run -it --rm \
+      --volume ${PARENT_DIR}/aircraft/aircraft_resources/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
       --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
       --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
       --env HEADLESS=$HEADLESS \

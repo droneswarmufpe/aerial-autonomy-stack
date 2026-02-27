@@ -277,6 +277,9 @@ RUN pip install libtmux
 # Install dearpygui
 RUN pip install dearpygui
 
+# Install pymap3d
+RUN pip install pymap3d
+
 # Install tmux
 RUN apt install tmux
 
