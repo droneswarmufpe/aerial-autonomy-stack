@@ -14,8 +14,7 @@ windows:
   - ground_system:
       layout: even-horizontal
       panes:
-        - clear && echo "So nice to have you with us, this is the ground container."
-
+        - clear && cd "../infra_sw/Sistemas/Software/Demonstração 05-03/GCS/" && python3 launch.py __id:int 0 DroneFPV_1_out_ip__:string "10.22.90.2" DroneDecoy_1_out_ip__:string 10.22.90.3 DroneDecoy_2_out_ip__:string 10.22.90.4 DroneDecoy_3_out_ip__:string 10.22.90.5 DroneAttack_1_out_ip__:string 10.22.90.6 DroneAttack_2_out_ip__:string 10.22.90.7 DroneAttack_3_out_ip__:string 10.22.90.8 && clear && tmux switch-client -t instance_i0 && tmux select-window -t stm_DroneFPV 
   - zenoh_and_qgc:
       layout: even-horizontal
       panes:
