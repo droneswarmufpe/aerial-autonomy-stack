@@ -20,7 +20,8 @@ windows:
   - ground_system:
       layout: even-horizontal
       panes:
-        - clear && echo "So nice to have you with us, this is the ground container."
+        - cd /aas/Projeto-Enxame-Drones/ && python3 01_busca_do_alvo.py
+        - cd /aas/Projeto-Enxame-Drones/ && python3 04_localiza_alvo.py
 
   <% if centralized %>
   <% num_quads.times do |i| %>
