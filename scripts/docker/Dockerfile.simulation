@@ -11,6 +11,7 @@ RUN apt update \
     && apt install -y --no-install-recommends \
         wget gosu htop vim ruby tmux net-tools iproute2 iputils-ping netcat-openbsd \
         python3-pip python3-venv \
+        jq \
         mesa-utils \
     && gem install tmuxinator \
     && apt clean \
@@ -250,6 +251,7 @@ RUN bash -c "source /opt/ros/humble/setup.bash && (source /aas/github_ws/install
 COPY simulation/simulation_resources/ /aas/simulation_resources
 RUN chmod +x /aas/simulation_resources/aircraft_models/_create_ardupilot_models.sh
 RUN chmod +x /aas/simulation_resources/simulation_worlds/_create_ardupilot_world.sh
+RUN chmod +x /aas/simulation_resources/simulation_worlds/_create_custom_targets_world.sh
 
 # Copy QGC configuration (only for GND_CONTAINER=false)
 COPY ground/ground_resources/patches/QGroundControl.ini /home/qgcuser/.config/QGroundControl/QGroundControl.ini
@@ -259,6 +261,12 @@ WORKDIR /aas/simulation_resources/comms/gz_gst_bridge
 RUN mkdir build && cd build \
     && cmake .. -DCMAKE_BUILD_TYPE=Release \
     && make
+
+################################################################################
+# Stage 9 - ??GB ##############################################################
+################################################################################
+
+RUN pip3 install utm
 
 # Source the workspaces
 RUN echo "source /aas/simulation_ws/install/setup.bash" >> /root/.bashrc
