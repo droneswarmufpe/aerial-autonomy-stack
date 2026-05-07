@@ -18,10 +18,10 @@ if [[ "$WORLD_FILE_PATH" != /* ]]; then
   WORLD_FILE_PATH="${SCRIPT_DIR}/${WORLD_FILE_PATH}"
 fi
 
-TARGET_CONFIG_FILE="${SCRIPT_DIR}/../patches/target-config.json"
+TARGET_CONFIG_FILE="${SCRIPT_DIR}/../patches/target_config_1.json"
 
 if [[ ! -f "$TARGET_CONFIG_FILE" ]]; then
-  echo "Warning: target-config.json not found at $TARGET_CONFIG_FILE. No targets will be added."
+  echo "Warning: target_config.json not found at $TARGET_CONFIG_FILE. No targets will be added."
   exit 0
 fi
 
@@ -33,7 +33,7 @@ for row in $(jq -c '.targets[]' "$TARGET_CONFIG_FILE"); do
   X=$(echo "$row" | jq '.x')
   Y=$(echo "$row" | jq '.y')
   Z=$(echo "$row" | jq '.z')
-  MODEL_XML="    <include>\n        <uri>model://ime-target</uri>\n        <name>ime_target_${TARGET_COUNT}</name>\n        <pose degrees=\"true\">${X} ${Y} ${Z} 90 0 0</pose>\n        <static>false</static>\n    </include>\n"
+  MODEL_XML="    <include>\n        <uri>model://ime-target</uri>\n        <name>ime_target_${TARGET_COUNT}</name>\n        <pose degrees=\"true\">${X} ${Y} -1.5 90 0 0</pose>\n        <static>true</static>\n    </include>\n"
   ALL_MODELS_XML+=$MODEL_XML
 done
 

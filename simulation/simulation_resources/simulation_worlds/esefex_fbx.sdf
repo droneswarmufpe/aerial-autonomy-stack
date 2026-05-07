@@ -393,13 +393,5 @@
       </model> -->
 
     </model>
-
-    <include>
-        <uri>model://ime-target</uri>
-        <name>ime-target</name>
-        <pose degrees="true"> 10 -20 0 90 0 0</pose>
-        <static>false</static>
-    </include>
-
   </world>
 </sdf>
