@@ -21,7 +21,7 @@ WORLD="${WORLD:-esefex_fbx}" # Options: impalpable_greyness (default), apple_orc
 CENTRALIZED="${CENTRALIZED:-true}" # Options: true, false (default) - If true, all cameras will stream to the ground container. If false, each camera will stream to its own IP (useful for testing network conditions and scalability)
 X_OFFSET="${X_OFFSET:-5}" # X offset for drone placement in the world (default = 0)
 Y_OFFSET="${Y_OFFSET:--110}" # Y offset for drone placement in the world (default = 0)
-CUSTOM_TARGETS="${CUSTOM_TARGETS:-false}" # Options: true, false (default)
+CUSTOM_TARGETS="${CUSTOM_TARGETS:-true}" # Options: true, false (default)
 #
 DEV="${DEV:false}" # Options: true, false (default)
 HITL="${HITL:-false}" # Options: true, false (default)
