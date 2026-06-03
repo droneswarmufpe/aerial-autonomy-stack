@@ -25,6 +25,7 @@ CUSTOM_TARGETS="${CUSTOM_TARGETS:-true}" # Options: true, false (default)
 #
 DEV="${DEV:false}" # Options: true, false (default)
 HITL="${HITL:-false}" # Options: true, false (default)
+HITL_SUBNET="${HITL_SUBNET:-172.20.15}" # Subnet for HITL mode (default = 172.20.15)
 GND_CONTAINER="${GND_CONTAINER:-true}" # Options: true (default), false
 RTF="${RTF:-5.0}" # Real-time factor (default = 1.0), set to <=0.0 for as fast as possible execution
 START_AS_PAUSED="${START_AS_PAUSED:-false}" # Options: true, false (default)
@@ -40,6 +41,18 @@ SIM_NET_NAME="aas-sim-network-inst${INSTANCE}"
 AIR_NET_NAME="aas-air-network-inst${INSTANCE}"
 SIM_CONT_NAME="simulation-container-inst${INSTANCE}"
 GND_CONT_NAME="ground-container-inst${INSTANCE}"
+
+echo "Simulation configuration:"
+echo "  SIM_BYTE_1: $SIM_BYTE_1"
+echo "  SIM_BYTE_2: $SIM_BYTE_2"
+echo "  SIM_SUBNET: $SIM_SUBNET"
+echo "  AIR_BYTE_1: $AIR_BYTE_1"
+echo "  AIR_BYTE_2: $AIR_BYTE_2"
+echo "  AIR_SUBNET: $AIR_SUBNET"
+echo "  SIM_NET_NAME: $SIM_NET_NAME"
+echo "  AIR_NET_NAME: $AIR_NET_NAME"
+echo "  SIM_CONT_NAME: $SIM_CONT_NAME"
+echo "  GND_CONT_NAME: $GND_CONT_NAME"
 
 # Detect the environment (Ubuntu/GNOME, WSL, etc.)
 if command -v gnome-terminal >/dev/null 2>&1 && [ -n "$XDG_CURRENT_DESKTOP" ]; then
@@ -123,6 +136,7 @@ PARENT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 # --volume ${PARENT_DIR}/simulation/simulation_resources/aircraft_models:/aas/simulation_resources/aircraft_models \
 # Launch the simulation container
 DOCKER_CMD="docker run -it --rm \
+--volume ${PARENT_DIR}/simulation/simulation_resources/simulation_worlds:/aas/simulation_resources/simulation_worlds \
   --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
   --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
   --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
@@ -130,6 +144,7 @@ DOCKER_CMD="docker run -it --rm \
   --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS --env WORLD=$WORLD \
   --env SIMULATED_TIME=true --env RTF=$RTF --env START_AS_PAUSED=$START_AS_PAUSED \
   --env SIM_SUBNET=$SIM_SUBNET --env GROUND_ID=$GROUND_ID \
+  --env HITL=$HITL --env HITL_SUBNET=$HITL_SUBNET \
   --env GND_CONTAINER=$GND_CONTAINER --env CENTRALIZED=$CENTRALIZED \
   --env X_OFFSET=$X_OFFSET --env Y_OFFSET=$Y_OFFSET --env CUSTOM_TARGETS=$CUSTOM_TARGETS \
   --env ROS_DOMAIN_ID=$SIM_ID \
@@ -138,6 +153,8 @@ DOCKER_CMD="docker run -it --rm \
 # Configure network for HITL or SITL
 if [[ "$HITL" == "true" ]]; then
   DOCKER_CMD="$DOCKER_CMD --net=host"
+  echo "Running in HITL mode with host networking"
+  echo "IP: $(hostname -I | awk '{print $1}')"
 else
   DOCKER_CMD="$DOCKER_CMD --net=$SIM_NET_NAME --ip=${SIM_SUBNET}.90.${SIM_ID}"
 fi
@@ -166,6 +183,7 @@ if [[ "$HITL" == "false" ]]; then
       --env SIMULATED_TIME=true --env CENTRALIZED=$CENTRALIZED \
       --env ROS_DOMAIN_ID=$GROUND_ID \
       --net=$SIM_NET_NAME --ip=${SIM_SUBNET}.90.${GROUND_ID} \
+      --env SIM_SUBNET=$SIM_SUBNET --env AIR_SUBNET=$AIR_SUBNET --env SIM_ID=$SIM_ID --env GROUND_ID=$GROUND_ID \
       --privileged \
       --name $GND_CONT_NAME"
     # Add WSL-specific options and complete the command

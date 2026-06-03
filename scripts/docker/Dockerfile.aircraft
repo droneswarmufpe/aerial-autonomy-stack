@@ -253,7 +253,7 @@ WORKDIR /libs/Chorus
 RUN bash -c 'source /opt/ros/humble/setup.bash && pip install -e .'
 
 # Install dependencies
-RUN pip install numpy==1.26.4 transitions libtmux dearpygui zmq pymap3d utm cartopy
+RUN pip install numpy==1.26.4 transitions libtmux dearpygui zmq pymap3d utm cartopy filterpy
 
 # Build the ROS 2 workspace (NOTE: also includes ground_system_msgs from the ground_ws)
 COPY ground/ground_ws/src/ground_system_msgs /aas/aircraft_ws/src/ground_system_msgs

@@ -7,6 +7,9 @@
   
   sim_subnet = ENV.fetch('SIM_SUBNET', '10.42')
   ground_id = ENV.fetch('GROUND_ID', '101')
+
+  hitl = ENV.fetch('HITL', 'false') == 'true'
+  hitl_subnet = ENV.fetch('HITL_SUBNET', '172.20.15')
   
   num_quads = ENV.fetch('NUM_QUADS', 1).to_i
   num_vtols = ENV.fetch('NUM_VTOLS', 0).to_i
@@ -111,8 +114,10 @@ windows:
           --speedup <%= speedup %>
           --add-param-file=/aas/simulation_resources/aircraft_models/<%= model_name %>/ardupilot-4.6.params
           -l $(python3 /aas/simulation_resources/patches/extract_spherical_coords.py /aas/simulation_resources/simulation_worlds/<%= world %>.sdf)
-          <% if centralized %>
+          <% if centralized && !hitl  %>
           --out=udp:<%= "#{sim_subnet}.90.#{ground_id}" %>:<%= 14570 + drone_id %>
+          <% elsif hitl %>
+          --out=udp:<%= "#{hitl_subnet}.#{drone_id}" %>:14570 
           <% else %>
           --out=udp:<%= "#{sim_subnet}.90.#{drone_id}" %>:14570 
           <% end %>
@@ -126,8 +131,10 @@ windows:
         - >
           /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
           /world/<%= world %>/model/<%= model_name %>/<%= sensor_path %>model/simple_camera/link/mono_cam/base_link/sensor/imager/image
-          <% if centralized %>
+          <% if centralized && !hitl %>
           <%= "#{sim_subnet}.90.#{ground_id}" %> <%=5600 + sitl_instance%> 8
+          <% elsif hitl %>
+          --out=udp:<%= "#{hitl_subnet}.#{drone_id}" %>:14570 
           <% else %>
           <%= "#{sim_subnet}.90.#{drone_id}" %> 5600 8
           <% end %>
