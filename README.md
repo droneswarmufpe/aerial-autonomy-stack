@@ -199,22 +199,25 @@ cd aerial-autonomy-stack/scripts/
   </a>
 </div>
 
-## Simulation (TODO: update this section showing how to run in centralized mode and execute missions from python scripts)
+## Simulation
 
 ![workspace](https://github.com/user-attachments/assets/ad909fcc-69de-44ac-84b3-c5bc7a1c896f)
 
 > On a low-mid range laptop—i7-11 with 16GB RAM and RTX 3060—AAS can simulate a PX4 quad with YOLO and LiDAR at **10x real-time-factor** with flag `RTF=0.0`. Run multiple `sim_run.sh` in parallel adding flag `INSTANCE=1`, `INSTANCE=2`, etc. for even higher throughput. Make sure you run `sudo prime-select nvidia` and rebooted to leverage GPU rendering and compute.
 
 ```sh
-# 1. Start AAS
+# 1. Start AAS (centralized mode)
 cd aerial-autonomy-stack/scripts
-AUTOPILOT=px4 NUM_QUADS=1 NUM_VTOLS=1 WORLD=swiss_town RTF=3.0 ./sim_run.sh                   # Start a simulation, check the script for more options (note: ArduPilot SITL checks take ~40s before being ready to arm)
+AUTOPILOT=ardupilot NUM_QUADS=1 NUM_VTOLS=1 WORLD=esefex_fbx CENTRALIZED=true RTF=3.0 ./sim_run.sh
 ```
 
-In any of the `QUAD` or `VTOL` Xterm terminals:
+Centralized mode streams all aircraft data (including MAVLink) to the ground container, so the stack runs as external processing rather than onboard. Set `CENTRALIZED=false` to keep streams local to each aircraft container.
+
+In the `Ground` Xterm terminal:
 ```sh
-# 2. Fly
-ros2 run mission mission --ros-args -r __ns:=/Drone$DRONE_ID -p use_sim_time:=true            # This mission is a defined in /aircraft/aircraft_resources/missions/test_mission.yaml
+# 2. Run a mission script
+cd /aas/Projeto-Enxame-Drones
+python3 01_busca_do_alvo.py                                                                  # Or run another script from this repo
 ```
 
 In the `Simulation`'s Xterm terminal:
@@ -222,6 +225,8 @@ In the `Simulation`'s Xterm terminal:
 # 3. Analyze
 /aas/simulation_resources/scripts/plot_logs.sh                                                # Analyze the flight logs at http://10.42.90.100:5006/browse or in MAVExplorer
 ```
+
+Full parameter list: [supplementary/DOCKER_PARAMS.md](/supplementary/DOCKER_PARAMS.md)
 
 Optionally, add or disable **wind effects**, in the `Simulation`'s Xterm terminal:
 
@@ -310,11 +315,36 @@ python3 /aas/simulation_resources/scripts/gz_wind.py --stop_wind
 
 ![worlds](https://github.com/user-attachments/assets/b9f7635a-0b1f-4698-ba6a-70ab1b412aef)
 
-> `WORLD`s (in clock-wise order): 
-> *(i)* `apple_orchard`, a GIS world created using [BlenderGIS](https://github.com/domlysz/BlenderGIS)
-> / *(ii)* `impalpable_greyness`, an empty world with simple shapes
-> / *(iii)* `shibuya_crossing`, a 3D world adapted from [cgtrader](https://www.cgtrader.com/)
-> / *(iv)* `swiss_town`, a photogrammetry world courtesy of [Pix4D / pix4d.com](https://support.pix4d.com/hc/en-us/articles/360000235126)
+### Available worlds
+
+- `apple_orchard` — a GIS world created using [BlenderGIS](https://github.com/domlysz/BlenderGIS)
+- `esefex_fbx` — RJ military base
+- `imav` — custom world
+- `impalpable_greyness` — an empty world with simple shapes
+- `jockey` — custom world
+- `shibuya_crossing` — a 3D world adapted from [cgtrader](https://www.cgtrader.com/)
+- `swiss_town` — a photogrammetry world courtesy of [Pix4D / pix4d.com](https://support.pix4d.com/hc/en-us/articles/360000235126)
+
+### Available models
+
+- `airstream`
+- `apple`
+- `apple_grid`
+- `birch`
+- `birch_row`
+- `crash`
+- `duck`
+- `fog_generator` — particle filter model that emits fog via a particle emitter
+- `gazebo`
+- `grenade` — static grenade mesh used as an environment prop
+- `imav`
+- `ime-target` - target used for pose estimation in esefex world
+- `jeep`
+- `jockey`
+- `rabbit`
+- `subaru`
+- `suburb`
+- `unicorn`
 
 ## License 
 
