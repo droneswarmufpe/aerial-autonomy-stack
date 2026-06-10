@@ -10,8 +10,18 @@
 
   hitl = ENV.fetch('HITL', 'false') == 'true'
   hitl_subnet = ENV.fetch('HITL_SUBNET', '172.20.15')
+  drone_ips = ENV.fetch('DRONE_IPS', '')
+               .split(',')
+               .map(&:strip)
+               .reject(&:empty?)
+               .map(&:to_i)
   
   num_quads = ENV.fetch('NUM_QUADS', 1).to_i
+
+  if drone_ips.any? && drone_ips.size != num_quads
+    warn "[WARNING] NUM_QUADS=#{num_quads} but DRONE_IPS contains #{drone_ips.size} entries"
+  end
+
   num_vtols = ENV.fetch('NUM_VTOLS', 0).to_i
   world = ENV.fetch('WORLD', 'impalpable_greyness')
   x_offset = ENV.fetch('X_OFFSET', 0).to_i
@@ -117,7 +127,10 @@ windows:
           <% if centralized && !hitl  %>
           --out=udp:<%= "#{sim_subnet}.90.#{ground_id}" %>:<%= 14570 + drone_id %>
           <% elsif hitl %>
-          --out=udp:<%= "#{hitl_subnet}.#{drone_id}" %>:14570 
+            <% if drone_ips.size != num_quads %>
+            echo "[WARNING] NUM_QUADS=<%= num_quads %> but DRONE_IPS contains <%= drone_ips.size %> entries"
+            <% end %>
+          --out=udp:<%= "#{hitl_subnet}.#{drone_ips.fetch(sitl_instance, drone_id)}" %>:14570
           <% else %>
           --out=udp:<%= "#{sim_subnet}.90.#{drone_id}" %>:14570 
           <% end %>
@@ -132,9 +145,9 @@ windows:
           /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
           /world/<%= world %>/model/<%= model_name %>/<%= sensor_path %>model/simple_camera/link/mono_cam/base_link/sensor/imager/image
           <% if centralized && !hitl %>
-          <%= "#{sim_subnet}.90.#{ground_id}" %> <%=5600 + sitl_instance%> 8
+          <%= "#{sim_subnet}.90.#{ground_id}" %> <%= 5600 + sitl_instance %> 8
           <% elsif hitl %>
-          --out=udp:<%= "#{hitl_subnet}.#{drone_id}" %>:14570 
+          <%= "#{hitl_subnet}.#{drone_ips.fetch(sitl_instance, drone_id)}" %> 5600 8
           <% else %>
           <%= "#{sim_subnet}.90.#{drone_id}" %> 5600 8
           <% end %>
