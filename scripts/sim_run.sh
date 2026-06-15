@@ -16,6 +16,7 @@ SIM_ID="${SIM_ID:-100}" # Last byte of the simulation container IP (default = 10
 GROUND_ID="${GROUND_ID:-101}" # Last byte of the simulation container IP (default = 101)
 #
 NUM_QUADS="${NUM_QUADS:-1}" # Number of quadcopters (default = 1)
+NUM_QUADS="${NUM_QUADS:-1}" # Number of quadcopters (default = 1)
 NUM_VTOLS="${NUM_VTOLS:-0}" # Number of VTOLs (default = 0)
 WORLD="${WORLD:-esefex_fbx}" # Options: impalpable_greyness (default), apple_orchard, shibuya_crossing, swiss_town
 CENTRALIZED="${CENTRALIZED:-true}" # Options: true, false (default) - If true, all cameras will stream to the ground container. If false, each camera will stream to its own IP (useful for testing network conditions and scalability)
@@ -40,6 +41,7 @@ SIM_NET_NAME="aas-sim-network-inst${INSTANCE}"
 AIR_NET_NAME="aas-air-network-inst${INSTANCE}"
 SIM_CONT_NAME="simulation-container-inst${INSTANCE}"
 GND_CONT_NAME="ground-container-inst${INSTANCE}"
+CREATE_VEHICLE_SIMULATION="${CREATE_VEHICLE_SIMULATION:-true}"
 
 # Detect the environment (Ubuntu/GNOME, WSL, etc.)
 if command -v gnome-terminal >/dev/null 2>&1 && [ -n "$XDG_CURRENT_DESKTOP" ]; then
@@ -123,7 +125,7 @@ PARENT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 # --volume ${PARENT_DIR}/simulation/simulation_resources/aircraft_models:/aas/simulation_resources/aircraft_models \
 # Launch the simulation container
 DOCKER_CMD="docker run -it --rm \
-  --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
+  --volume ${PARENT_DIR}/simulation/simulation_resources:/aas/simulation_resources \
   --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
   --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
   --env AUTOPILOT=$AUTOPILOT --env HEADLESS=$HEADLESS --env CAMERA=$CAMERA --env LIDAR=$LIDAR --env CAMERA_PITCH=$CAMERA_PITCH \
@@ -131,6 +133,7 @@ DOCKER_CMD="docker run -it --rm \
   --env SIMULATED_TIME=true --env RTF=$RTF --env START_AS_PAUSED=$START_AS_PAUSED \
   --env SIM_SUBNET=$SIM_SUBNET --env GROUND_ID=$GROUND_ID \
   --env GND_CONTAINER=$GND_CONTAINER --env CENTRALIZED=$CENTRALIZED \
+  --env CREATE_VEHICLE_SIMULATION=$CREATE_VEHICLE_SIMULATION \
   --env X_OFFSET=$X_OFFSET --env Y_OFFSET=$Y_OFFSET --env CUSTOM_TARGETS=$CUSTOM_TARGETS \
   --env ROS_DOMAIN_ID=$SIM_ID \
   --privileged \
