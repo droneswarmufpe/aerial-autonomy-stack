@@ -22,7 +22,7 @@ WORLD="${WORLD:-esefex_fbx}" # Options: impalpable_greyness (default), apple_orc
 CENTRALIZED="${CENTRALIZED:-true}" # Options: true, false (default) - If true, all cameras will stream to the ground container. If false, each camera will stream to its own IP (useful for testing network conditions and scalability)
 X_OFFSET="${X_OFFSET:-5}" # X offset for drone placement in the world (default = 0)
 Y_OFFSET="${Y_OFFSET:--110}" # Y offset for drone placement in the world (default = 0)
-CUSTOM_TARGETS="${CUSTOM_TARGETS:-true}" # Options: true, false (default)
+CUSTOM_TARGETS="${CUSTOM_TARGETS:-false}" # Options: true, false (default)
 #
 DEV="${DEV:false}" # Options: true, false (default)
 HITL="${HITL:-false}" # Options: true, false (default)
@@ -41,7 +41,7 @@ SIM_NET_NAME="aas-sim-network-inst${INSTANCE}"
 AIR_NET_NAME="aas-air-network-inst${INSTANCE}"
 SIM_CONT_NAME="simulation-container-inst${INSTANCE}"
 GND_CONT_NAME="ground-container-inst${INSTANCE}"
-CREATE_VEHICLE_SIMULATION="${CREATE_VEHICLE_SIMULATION:-true}"
+IMAV_VEHICLES="${IMAV_VEHICLES:-false}"
 
 # Detect the environment (Ubuntu/GNOME, WSL, etc.)
 if command -v gnome-terminal >/dev/null 2>&1 && [ -n "$XDG_CURRENT_DESKTOP" ]; then
@@ -133,7 +133,7 @@ DOCKER_CMD="docker run -it --rm \
   --env SIMULATED_TIME=true --env RTF=$RTF --env START_AS_PAUSED=$START_AS_PAUSED \
   --env SIM_SUBNET=$SIM_SUBNET --env GROUND_ID=$GROUND_ID \
   --env GND_CONTAINER=$GND_CONTAINER --env CENTRALIZED=$CENTRALIZED \
-  --env CREATE_VEHICLE_SIMULATION=$CREATE_VEHICLE_SIMULATION \
+  --env IMAV_VEHICLES=$IMAV_VEHICLES \
   --env X_OFFSET=$X_OFFSET --env Y_OFFSET=$Y_OFFSET --env CUSTOM_TARGETS=$CUSTOM_TARGETS \
   --env ROS_DOMAIN_ID=$SIM_ID \
   --privileged \
