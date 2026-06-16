@@ -21,19 +21,29 @@ fi
 TARGET_CONFIG_FILE="${SCRIPT_DIR}/../patches/target_config_4.json"
 
 if [[ ! -f "$TARGET_CONFIG_FILE" ]]; then
-  echo "Warning: target_config.json not found at $TARGET_CONFIG_FILE. No targets will be added."
+  echo "Warning: target_config.json not found at $TARGET_CONFIG_FILE. No vehicles will be added."
   exit 0
 fi
 
-echo "Adding random targets from $TARGET_CONFIG_FILE"
+echo "Adding random vehicles from $TARGET_CONFIG_FILE"
 ALL_MODELS_XML=""
 TARGET_COUNT=0
-for row in $(jq -c '.targets[]' "$TARGET_CONFIG_FILE"); do
+
+for row in $(jq -c '.panhard_vbl[]' "$TARGET_CONFIG_FILE"); do
   TARGET_COUNT=$((TARGET_COUNT + 1))
   X=$(echo "$row" | jq '.x')
   Y=$(echo "$row" | jq '.y')
   Z=$(echo "$row" | jq '.z')
   MODEL_XML="    <include>\n        <uri>model://panhard_vbl</uri>\n        <name>panhard_vbl_${TARGET_COUNT}</name>\n        <pose degrees=\"true\">${X} ${Y} ${Z} 90 0 0</pose>\n        <static>false</static>\n    </include>\n"
+  ALL_MODELS_XML+=$MODEL_XML
+done
+
+for row in $(jq -c '.renault_ccfm[]' "$TARGET_CONFIG_FILE"); do
+  TARGET_COUNT=$((TARGET_COUNT + 1))
+  X=$(echo "$row" | jq '.x')
+  Y=$(echo "$row" | jq '.y')
+  Z=$(echo "$row" | jq '.z')
+  MODEL_XML="    <include>\n        <uri>model://renault_ccfm</uri>\n        <name>renault_ccfm_${TARGET_COUNT}</name>\n        <pose degrees=\"true\">${X} ${Y} ${Z} 90 0 0</pose>\n        <static>false</static>\n    </include>\n"
   ALL_MODELS_XML+=$MODEL_XML
 done
 
