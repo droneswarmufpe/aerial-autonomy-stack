@@ -18,18 +18,18 @@ if [[ "$WORLD_FILE_PATH" != /* ]]; then
   WORLD_FILE_PATH="${SCRIPT_DIR}/${WORLD_FILE_PATH}"
 fi
 
-TARGET_CONFIG_FILE="${SCRIPT_DIR}/../patches/target_config_4.json"
+VEHICLE_CONFIG_FILE="${SCRIPT_DIR}/../patches/imav_vehicles_config.json"
 
-if [[ ! -f "$TARGET_CONFIG_FILE" ]]; then
-  echo "Warning: target_config.json not found at $TARGET_CONFIG_FILE. No vehicles will be added."
+if [[ ! -f "$VEHICLE_CONFIG_FILE" ]]; then
+  echo "WARNING: imav_vehicles_config.json not found at $VEHICLE_CONFIG_FILE. No vehicles will be added."
   exit 0
 fi
 
-echo "Adding random vehicles from $TARGET_CONFIG_FILE"
+echo "Adding random vehicles from $VEHICLE_CONFIG_FILE"
 ALL_MODELS_XML=""
 TARGET_COUNT=0
 
-for row in $(jq -c '.panhard_vbl[]' "$TARGET_CONFIG_FILE"); do
+for row in $(jq -c '.panhard_vbl[]' "$VEHICLE_CONFIG_FILE"); do
   TARGET_COUNT=$((TARGET_COUNT + 1))
   X=$(echo "$row" | jq '.x')
   Y=$(echo "$row" | jq '.y')
@@ -38,12 +38,39 @@ for row in $(jq -c '.panhard_vbl[]' "$TARGET_CONFIG_FILE"); do
   ALL_MODELS_XML+=$MODEL_XML
 done
 
-for row in $(jq -c '.renault_ccfm[]' "$TARGET_CONFIG_FILE"); do
+for row in $(jq -c '.renault_ccfm[]' "$VEHICLE_CONFIG_FILE"); do
   TARGET_COUNT=$((TARGET_COUNT + 1))
   X=$(echo "$row" | jq '.x')
   Y=$(echo "$row" | jq '.y')
   Z=$(echo "$row" | jq '.z')
   MODEL_XML="    <include>\n        <uri>model://renault_ccfm</uri>\n        <name>renault_ccfm_${TARGET_COUNT}</name>\n        <pose degrees=\"true\">${X} ${Y} ${Z} 90 0 0</pose>\n        <static>false</static>\n    </include>\n"
+  ALL_MODELS_XML+=$MODEL_XML
+done
+
+for row in $(jq -c '.renault_gbc180[]' "$VEHICLE_CONFIG_FILE"); do
+  TARGET_COUNT=$((TARGET_COUNT + 1))
+  X=$(echo "$row" | jq '.x')
+  Y=$(echo "$row" | jq '.y')
+  Z=$(echo "$row" | jq '.z')
+  MODEL_XML="    <include>\n        <uri>model://renault_gbc180</uri>\n        <name>renault_gbc180_${TARGET_COUNT}</name>\n        <pose degrees=\"true\">${X} ${Y} ${Z} 90 0 0</pose>\n        <static>false</static>\n    </include>\n"
+  ALL_MODELS_XML+=$MODEL_XML
+done
+
+for row in $(jq -c '.toyota_hilux[]' "$VEHICLE_CONFIG_FILE"); do
+  TARGET_COUNT=$((TARGET_COUNT + 1))
+  X=$(echo "$row" | jq '.x')
+  Y=$(echo "$row" | jq '.y')
+  Z=$(echo "$row" | jq '.z')
+  MODEL_XML="    <include>\n        <uri>model://toyota_hilux</uri>\n        <name>toyota_hilux_${TARGET_COUNT}</name>\n        <pose degrees=\"true\">${X} ${Y} ${Z} 90 0 0</pose>\n        <static>false</static>\n    </include>\n"
+  ALL_MODELS_XML+=$MODEL_XML
+done
+
+for row in $(jq -c '.arquus_vt4[]' "$VEHICLE_CONFIG_FILE"); do
+  TARGET_COUNT=$((TARGET_COUNT + 1))
+  X=$(echo "$row" | jq '.x')
+  Y=$(echo "$row" | jq '.y')
+  Z=$(echo "$row" | jq '.z')
+  MODEL_XML="    <include>\n        <uri>model://arquus_vt4</uri>\n        <name>arquus_vt4_${TARGET_COUNT}</name>\n        <pose degrees=\"true\">${X} ${Y} ${Z} 90 0 0</pose>\n        <static>false</static>\n    </include>\n"
   ALL_MODELS_XML+=$MODEL_XML
 done
 
