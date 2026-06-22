@@ -63,11 +63,8 @@ windows:
           <% if autopilot == 'ardupilot' %>
           /aas/simulation_resources/aircraft_models/_create_ardupilot_models.sh <%= num_quads %> <%= num_vtols %> <%= camera_pitch %> &&
           /aas/simulation_resources/simulation_worlds/_create_ardupilot_world.sh <%= num_quads %> <%= num_vtols %> <%= world %>.sdf <%= x_offset %> <%= y_offset %> &&
-          <% if ENV['CUSTOM_TARGETS'] == 'true' %>
-          /aas/simulation_resources/simulation_worlds/_create_custom_targets_world.sh /aas/simulation_resources/simulation_worlds/populated_ardupilot.sdf &&
-          <% end %>
-          <% if ENV['IMAV_VEHICLES'] == 'true' %>
-          /aas/simulation_resources/simulation_worlds/_create_imav_vehicles_world.sh /aas/simulation_resources/simulation_worlds/populated_ardupilot.sdf &&
+          <% if ENV['CUSTOM_OBJECTS'] == 'true' %>
+          /aas/simulation_resources/simulation_worlds/_create_custom_objects_world.sh /aas/simulation_resources/simulation_worlds/populated_ardupilot.sdf &&
           <% end %>
           GZ_SIM_SYSTEM_PLUGIN_PATH=/aas/github_apps/ardupilot_gazebo/build:$GZ_SIM_SYSTEM_PLUGIN_PATH 
           <% end %>
