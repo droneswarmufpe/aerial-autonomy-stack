@@ -179,7 +179,7 @@ RUN git config --global --add safe.directory /aas/workspaces/rcpilot && \
 
 # Build rcpilot SDK and workspace
 RUN ./install-sdk.bash cpp python && \
-    bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install --packages-skip localization"
+    bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install --packages-skip localization behavior decision"
 
 ################################################################################
 # Stage 8 - ?GB ################################################################
