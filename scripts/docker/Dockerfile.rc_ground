@@ -133,7 +133,7 @@ RUN pip3 install --no-cache-dir --upgrade pip \
 ################################################################################
 # Stage 6 - ?GB ################################################################
 ################################################################################
-FROM ros2-qgc-gst-mav-image AS ground-dev-image
+FROM ros2-qgc-gst-mav-image AS rcpilot-dev-image
 
 # Install wmctrl and xrandr to resize QGC window
 RUN apt update \
@@ -143,9 +143,8 @@ RUN apt update \
     && rm -rf /var/lib/apt/lists/*
 
 ################################################################################
-# Stage 8 - ?GB ################################################################
+# Stage 7 - ?GB ################################################################
 ################################################################################
-
 ## Infra Software Install
 COPY github_clones/MAVKit /libs/MAVKit
 WORKDIR /libs/MAVKit
@@ -158,6 +157,31 @@ RUN bash -c 'source /opt/ros/humble/setup.bash && pip install -e .'
 
 # Install dependencies
 RUN pip install numpy==1.26.4 transitions libtmux dearpygui zmq pymap3d utm cartopy filterpy
+
+# Install build dependencies for rcpilot
+RUN apt update \
+    && apt install -y --no-install-recommends \
+        ros-humble-geographic-msgs clang \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install rcpilot
+# TODO: for, now rcpilot needs to be installed in the /workspaces directory, but we should change this to /aas/rcpilot in the future
+COPY github_clones/rcpilot /workspaces/rcpilot
+WORKDIR /workspaces/rcpilot
+
+# Initialize git repository and update submodules
+RUN git config --global --add safe.directory /workspaces/rcpilot && \ 
+    git submodule sync && \
+    git submodule update --init --recursive
+
+# Build rcpilot SDK and workspace
+RUN ./install-sdk.bash cpp python && \
+    bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install --packages-skip localization"
+
+################################################################################
+# Stage 8 - ?GB ################################################################
+################################################################################
 
 # Add MAVLink 2 C library
 COPY /github_clones/c_library_v2 /usr/local/include/mavlink/
@@ -176,7 +200,7 @@ COPY ground/ground_resources/patches/QGroundControl.ini /home/qgcuser/.config/QG
 
 # Source the workspaces
 RUN echo "source /aas/ground_ws/install/setup.bash" >> /root/.bashrc
-# If needed (but already in .bashrc) $ source /opt/ros/humble/setup.bash && source /aas/ground_ws/install/setup.bash
+RUN echo "source /workspaces/rcpilot/install/setup.bash" >> /root/.bashrc
 
 SHELL ["/bin/bash", "-c"]
 

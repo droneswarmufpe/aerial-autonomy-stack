@@ -47,31 +47,7 @@ RUN rosdep init
 ################################################################################
 # Stage 2 - ?GB ################################################################
 ################################################################################
-FROM ros2-image AS ros2-qgc-image
-
-# QGroundControl (as qgcuser)
-# Based on https://docs.qgroundcontrol.com/master/en/qgc-user-guide/getting_started/download_and_install.html
-WORKDIR /
-RUN useradd -m -s /bin/bash qgcuser
-RUN usermod -aG dialout qgcuser
-# RUN apt-get remove modemmanager -y
-RUN apt update \
-    && apt install -y --no-install-recommends \
-        gstreamer1.0-plugins-bad gstreamer1.0-libav gstreamer1.0-gl \
-        libfuse2 \
-        libxcb-xinerama0 libxkbcommon-x11-0 libxcb-cursor-dev \
-    && apt clean \
-    && rm -rf /var/lib/apt/lists/*
-RUN wget https://d176tv9ibo4jno.cloudfront.net/latest/QGroundControl-x86_64.AppImage && \
-    chmod +x /QGroundControl-x86_64.AppImage && \
-    /QGroundControl-x86_64.AppImage --appimage-extract && \
-    rm /QGroundControl-x86_64.AppImage
-# Run with $ gosu qgcuser /squashfs-root/AppRun
-
-################################################################################
-# Stage 3 - ?GB ################################################################
-################################################################################
-FROM ros2-qgc-image AS ros2-qgc-gst-image
+FROM ros2-image AS ros2-gst-image
 
 # Add GStreamer, Python OpenCV packages
 RUN apt update \
@@ -86,9 +62,17 @@ RUN pip3 install --no-cache-dir --upgrade pip \
     && pip3 install --no-cache-dir --resume-retries 5 "numpy<2"
 
 ################################################################################
-# Stage 4 - ?GB ################################################################
+# Stage 3 - ?GB ################################################################
 ################################################################################
-FROM ros2-qgc-gst-image AS ros2-qgc-gst-mav-image
+FROM ros2-gst-image AS ros2-gst-mav-image
+
+# MAVROS
+RUN apt-get update && \
+    apt-get install -y ros-humble-mavros ros-humble-mavros-extras ros-humble-mavros-msgs \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
+RUN /opt/ros/humble/lib/mavros/install_geographiclib_datasets.sh
+# Run with $ ros2 launch mavros apm.launch fcu_url:=[URI]
 
 # MAVProxy 
 RUN apt update \
@@ -119,9 +103,9 @@ RUN meson setup build . --buildtype=release \
 # Check with $ mavlink-routerd --version
 
 ################################################################################
-# Stage 5 - ?GB ################################################################
+# Stage 4 - ?GB ################################################################
 ################################################################################
-FROM ros2-qgc-gst-mav-image AS ros2-qgc-gst-mav-yolo-image
+FROM ros2-gst-mav-image AS ros2-gst-mav-yolo-image
 
 # Install YOLO with --no-deps to avoid installing opencv from pip, upgrade sympy and install ultralytics dependencies manually
 RUN pip3 install --no-cache-dir --upgrade pip \
@@ -131,21 +115,20 @@ RUN pip3 install --no-cache-dir --upgrade pip \
     && pip3 install --no-cache-dir --resume-retries 5 matplotlib pillow pyyaml requests scipy tqdm psutil
 
 ################################################################################
-# Stage 6 - ?GB ################################################################
+# Stage 5 - ?GB ################################################################
 ################################################################################
-FROM ros2-qgc-gst-mav-image AS ground-dev-image
+FROM ros2-gst-mav-yolo-image AS aircraft-dev-image
 
-# Install wmctrl and xrandr to resize QGC window
-RUN apt update \
-    && apt install -y --no-install-recommends \
-        wmctrl x11-xserver-utils \
+# Install PlotJuggler
+RUN apt-get update && \
+    apt-get install -y ros-humble-plotjuggler \
+    ros-humble-plotjuggler-ros \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
 
 ################################################################################
-# Stage 8 - ?GB ################################################################
+# Stage 7 - ?GB ################################################################
 ################################################################################
-
 ## Infra Software Install
 COPY github_clones/MAVKit /libs/MAVKit
 WORKDIR /libs/MAVKit
@@ -159,28 +142,52 @@ RUN bash -c 'source /opt/ros/humble/setup.bash && pip install -e .'
 # Install dependencies
 RUN pip install numpy==1.26.4 transitions libtmux dearpygui zmq pymap3d utm cartopy filterpy
 
+# Install build dependencies for rcpilot
+RUN apt update \
+    && apt install -y --no-install-recommends \
+        ros-humble-geographic-msgs clang \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install rcpilot
+# TODO: for, now rcpilot needs to be installed in the /workspaces directory, but we should change this to /aas/rcpilot in the future
+COPY github_clones/rcpilot /workspaces/rcpilot
+WORKDIR /workspaces/rcpilot
+
+# Initialize git repository and update submodules
+RUN git config --global --add safe.directory /workspaces/rcpilot && \ 
+    git submodule sync && \
+    git submodule update --init --recursive
+
+# Build rcpilot SDK and workspace
+RUN ./install-sdk.bash cpp python && \
+    bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install --packages-skip localization"
+
+################################################################################
+# Stage 7 - ?GB ################################################################
+################################################################################
+
 # Add MAVLink 2 C library
 COPY /github_clones/c_library_v2 /usr/local/include/mavlink/
 
-# Build the ROS 2 workspace
-COPY ground/ground_ws/src /aas/ground_ws/src
-WORKDIR /aas/ground_ws
+# Build the ROS 2 workspace (NOTE: also includes ground_system_msgs from the ground_ws)
+COPY ground/ground_ws/src/ground_system_msgs /aas/aircraft_ws/src/ground_system_msgs
+COPY aircraft/aircraft_ws/src /aas/aircraft_ws/src
+WORKDIR /aas/aircraft_ws
 RUN rosdep update
 RUN rosdep install --from-paths src/ --ignore-src --rosdistro humble -y
 # Explicitly use bash, not sh, to source and build the workspace
 RUN bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release"
 
 # Copy resources and configuration files from this repository
-COPY ground/ground_resources/ /aas/ground_resources
-COPY ground/ground_resources/patches/QGroundControl.ini /home/qgcuser/.config/QGroundControl/QGroundControl.ini
+COPY aircraft/aircraft_resources/ /aas/aircraft_resources
+COPY aircraft/aircraft_resources/patches/apm_pluginlists.yaml /opt/ros/humble/share/mavros/launch/apm_pluginlists.yaml
 
 # Source the workspaces
-RUN echo "source /aas/ground_ws/install/setup.bash" >> /root/.bashrc
-# If needed (but already in .bashrc) $ source /opt/ros/humble/setup.bash && source /aas/ground_ws/install/setup.bash
-
-SHELL ["/bin/bash", "-c"]
+RUN echo "source /aas/aircraft_ws/install/setup.bash" >> /root/.bashrc
+RUN echo "source /workspaces/rcpilot/install/setup.bash" >> /root/.bashrc
 
 # Final config
 WORKDIR /aas
-COPY ground/ground.yml.erb /aas/ground.yml.erb
-ENTRYPOINT ["tmuxinator", "start", "-p", "/aas/ground.yml.erb"]
+COPY aircraft/aircraft.yml.erb /aas/aircraft.yml.erb
+ENTRYPOINT ["tmuxinator", "start", "-p", "/aas/aircraft.yml.erb"]

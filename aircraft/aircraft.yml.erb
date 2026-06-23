@@ -15,12 +15,10 @@
   hitl = ENV.fetch('HITL', 'false') == 'true'
   gnd_container = ENV.fetch('GND_CONTAINER', 'true') == 'true'
   centralized = ENV.fetch('CENTRALIZED', 'false') == 'true'
-
-  record_rosbag = ENV.fetch('RECORD_ROSBAG', 'false') == 'true'
+  rcpilot = ENV.fetch('RCPILOT', 'true') == 'true'
 
   simulated_time = ENV.fetch('SIMULATED_TIME', 'false') == 'true'
 
-  gymnasium = ENV.fetch('GYMNASIUM', 'false') == 'true'
 %>
 
 name: drone
@@ -36,47 +34,7 @@ windows:
       layout: even-horizontal
       panes:
         - clear && echo "So nice to have you with us, this is the aircraft <%= drone_id %> container."
-        <% if autopilot == 'px4' %>
-        - ros2 run autopilot_interface px4_interface --ros-args -r __ns:=/Drone<%= drone_id %> <%= simulated_time ? '-p use_sim_time:=true' : '' %>
-        <% elsif autopilot == 'ardupilot' %>
         - ros2 run autopilot_interface ardupilot_interface --ros-args -r __ns:=/Drone<%= drone_id %> <%= simulated_time ? '-p use_sim_time:=true' : '' %>
-        <% end %>
-
-  - offboard_and_state_sharing:
-      layout: even-horizontal
-      panes:
-        - ros2 run state_sharing state_sharing_node --ros-args -p autopilot:=<%= autopilot %> -p drone_id:=<%= drone_id %> <%= simulated_time ? '-p use_sim_time:=true' : '' %>
-
-  - perception:
-      layout: even-horizontal
-      panes:
-        <% if camera %>
-        - ros2 run yolo_py yolo_py <%= headless ? '--headless' : '' %> <%= hitl ? '--hitl' : '' %> <%= simulated_time ? '--ros-args -p use_sim_time:=true' : '' %>
-        <% end %>
-        <% if lidar %>
-        - ros2 launch kiss_icp odometry.launch.py topic:=/lidar_points <%= headless ? 'visualize:=false' : '' %>
-        <% end %>
-
-  <% if autopilot == 'px4' %>
-  - uxrce_dds_and_zenoh:
-      layout: even-horizontal
-      panes:
-        - MicroXRCEAgent udp4 -p 8888
-  <% elsif autopilot == 'ardupilot' %>
-  - mavros_and_zenoh:
-      layout: even-horizontal
-      panes:
-        - >
-          <% if simulated_time %>
-          sudo sed -i '0,/ros__parameters:/s/ros__parameters:/ros__parameters:\n    use_sim_time: true/' /opt/ros/humble/share/mavros/launch/apm_config.yaml && 
-          ros2 launch mavros apm.launch fcu_url:=udp://<%= "#{sim_subnet}.90.#{drone_id}" %>:14571@14571 tgt_system:=<%= drone_id %>
-          <% else %>
-          python3 /aas/aircraft_resources/patches/request_mavlink_streams.py --device '/dev/ttyTHS1' --baudrate 921600 --target-system <%= drone_id %> --target-component 1 --rate 4 &&
-          ros2 launch mavros apm.launch fcu_url:=/dev/ttyTHS1:921600 tgt_system:=<%= drone_id %>
-          <% end %>
-        - >
-          erb /aas/aircraft_resources/comms/zenoh_config_air.json5.erb > /aas/aircraft_resources/comms/zenoh_config_air.json5 &&
-          zenoh-bridge-ros2dds -e tcp/<%= gnd_container ? "#{air_subnet}.90.#{ground_id}" : "#{sim_subnet}.90.#{sim_id}" %>:7447 -c /aas/aircraft_resources/comms/zenoh_config_air.json5
 
   - mavlink_router:
       layout: even-horizontal
@@ -87,27 +45,13 @@ windows:
           <% else %>
           mavlink-routerd -t 0 -e 127.0.0.1:14573 -e <%= "#{sim_subnet}.90.#{drone_id}" %>:14572 -e <%= "#{sim_subnet}.90.#{drone_id}" %>:14571 /dev/ttyACM0:57600
           <% end %>
-  <% end %>
 
+  <% if rcpilot %>
   - rcpilot:
       layout: even-horizontal
       panes:
         - >
           python3 -c "import yaml; cfg = yaml.safe_load(open('/workspaces/rcpilot/install/bringup/share/bringup/config/config.dev.yaml')); cfg['communication']['mavsys']['ros__parameters']['clients']['drone']['connection_string'] = 'udp:<%= "#{sim_subnet}.90.#{drone_id}" %>:14572'; yaml.dump(cfg, open('/workspaces/rcpilot/install/bringup/share/bringup/config/config.dev.yaml', 'w'))" &&
           ros2 launch bringup rcpilot.dev.launch.py
-
   <% end %>
-
-  <% if record_rosbag %>
-  - logging:
-      layout: tiled
-      panes:
-        - mkdir -p /aas/rosbags && cd /aas/rosbags && ros2 bag record -a
-  <% end %>
-
-  <% if gymnasium %>
-  - gymnasium:
-      layout: even-horizontal
-      panes:
-        - python3 /aas/aircraft_resources/scripts/gymnasium_setup.py --drone_id <%= drone_id %> <%= simulated_time ? '--ros-args -p use_sim_time:=true' : '' %>
   <% end %>

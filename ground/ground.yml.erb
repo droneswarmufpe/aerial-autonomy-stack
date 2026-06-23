@@ -9,14 +9,15 @@
   sim_id = ENV.fetch('SIM_ID', '100')
   ground_id = ENV.fetch('GROUND_ID', '101')
 
-  simulated_time = ENV.fetch('SIMULATED_TIME', 'false') == 'true'
   centralized = ENV.fetch('CENTRALIZED', 'false') == 'true'
+  rcpilot = ENV.fetch('RCPILOT', 'true') == 'true'
+  
+  simulated_time = ENV.fetch('SIMULATED_TIME', 'false') == 'true'
 %>
 
 name: ground
 
 windows:
-
   - ground_system:
       layout: even-horizontal
       panes:
@@ -36,7 +37,9 @@ windows:
           %>
           mavlink-routerd <%= ground_ip %>:<%= master_port %> -e <%= ground_ip %>:<%= slave_port_1 %> -e <%= ground_ip %>:<%= slave_port_2 %>
   <% end %>
-
+  <% end %>
+  
+  <% if rcpilot %>
   - rcpilot:
       layout: even-horizontal
       panes:
@@ -52,10 +55,9 @@ windows:
         <% end %>
   <% end %>
 
-  - zenoh_and_qgc:
+  - qgc:
       layout: even-horizontal
       panes:
-        - zenoh-bridge-ros2dds -c /aas/ground_resources/comms/zenoh_config_ground.json5
         <% if headless %>
         - echo "Headless mode, not launching QGroundControl."
         <% else %>

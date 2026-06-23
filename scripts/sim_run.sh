@@ -15,13 +15,14 @@ AIR_SUBNET="${AIR_SUBNET:-10.22}" # Inter-vehicle subnet (default = 10.22) Note:
 SIM_ID="${SIM_ID:-100}" # Last byte of the simulation container IP (default = 100)
 GROUND_ID="${GROUND_ID:-101}" # Last byte of the simulation container IP (default = 101)
 #
-NUM_QUADS="${NUM_QUADS:-3}" # Number of quadcopters (default = 1)
+NUM_QUADS="${NUM_QUADS:-1}" # Number of quadcopters (default = 1)
 NUM_VTOLS="${NUM_VTOLS:-0}" # Number of VTOLs (default = 0)
 WORLD="${WORLD:-esefex_fbx}" # Options: impalpable_greyness (default), apple_orchard, shibuya_crossing, swiss_town
 CENTRALIZED="${CENTRALIZED:-true}" # Options: true, false (default) - If true, all cameras will stream to the ground container. If false, each camera will stream to its own IP (useful for testing network conditions and scalability)
 X_OFFSET="${X_OFFSET:-5}" # X offset for drone placement in the world (default = 0)
 Y_OFFSET="${Y_OFFSET:--110}" # Y offset for drone placement in the world (default = 0)
 #
+RCPILOT="${RCPILOT:-false}" # Options: true, false (default) - If true, the rcpilot repo will be cloned and built. This is useful for testing the rcpilot SDK and its integration with the AAS.
 DEV="${DEV:false}" # Options: true, false (default)
 HITL="${HITL:-false}" # Options: true, false (default)
 GND_CONTAINER="${GND_CONTAINER:-true}" # Options: true (default), false
@@ -158,7 +159,7 @@ if [[ "$HITL" == "false" ]]; then
       --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
       --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
       --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
-      --env HEADLESS=$HEADLESS\
+      --env HEADLESS=$HEADLESS --env RCPILOT=$RCPILOT \
       --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS \
       --env SIMULATED_TIME=true --env CENTRALIZED=$CENTRALIZED \
       --env ROS_DOMAIN_ID=$GROUND_ID \
@@ -169,7 +170,11 @@ if [[ "$HITL" == "false" ]]; then
     if [[ "$DESK_ENV" == "wsl" ]]; then
       DOCKER_CMD="$DOCKER_CMD $WSL_OPTS"
     fi
-    DOCKER_CMD="$DOCKER_CMD ${DEV_GND_OPTS} ground-image"
+    if [[ "$RCPILOT" == "true" ]]; then
+      DOCKER_CMD="$DOCKER_CMD ${DEV_GND_OPTS} rc-ground-image"
+    else
+      DOCKER_CMD="$DOCKER_CMD ${DEV_GND_OPTS} ground-image"
+    fi
     calculate_terminal_position 1
     xterm "${XTERM_CONFIG_ARGS[@]}" -title "Ground" -fa Monospace -fs $FONT_SIZE -bg black -fg white \
       -geometry "${TERM_COLS}x${TERM_ROWS}+${X_POS}+${Y_POS}" -hold -e bash -c "$DOCKER_CMD" &
@@ -195,7 +200,7 @@ if [[ "$HITL" == "false" ]]; then
         --env DRONE_TYPE=$drone_type --env DRONE_ID=$DRONE_ID \
         --env SIMULATED_TIME=true --env CENTRALIZED=$CENTRALIZED \
         --env SIM_SUBNET=$SIM_SUBNET --env AIR_SUBNET=$AIR_SUBNET --env SIM_ID=$SIM_ID --env GROUND_ID=$GROUND_ID \
-        --env GND_CONTAINER=$GND_CONTAINER \
+        --env GND_CONTAINER=$GND_CONTAINER --env RCPILOT=$RCPILOT \
         --env ROS_DOMAIN_ID=$DRONE_ID \
         --net=$SIM_NET_NAME --ip=${SIM_SUBNET}.90.$DRONE_ID \
         --privileged \
@@ -204,7 +209,11 @@ if [[ "$HITL" == "false" ]]; then
       if [[ "$DESK_ENV" == "wsl" ]]; then
         DOCKER_CMD="$DOCKER_CMD $WSL_OPTS"
       fi
-      DOCKER_CMD="$DOCKER_CMD ${DEV_AIR_OPTS} aircraft-image"
+      if [[ "$RCPILOT" == "true" ]]; then
+        DOCKER_CMD="$DOCKER_CMD ${DEV_AIR_OPTS} rc-aircraft-image"
+      else
+        DOCKER_CMD="$DOCKER_CMD ${DEV_AIR_OPTS} aircraft-image"
+      fi
       calculate_terminal_position $(($DRONE_ID + 1))
       xterm "${XTERM_CONFIG_ARGS[@]}" -title "${drone_type^^} $DRONE_ID" -fa Monospace -fs $FONT_SIZE -bg black -fg white \
         -geometry "${TERM_COLS}x${TERM_ROWS}+${X_POS}+${Y_POS}" -hold -e bash -c "$DOCKER_CMD" &
