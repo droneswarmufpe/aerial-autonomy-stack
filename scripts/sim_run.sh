@@ -22,6 +22,7 @@ CENTRALIZED="${CENTRALIZED:-true}" # Options: true, false (default) - If true, a
 X_OFFSET="${X_OFFSET:-5}" # X offset for drone placement in the world (default = 0)
 Y_OFFSET="${Y_OFFSET:--110}" # Y offset for drone placement in the world (default = 0)
 #
+RCPILOT="${RCPILOT:-false}" # Options: true, false (default) - If true, the rcpilot repo will be cloned and built. This is useful for testing the rcpilot SDK and its integration with the AAS.
 DEV="${DEV:false}" # Options: true, false (default)
 HITL="${HITL:-false}" # Options: true, false (default)
 GND_CONTAINER="${GND_CONTAINER:-true}" # Options: true (default), false
@@ -169,7 +170,11 @@ if [[ "$HITL" == "false" ]]; then
     if [[ "$DESK_ENV" == "wsl" ]]; then
       DOCKER_CMD="$DOCKER_CMD $WSL_OPTS"
     fi
-    DOCKER_CMD="$DOCKER_CMD ${DEV_GND_OPTS} ground-image"
+    if [[ "$RCPILOT" == "true" ]]; then
+      DOCKER_CMD="$DOCKER_CMD ${DEV_GND_OPTS} rcpilot-image"
+    else
+      DOCKER_CMD="$DOCKER_CMD ${DEV_GND_OPTS} ground-image"
+    fi
     calculate_terminal_position 1
     xterm "${XTERM_CONFIG_ARGS[@]}" -title "Ground" -fa Monospace -fs $FONT_SIZE -bg black -fg white \
       -geometry "${TERM_COLS}x${TERM_ROWS}+${X_POS}+${Y_POS}" -hold -e bash -c "$DOCKER_CMD" &
@@ -204,7 +209,11 @@ if [[ "$HITL" == "false" ]]; then
       if [[ "$DESK_ENV" == "wsl" ]]; then
         DOCKER_CMD="$DOCKER_CMD $WSL_OPTS"
       fi
-      DOCKER_CMD="$DOCKER_CMD ${DEV_AIR_OPTS} aircraft-image"
+      if [[ "$RCPILOT" == "true" ]]; then
+        DOCKER_CMD="$DOCKER_CMD ${DEV_AIR_OPTS} rcpilot-image"
+      else
+        DOCKER_CMD="$DOCKER_CMD ${DEV_AIR_OPTS} aircraft-image"
+      fi
       calculate_terminal_position $(($DRONE_ID + 1))
       xterm "${XTERM_CONFIG_ARGS[@]}" -title "${drone_type^^} $DRONE_ID" -fa Monospace -fs $FONT_SIZE -bg black -fg white \
         -geometry "${TERM_COLS}x${TERM_ROWS}+${X_POS}+${Y_POS}" -hold -e bash -c "$DOCKER_CMD" &
