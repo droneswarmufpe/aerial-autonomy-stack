@@ -117,7 +117,8 @@ if [ "$BUILD_DOCKER" = "true" ]; then
   docker build -t aircraft-image -f "${SCRIPT_DIR}/docker/Dockerfile.aircraft" "${SCRIPT_DIR}/.."
 
   if [ "${RCPILOT:-false}" = "true" ]; then
-    docker build -t rcpilot-image -f "${SCRIPT_DIR}/docker/Dockerfile.rcpilot" "${SCRIPT_DIR}/.."
+    docker build -t rc-aircraft-image -f "${SCRIPT_DIR}/docker/Dockerfile.rc_aircraft" "${SCRIPT_DIR}/.."
+    docker build -t rc-ground-image -f "${SCRIPT_DIR}/docker/Dockerfile.rc_ground" "${SCRIPT_DIR}/.."
   fi
   
 else

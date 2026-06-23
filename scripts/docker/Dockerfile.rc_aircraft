@@ -1,0 +1,191 @@
+################################################################################
+# Stage 1 - ?GB ################################################################
+################################################################################
+FROM nvcr.io/nvidia/cuda:12.8.1-cudnn-runtime-ubuntu22.04 AS ros2-image
+
+# Tell apt (and other Debian tools) not to prompt for user input during package installs
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Update the package list and install basic dependencies
+RUN apt update \
+    && apt install -y --no-install-recommends \
+        wget gosu htop vim ruby tmux net-tools iproute2 iputils-ping netcat-openbsd \
+        python3-pip python3-venv \
+        mesa-utils \
+    && gem install tmuxinator \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install ROS2 Humble
+# Based on https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html
+RUN apt update \
+    && apt install -y --no-install-recommends \
+        locales \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
+RUN locale-gen en_US en_US.UTF-8
+RUN update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
+ENV LANG=en_US.UTF-8
+RUN apt update \
+    && apt install -y --no-install-recommends \
+        software-properties-common curl \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
+RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
+RUN echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu \
+    $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | tee /etc/apt/sources.list.d/ros2.list > /dev/null
+RUN apt update \
+    && apt install -y --no-install-recommends \
+        ros-humble-desktop ros-dev-tools \
+        ros-humble-bondcpp ros-humble-ament-cmake-clang-format \
+        ros-humble-vision-msgs \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
+RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
+RUN rosdep init
+
+################################################################################
+# Stage 2 - ?GB ################################################################
+################################################################################
+FROM ros2-image AS ros2-gst-image
+
+# Add GStreamer, Python OpenCV packages
+RUN apt update \
+    && apt install -y --no-install-recommends \
+        gstreamer1.0-tools gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav \
+        python3-opencv \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# NOTE: we want system Python's OpenCV to have GStreamer support
+RUN pip3 install --no-cache-dir --upgrade pip \
+    && pip3 install --no-cache-dir --resume-retries 5 "numpy<2"
+
+################################################################################
+# Stage 3 - ?GB ################################################################
+################################################################################
+FROM ros2-gst-image AS ros2-gst-mav-image
+
+# MAVROS
+RUN apt-get update && \
+    apt-get install -y ros-humble-mavros ros-humble-mavros-extras ros-humble-mavros-msgs \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
+RUN /opt/ros/humble/lib/mavros/install_geographiclib_datasets.sh
+# Run with $ ros2 launch mavros apm.launch fcu_url:=[URI]
+
+# MAVProxy 
+RUN apt update \
+    && apt install -y --no-install-recommends \
+        python3-dev python3-opencv python3-wxgtk4.0 python3-pip python3-matplotlib python3-lxml python3-pygame \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
+RUN pip3 install --no-cache-dir --upgrade pip \
+    && pip3 install --no-cache-dir --resume-retries 5 "numpy<2" future mavproxy 
+    
+# Add pymavlink for debugging and testing
+RUN pip3 install --no-cache-dir --upgrade pip \
+    && pip3 install --no-cache-dir --resume-retries 5 pymavlink pyserial
+# Check with $ python3 -c "import pymavlink; print(pymavlink.__version__)"
+
+# Install mavlink-router 
+# TODO: Check arm64 compatibility
+RUN apt update \
+    && apt install -y --no-install-recommends \
+        git meson ninja-build pkg-config gcc g++ systemd \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
+COPY /github_clones/mavlink-router /aas/github_apps/mavlink-router
+WORKDIR /aas/github_apps/mavlink-router
+RUN meson setup build . --buildtype=release \
+    && ninja -C build \
+    && ninja -C build install
+# Check with $ mavlink-routerd --version
+
+################################################################################
+# Stage 4 - ?GB ################################################################
+################################################################################
+FROM ros2-gst-mav-image AS ros2-gst-mav-yolo-image
+
+# Install YOLO with --no-deps to avoid installing opencv from pip, upgrade sympy and install ultralytics dependencies manually
+RUN pip3 install --no-cache-dir --upgrade pip \
+    && pip3 install --no-cache-dir --resume-retries 5 --no-deps ultralytics \
+    && pip3 install --no-cache-dir --resume-retries 5 --upgrade --ignore-installed sympy \
+    && pip3 install --no-cache-dir --resume-retries 5 torch==2.10.0+cu128 torchvision==0.25.0+cu128 --index-url https://download.pytorch.org/whl/cu128 \
+    && pip3 install --no-cache-dir --resume-retries 5 matplotlib pillow pyyaml requests scipy tqdm psutil
+
+################################################################################
+# Stage 5 - ?GB ################################################################
+################################################################################
+FROM ros2-gst-mav-yolo-image AS aircraft-dev-image
+
+# Install PlotJuggler
+RUN apt-get update && \
+    apt-get install -y ros-humble-plotjuggler \
+    ros-humble-plotjuggler-ros \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
+
+################################################################################
+# Stage 7 - ?GB ################################################################
+################################################################################
+## Infra Software Install
+COPY github_clones/MAVKit /libs/MAVKit
+WORKDIR /libs/MAVKit
+RUN pip install -e .
+
+COPY github_clones/Chorus /libs/Chorus
+WORKDIR /libs/Chorus
+RUN pip install -e .
+RUN bash -c 'source /opt/ros/humble/setup.bash && pip install -e .'
+
+# Install dependencies
+RUN pip install numpy==1.26.4 transitions libtmux dearpygui zmq pymap3d utm cartopy filterpy
+
+# Install build dependencies for rcpilot
+RUN apt update \
+    && apt install -y --no-install-recommends \
+        ros-humble-geographic-msgs clang \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install rcpilot
+COPY github_clones/rcpilot /aas/rcpilot
+WORKDIR /aas/rcpilot
+
+# Initialize git repository and update submodules
+RUN git config --global --add safe.directory /aas/workspaces/rcpilot && \ 
+    git submodule sync && \
+    git submodule update --init --recursive
+
+# Build rcpilot SDK and workspace
+RUN ./install-sdk.bash cpp python && \
+    bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install --packages-skip localization behavior decision"
+
+################################################################################
+# Stage 7 - ?GB ################################################################
+################################################################################
+
+# Add MAVLink 2 C library
+COPY /github_clones/c_library_v2 /usr/local/include/mavlink/
+
+# Build the ROS 2 workspace (NOTE: also includes ground_system_msgs from the ground_ws)
+COPY ground/ground_ws/src/ground_system_msgs /aas/aircraft_ws/src/ground_system_msgs
+COPY aircraft/aircraft_ws/src /aas/aircraft_ws/src
+WORKDIR /aas/aircraft_ws
+RUN rosdep update
+RUN rosdep install --from-paths src/ --ignore-src --rosdistro humble -y
+# Explicitly use bash, not sh, to source and build the workspace
+RUN bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release"
+
+# Copy resources and configuration files from this repository
+COPY aircraft/aircraft_resources/ /aas/aircraft_resources
+COPY aircraft/aircraft_resources/patches/apm_pluginlists.yaml /opt/ros/humble/share/mavros/launch/apm_pluginlists.yaml
+
+# Source the workspaces
+RUN echo "source /aas/aircraft_ws/install/setup.bash" >> /root/.bashrc
+
+# Final config
+WORKDIR /aas
+COPY aircraft/aircraft.yml.erb /aas/aircraft.yml.erb
+ENTRYPOINT ["tmuxinator", "start", "-p", "/aas/aircraft.yml.erb"]

@@ -166,14 +166,11 @@ RUN apt update \
     && rm -rf /var/lib/apt/lists/*
 
 # Install rcpilot
-COPY github_clones/rcpilot /aas/workspaces/rcpilot
-WORKDIR /aas/workspaces/rcpilot
-
-# Copy MAVKit to the expected location for rcpilot SDK
-#COPY github_clones/MAVKit /aas/workspaces/rcpilot/sdk/py/rcpilot/mavkit
+COPY github_clones/rcpilot /aas/rcpilot
+WORKDIR /aas/rcpilot
 
 # Initialize git repository and update submodules
-RUN git config --global --add safe.directory /aas/workspaces/rcpilot && \ 
+RUN git config --global --add safe.directory /aas/rcpilot && \ 
     git submodule sync && \
     git submodule update --init --recursive
 
@@ -189,12 +186,12 @@ RUN ./install-sdk.bash cpp python && \
 COPY /github_clones/c_library_v2 /usr/local/include/mavlink/
 
 # Build the ROS 2 workspace
-COPY ground/ground_ws/src /aas/workspaces/ground_ws/src
-WORKDIR /aas/workspaces/ground_ws
+COPY ground/ground_ws/src /aas/ground_ws/src
+WORKDIR /aas/ground_ws
 RUN rosdep update
 RUN rosdep install --from-paths src/ --ignore-src --rosdistro humble -y
 # Explicitly use bash, not sh, to source and build the workspace
-RUN bash -c "source /opt/ros/humble/setup.bash && (source /aas/github_ws/install/setup.bash || true) && colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release"
+RUN bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release"
 
 # Copy resources and configuration files from this repository
 COPY ground/ground_resources/ /aas/ground_resources
@@ -202,13 +199,11 @@ COPY ground/ground_resources/patches/QGroundControl.ini /home/qgcuser/.config/QG
 
 # Source the workspaces
 RUN echo "source /aas/ground_ws/install/setup.bash" >> /root/.bashrc
-RUN echo "source /workspaces/rcpilot/install/setup.bash" >> /root/.bashrc
 # If needed (but already in .bashrc) $ source /opt/ros/humble/setup.bash && source /aas/ground_ws/install/setup.bash
 
 SHELL ["/bin/bash", "-c"]
 
 # Final config
-# TODO: criar arquivo rcpilot.yml.erb para tmuxinator no repo do rcpilot
 WORKDIR /aas
-COPY aircraft/aircraft.yml.erb /aas/aircraft.yml.erb
-ENTRYPOINT ["tmuxinator", "start", "-p", "/aas/aircraft.yml.erb"]
+COPY ground/ground.yml.erb /aas/ground.yml.erb
+ENTRYPOINT ["tmuxinator", "start", "-p", "/aas/ground.yml.erb"]

@@ -171,7 +171,7 @@ if [[ "$HITL" == "false" ]]; then
       DOCKER_CMD="$DOCKER_CMD $WSL_OPTS"
     fi
     if [[ "$RCPILOT" == "true" ]]; then
-      DOCKER_CMD="$DOCKER_CMD ${DEV_GND_OPTS} rcpilot-image"
+      DOCKER_CMD="$DOCKER_CMD ${DEV_GND_OPTS} rc-ground-image"
     else
       DOCKER_CMD="$DOCKER_CMD ${DEV_GND_OPTS} ground-image"
     fi
@@ -210,7 +210,7 @@ if [[ "$HITL" == "false" ]]; then
         DOCKER_CMD="$DOCKER_CMD $WSL_OPTS"
       fi
       if [[ "$RCPILOT" == "true" ]]; then
-        DOCKER_CMD="$DOCKER_CMD ${DEV_AIR_OPTS} rcpilot-image"
+        DOCKER_CMD="$DOCKER_CMD ${DEV_AIR_OPTS} rc-aircraft-image"
       else
         DOCKER_CMD="$DOCKER_CMD ${DEV_AIR_OPTS} aircraft-image"
       fi
