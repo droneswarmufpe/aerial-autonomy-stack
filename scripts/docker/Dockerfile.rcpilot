@@ -145,33 +145,6 @@ RUN apt update \
 ################################################################################
 # Stage 7 - ?GB ################################################################
 ################################################################################
-# Install build dependencies for rcpilot
-RUN apt update \
-    && apt install -y --no-install-recommends \
-        ros-humble-geographic-msgs clang \
-    && apt clean \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install rcpilot
-COPY github_clones/rcpilot /aas/workspaces/rcpilot_ws
-WORKDIR /aas/workspaces/rcpilot_ws
-
-# Copy MAVKit to the expected location for rcpilot SDK
-COPY github_clones/MAVKit /aas/workspaces/rcpilot_ws/sdk/py/rcpilot/mavkit
-
-# Initialize git repository and update submodules
-RUN git config --global --add safe.directory /aas/workspaces/rcpilot_ws && \ 
-    git submodule sync && \
-    git submodule update --init --recursive
-
-# Build rcpilot SDK and workspace
-RUN ./install-sdk.bash cpp python && \
-    bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install --packages-skip localization"
-
-################################################################################
-# Stage 8 - ?GB ################################################################
-################################################################################
-
 ## Infra Software Install
 COPY github_clones/MAVKit /libs/MAVKit
 WORKDIR /libs/MAVKit
@@ -184,6 +157,33 @@ RUN bash -c 'source /opt/ros/humble/setup.bash && pip install -e .'
 
 # Install dependencies
 RUN pip install numpy==1.26.4 transitions libtmux dearpygui zmq pymap3d utm cartopy filterpy
+
+# Install build dependencies for rcpilot
+RUN apt update \
+    && apt install -y --no-install-recommends \
+        ros-humble-geographic-msgs clang \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install rcpilot
+COPY github_clones/rcpilot /aas/workspaces/rcpilot
+WORKDIR /aas/workspaces/rcpilot
+
+# Copy MAVKit to the expected location for rcpilot SDK
+#COPY github_clones/MAVKit /aas/workspaces/rcpilot/sdk/py/rcpilot/mavkit
+
+# Initialize git repository and update submodules
+RUN git config --global --add safe.directory /aas/workspaces/rcpilot && \ 
+    git submodule sync && \
+    git submodule update --init --recursive
+
+# Build rcpilot SDK and workspace
+RUN ./install-sdk.bash cpp python && \
+    bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install --packages-skip localization"
+
+################################################################################
+# Stage 8 - ?GB ################################################################
+################################################################################
 
 # Add MAVLink 2 C library
 COPY /github_clones/c_library_v2 /usr/local/include/mavlink/
