@@ -1,5 +1,5 @@
 ################################################################################
-# Stage 1 - 8GB ################################################################
+# Stage 1 - ?GB ################################################################
 ################################################################################
 FROM nvcr.io/nvidia/cuda:12.8.1-cudnn-runtime-ubuntu22.04 AS ros2-image
 
@@ -45,9 +45,9 @@ RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
 RUN rosdep init
 
 ################################################################################
-# Stage 2 - 8+GB ###############################################################
+# Stage 2 - ?GB ################################################################
 ################################################################################
-FROM ros2-image AS ros2-qgc-zenoh-image
+FROM ros2-image AS ros2-qgc-image
 
 # QGroundControl (as qgcuser)
 # Based on https://docs.qgroundcontrol.com/master/en/qgc-user-guide/getting_started/download_and_install.html
@@ -68,25 +68,27 @@ RUN wget https://d176tv9ibo4jno.cloudfront.net/latest/QGroundControl-x86_64.AppI
     rm /QGroundControl-x86_64.AppImage
 # Run with $ gosu qgcuser /squashfs-root/AppRun
 
-# Install Zenoh
-RUN echo "deb [trusted=yes] https://download.eclipse.org/zenoh/debian-repo/ /" | sudo tee -a /etc/apt/sources.list > /dev/null
-RUN apt-get update && \
-    apt-get install -y zenoh-bridge-ros2dds \
-    && apt clean \
-    && rm -rf /var/lib/apt/lists/*
-
 ################################################################################
-# Stage 3 - 8+GB ###############################################################
+# Stage 3 - ?GB ################################################################
 ################################################################################
-FROM ros2-qgc-zenoh-image AS ros2-qgc-zenoh-gst-pymavlink-image
+FROM ros2-qgc-image AS ros2-qgc-gst-image
 
-# Add GStreamer packages to stream the cameras to the aircraft containers
+# Add GStreamer, Python OpenCV packages
 RUN apt update \
     && apt install -y --no-install-recommends \
-        gstreamer1.0-tools gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly gstreamer1.0-libav \
-        python3-gi gir1.2-gst-plugins-base-1.0 gir1.2-gstreamer-1.0 \
+        gstreamer1.0-tools gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav \
+        python3-opencv \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
+
+# NOTE: we want system Python's OpenCV to have GStreamer support
+RUN pip3 install --no-cache-dir --upgrade pip \
+    && pip3 install --no-cache-dir --resume-retries 5 "numpy<2"
+
+################################################################################
+# Stage 4 - ?GB ################################################################
+################################################################################
+FROM ros2-qgc-gst-image AS ros2-qgc-gst-mav-image
 
 # MAVProxy 
 RUN apt update \
@@ -95,26 +97,15 @@ RUN apt update \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
 RUN pip3 install --no-cache-dir --upgrade pip \
-    && pip3 install --no-cache-dir --resume-retries 5 "numpy<2" future mavproxy
-
-# Add pymavlink to emulate the ground system using telemetry data
+    && pip3 install --no-cache-dir --resume-retries 5 "numpy<2" future mavproxy 
+    
+# Add pymavlink for debugging and testing
 RUN pip3 install --no-cache-dir --upgrade pip \
     && pip3 install --no-cache-dir --resume-retries 5 pymavlink pyserial
 # Check with $ python3 -c "import pymavlink; print(pymavlink.__version__)"
 
-################################################################################
-# Stage 4 - 8+GB ###############################################################
-################################################################################
-FROM ros2-qgc-zenoh-gst-pymavlink-image AS ground-dev-image
-
-# Install wmctrl and xrandr to resize QGC window
-RUN apt update \
-    && apt install -y --no-install-recommends \
-        wmctrl x11-xserver-utils \
-    && apt clean \
-    && rm -rf /var/lib/apt/lists/*
-
 # Install mavlink-router 
+# TODO: Check arm64 compatibility
 RUN apt update \
     && apt install -y --no-install-recommends \
         git meson ninja-build pkg-config gcc g++ systemd \
@@ -125,11 +116,13 @@ WORKDIR /aas/github_apps/mavlink-router
 RUN meson setup build . --buildtype=release \
     && ninja -C build \
     && ninja -C build install
-
+# Check with $ mavlink-routerd --version
 
 ################################################################################
-# Stage 5 - ?+GB ###############################################################
+# Stage 5 - ?GB ################################################################
 ################################################################################
+FROM ros2-qgc-gst-mav-image AS ros2-qgc-gst-mav-yolo-image
+
 # Install YOLO with --no-deps to avoid installing opencv from pip, upgrade sympy and install ultralytics dependencies manually
 RUN pip3 install --no-cache-dir --upgrade pip \
     && pip3 install --no-cache-dir --resume-retries 5 --no-deps ultralytics \
@@ -137,14 +130,30 @@ RUN pip3 install --no-cache-dir --upgrade pip \
     && pip3 install --no-cache-dir --resume-retries 5 torch==2.10.0+cu128 torchvision==0.25.0+cu128 --index-url https://download.pytorch.org/whl/cu128 \
     && pip3 install --no-cache-dir --resume-retries 5 matplotlib pillow pyyaml requests scipy tqdm psutil
 
-## Infra de Software Install
+################################################################################
+# Stage 6 - ?GB ################################################################
+################################################################################
+FROM ros2-qgc-gst-mav-image AS ground-dev-image
+
+# Install wmctrl and xrandr to resize QGC window
+RUN apt update \
+    && apt install -y --no-install-recommends \
+        wmctrl x11-xserver-utils \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
+
+################################################################################
+# Stage 8 - ?GB ################################################################
+################################################################################
+
+## Infra Software Install
 COPY github_clones/MAVKit /libs/MAVKit
 WORKDIR /libs/MAVKit
 RUN pip install -e .
 
 COPY github_clones/Chorus /libs/Chorus
 WORKDIR /libs/Chorus
-#RUN pip install -e .
+RUN pip install -e .
 RUN bash -c 'source /opt/ros/humble/setup.bash && pip install -e .'
 
 # Install dependencies
@@ -159,7 +168,7 @@ WORKDIR /aas/ground_ws
 RUN rosdep update
 RUN rosdep install --from-paths src/ --ignore-src --rosdistro humble -y
 # Explicitly use bash, not sh, to source and build the workspace
-RUN bash -c "source /opt/ros/humble/setup.bash && (source /aas/github_ws/install/setup.bash || true) && colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release"
+RUN bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release"
 
 # Copy resources and configuration files from this repository
 COPY ground/ground_resources/ /aas/ground_resources
