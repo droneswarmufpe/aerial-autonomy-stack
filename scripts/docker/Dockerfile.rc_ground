@@ -199,7 +199,7 @@ COPY ground/ground_resources/patches/QGroundControl.ini /home/qgcuser/.config/QG
 
 # Source the workspaces
 RUN echo "source /aas/ground_ws/install/setup.bash" >> /root/.bashrc
-# If needed (but already in .bashrc) $ source /opt/ros/humble/setup.bash && source /aas/ground_ws/install/setup.bash
+RUN echo "source /aas/rcpilot/install/setup.bash" >> /root/.bashrc
 
 SHELL ["/bin/bash", "-c"]
 

@@ -184,6 +184,7 @@ COPY aircraft/aircraft_resources/patches/apm_pluginlists.yaml /opt/ros/humble/sh
 
 # Source the workspaces
 RUN echo "source /aas/aircraft_ws/install/setup.bash" >> /root/.bashrc
+RUN echo "source /aas/rcpilot/install/setup.bash" >> /root/.bashrc
 
 # Final config
 WORKDIR /aas
