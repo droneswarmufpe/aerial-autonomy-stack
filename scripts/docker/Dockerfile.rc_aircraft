@@ -150,17 +150,18 @@ RUN apt update \
     && rm -rf /var/lib/apt/lists/*
 
 # Install rcpilot
-COPY github_clones/rcpilot /aas/rcpilot
-WORKDIR /aas/rcpilot
+# TODO: for, now rcpilot needs to be installed in the /workspaces directory, but we should change this to /aas/rcpilot in the future
+COPY github_clones/rcpilot /workspaces/rcpilot
+WORKDIR /workspaces/rcpilot
 
 # Initialize git repository and update submodules
-RUN git config --global --add safe.directory /aas/workspaces/rcpilot && \ 
+RUN git config --global --add safe.directory /workspaces/rcpilot && \ 
     git submodule sync && \
     git submodule update --init --recursive
 
 # Build rcpilot SDK and workspace
 RUN ./install-sdk.bash cpp python && \
-    bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install --packages-skip localization behavior decision"
+    bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install --packages-skip localization"
 
 ################################################################################
 # Stage 7 - ?GB ################################################################
@@ -184,7 +185,7 @@ COPY aircraft/aircraft_resources/patches/apm_pluginlists.yaml /opt/ros/humble/sh
 
 # Source the workspaces
 RUN echo "source /aas/aircraft_ws/install/setup.bash" >> /root/.bashrc
-RUN echo "source /aas/rcpilot/install/setup.bash" >> /root/.bashrc
+RUN echo "source /workspaces/rcpilot/install/setup.bash" >> /root/.bashrc
 
 # Final config
 WORKDIR /aas
