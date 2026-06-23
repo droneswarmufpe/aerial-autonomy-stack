@@ -266,8 +266,6 @@ RUN mkdir build && cd build \
 # Stage 9 - ??GB ##############################################################
 ################################################################################
 
-RUN pip3 install utm
-
 # Source the workspaces
 RUN echo "source /aas/simulation_ws/install/setup.bash" >> /root/.bashrc
 # If needed (but already in .bashrc) $ source /opt/ros/humble/setup.bash && source /aas/simulation_ws/install/setup.bash
