@@ -159,7 +159,7 @@ if [[ "$HITL" == "false" ]]; then
       --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
       --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
       --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
-      --env HEADLESS=$HEADLESS\
+      --env HEADLESS=$HEADLESS --env RCPILOT=$RCPILOT \
       --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS \
       --env SIMULATED_TIME=true --env CENTRALIZED=$CENTRALIZED \
       --env ROS_DOMAIN_ID=$GROUND_ID \
@@ -200,7 +200,7 @@ if [[ "$HITL" == "false" ]]; then
         --env DRONE_TYPE=$drone_type --env DRONE_ID=$DRONE_ID \
         --env SIMULATED_TIME=true --env CENTRALIZED=$CENTRALIZED \
         --env SIM_SUBNET=$SIM_SUBNET --env AIR_SUBNET=$AIR_SUBNET --env SIM_ID=$SIM_ID --env GROUND_ID=$GROUND_ID \
-        --env GND_CONTAINER=$GND_CONTAINER \
+        --env GND_CONTAINER=$GND_CONTAINER --env RCPILOT=$RCPILOT \
         --env ROS_DOMAIN_ID=$DRONE_ID \
         --net=$SIM_NET_NAME --ip=${SIM_SUBNET}.90.$DRONE_ID \
         --privileged \
