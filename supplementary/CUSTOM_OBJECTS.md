@@ -110,6 +110,11 @@ mkdir simulation/simulation_resources/simulation_worlds/<nome-do-modelo>/meshes
 ```
 - Após a criação da pasta, adicione nela o arquivo **.glb** ou **.fbx** baixado anteriormente.
 
+>[!NOTE]
+> Caso queira adicionar mais de um objeto do mesmo modelo, é só adicionar mais elementos na lista de `objects`.
+
+# Importando o modelo no mundo do Gazebo
+
 ## Editando arquivo de configurações
 >[!NOTE]
 > Para que um modelo seja carregado no mundo quando a simulação for executada, é preciso adicioná-lo no arquivo de configuração `simulation/simulation_resources/patches/custom_objects_config.json` e indicar qual será a sua posição.
@@ -118,19 +123,51 @@ mkdir simulation/simulation_resources/simulation_worlds/<nome-do-modelo>/meshes
 
 ```json
     {
-      "id": <id-unico>,
+      "id": <id-unico>,     
       "x": <posicao-em-x>,
       "y": <posicao-em-y>,
       "z": <posicao-em-z>,
-      "model": "<nome-do-modelo>"
+      "model": "<nome-do-modelo>",
+      "static": true/false
     }
 ```
+- Segue as explicações de cada campo:
+    - id: número inteiro contendo um id que deve ser único para cada objeto da lista
+    - x: posição em metros no eixo x do mundo de simulação que o objeto deve ser criado
+    - y: posição em metros no eixo y do mundo de simulação que o objeto deve ser criado
+    - z: posição em metros no eixo z do mundo de simulação que o objeto deve ser criado
+    - model: string com nome do modelo que deve corresponder ao nome da pasta utilizada para salvar os arquivos -> caso não seja preenchido, o modelo é pulado durante o carregamento
+    - static: booleano (true/false) indicando se o modelo deve ser carregado como estático ou não -> caso não seja preenchido, o modelo é carregado por default como não-estático
 
->[!NOTE]
-> Caso queira adicionar mais de um objeto do mesmo modelo, é só adicionar mais elementos na lista de `objects`.
+## Criando novo arquivo de configurações
+Também é possível criar um novo arquivo de configurações para carregar objetos customizados. Para isto:
+- Crie um novo arquivo .json na pasta `simulation/simulation_resources/patches/`
+- Escreva as configurações dos objetos que deseja carregar conforme o exemplo:
+```json
+{
+  "objects": [
+    {
+      "id": 1,
+      "x": -16.8706,
+      "y": -0.9578,
+      "z": 4.0,
+      "model": "panhard_vbl",
+      "static": false
+    },
+    {
+      "id": 2,
+      "x": -6.8706,
+      "y": -0.9578,
+      "z": 4.0,
+      "model": "renault_ccfm",
+      "static": false
+    }
+  ]
+}
+```
+- No [script de criação dos objetos](simulation/simulation_resources/simulation_worlds/_create_ardupilot_world.sh), altere a [linha que define o arquivo utilizado para carregar as configurações de criação](../simulation/simulation_resources/simulation_worlds/_create_custom_objects_world.sh) utilizand o seu arquivo
 
-# Executando a simulação com o novo modelo
-
+## Executando a simulação com o novo modelo
 - Para executar a simulação, é necessário ativar a flag de objetos customizados da seguinte forma:
 
 ```bash
@@ -173,3 +210,14 @@ Normalmete isso acaba ocorrendo, já que os modelos 3D não possuem uma padroniz
 <!-- pose = x y z roll pitch yaw -->
 <pose degrees="true">0 -0.9 -0.2 0 180 0</pose>
 ```
+
+### Os objetos estão causando lentidão na simulação
+A utilização de objetos não estáticos gera colisões que dificultam o processamento do mundo simulado. Assim, quanto mais objetos não estáticos são gerados, mais colisões são criadas e maior o uso de CPU/GPU da simulação.
+
+Uma forma de reduzir este consumo de processamento, é configurar os modelos como estáticos. Contudo, nesta configuração, eles **não terão interação física com o ambiente**, isto é, não serão afetados por gravidade ou colisões, se tornando apenas objetos visuais. Consequentemente, caso deseja que um objeto estático seja posicionado no chão, por exemplo, sua altura deverá ser definida de acordo no arquivo de configurações. Caso contrário, o objeto permanecerá no ar, conforme ilustrado no exemplo da figura abaixo:
+
+![flying static object](images/custom-objects-static-object.png)
+
+# Referências
+- https://gazebosim.org/docs/latest/building_robot/#building-a-model
+- https://docs.ros.org/en/rolling/Tutorials/Intermediate/URDF/Adding-Physical-and-Collision-Properties-to-a-URDF-Model.html
