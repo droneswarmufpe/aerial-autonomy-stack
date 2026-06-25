@@ -48,6 +48,7 @@ for row in $(jq -c '.objects[]' "$CUSTOM_OBJECTS_CONFIG_FILE"); do
   Y=$(echo "$row" | jq '.y')
   Z=$(echo "$row" | jq '.z')
   MODEL=$(echo "$row" | jq -r '.model')
+  STATIC=$(echo "$row" | jq -r '.static')
 
   # If there is no model field, set ime-target as default
   if [[ -z "$MODEL" || "$MODEL" == "null" ]]; then
@@ -60,7 +61,14 @@ for row in $(jq -c '.objects[]' "$CUSTOM_OBJECTS_CONFIG_FILE"); do
     continue
   fi
 
-  MODEL_XML="    <include>\n        <uri>model://${MODEL}</uri>\n        <name>${MODEL}_${MODEL_COUNT}</name>\n        <pose degrees=\"true\">${X} ${Y} ${Z} 90 0 0</pose>\n        <static>false</static>\n    </include>\n"
+  # If there is no model field, set ime-target as default
+  if [[ -z "$STATIC" || "$STATIC" == "null" ]]; then
+    echo "WARNING: No static value specified for object with id $MODEL_COUNT. Using default static value 'false'."
+    STATIC=false
+  fi
+
+  echo "Adding model '$MODEL' at position ($X, $Y, $Z) with static=$STATIC"
+  MODEL_XML="    <include>\n        <uri>model://${MODEL}</uri>\n        <name>${MODEL}_${MODEL_COUNT}</name>\n        <pose degrees=\"true\">${X} ${Y} ${Z} 90 0 0</pose>\n        <static>${STATIC}</static>\n    </include>\n"
   ALL_MODELS_XML+=$MODEL_XML
 done
 
