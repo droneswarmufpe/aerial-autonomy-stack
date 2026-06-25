@@ -5,14 +5,16 @@
       "x": -16.8706,
       "y": -0.9578,
       "z": 4.0,
-      "model": "panhard_vbl"
+      "model": "panhard_vbl",
+      "static": true
     },
     {
       "id": 2,
       "x": -6.8706,
       "y": -0.9578,
       "z": 4.0,
-      "model": "renault_ccfm"
+      "model": "renault_ccfm",
+      "static": false
     },
     {
       "id": 3,
