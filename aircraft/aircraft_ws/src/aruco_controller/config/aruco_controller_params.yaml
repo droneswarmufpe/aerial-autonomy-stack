@@ -1,0 +1,38 @@
+aruco_controller_node:
+  ros__parameters:
+    # Camera configuration
+    camera_topic: '/camera'  # Downward-facing camera topic
+    camera_frame_id: 'camera_frame'
+    command_topic: '/mavros/setpoint_velocity/cmd_vel_unstamped'
+    
+    # ArUco marker configuration
+    aruco_marker_id: 0  # ID of the marker to track
+    aruco_marker_size: 0.05  # Marker size in meters (50mm)
+    
+    # Proportional controller gains for XY centering
+    # Velocity = P_gain * (pixel_offset / image_center)
+    kp_x: 0.3  # Proportional gain for X-axis (roll correction)
+    kp_y: 0.3  # Proportional gain for Y-axis (pitch correction)
+    
+    # Descent control
+    descent_velocity: -0.5  # Downward velocity in m/s (negative = down)
+    
+    # Centering tolerance and thresholds
+    centering_tolerance_px: 20  # Pixels tolerance for centering (±20px = acceptable center)
+    min_alignment_confidence: 0.8  # Confidence threshold for good centering
+    
+    # Landing trigger thresholds
+    max_marker_area_px: 10000  # Max marker area before landing (too close)
+    min_marker_area_px: 100  # Min marker area to track (too far)
+    marker_lost_timeout_sec: 2.0  # Time before landing if marker disappears
+    
+    # Velocity command limits
+    max_horizontal_velocity: 1.0  # m/s
+    max_descent_velocity: 1.0  # m/s (absolute value)
+    
+    # State machine timing
+    initial_alignment_timeout_sec: 10.0  # Timeout for centering phase
+    descent_timeout_sec: 30.0  # Timeout for descent phase
+    
+    # Debug
+    publish_debug_images: false  # Whether to publish annotated camera images

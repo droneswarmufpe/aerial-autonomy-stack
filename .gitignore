@@ -254,3 +254,11 @@ marimo/_lsp/
 __marimo__/
 
 # Streamlit
+
+# Build artifacts
+aircraft/aircraft_ws/build/
+aircraft/aircraft_ws/install/
+aircraft/aircraft_ws/log/
+ground/ground_ws/build/
+ground/ground_ws/install/
+ground/ground_ws/log/

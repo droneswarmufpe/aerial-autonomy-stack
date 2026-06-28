@@ -1,0 +1,13 @@
+steps:
+  - action: 'takeoff'
+    params:
+      takeoff_altitude: 5.0  # Takeoff to 5 meters
+  
+  - action: 'wait'
+    params:
+      duration: 2.0  # Wait 2 seconds for stabilization
+  
+  - action: 'offboard'
+    params:
+      offboard_setpoint_type: 3  # ArduPilot velocity setpoint (2 for PX4 trajectory)
+      max_duration_sec: 30.0  # 30 seconds of offboard mode
