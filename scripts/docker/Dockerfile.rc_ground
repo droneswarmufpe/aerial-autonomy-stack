@@ -152,16 +152,16 @@ RUN pip install -e .
 
 COPY github_clones/Chorus /libs/Chorus
 WORKDIR /libs/Chorus
-RUN pip install -e .
 RUN bash -c 'source /opt/ros/humble/setup.bash && pip install -e .'
 
 # Install dependencies
-RUN pip install numpy==1.26.4 transitions libtmux dearpygui zmq pymap3d utm cartopy filterpy
+RUN pip install numpy==1.26.4 "packaging>=24.0" transitions libtmux dearpygui zmq pymap3d utm cartopy filterpy
 
 # Install build dependencies for rcpilot
 RUN apt update \
     && apt install -y --no-install-recommends \
         ros-humble-geographic-msgs clang \
+        python3-pkg-resources python3-setuptools \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -177,7 +177,8 @@ RUN git config --global --add safe.directory /workspaces/rcpilot && \
 
 # Build rcpilot SDK and workspace
 RUN ./install-sdk.bash cpp python && \
-    bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install --packages-skip localization"
+    bash -c "source /opt/ros/humble/setup.bash && colcon build --packages-skip localization"
+RUN pip install "setuptools<70"
 
 ################################################################################
 # Stage 8 - ?GB ################################################################

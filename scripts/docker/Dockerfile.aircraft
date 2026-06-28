@@ -137,7 +137,6 @@ RUN pip install -e .
 
 COPY github_clones/Chorus /libs/Chorus
 WORKDIR /libs/Chorus
-RUN pip install -e .
 RUN bash -c 'source /opt/ros/humble/setup.bash && pip install -e .'
 
 # Install dependencies
