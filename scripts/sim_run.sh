@@ -121,10 +121,8 @@ XTERM_CONFIG_ARGS=(
 
 PARENT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 
-# --volume ${PARENT_DIR}/simulation/simulation_resources/aircraft_models:/aas/simulation_resources/aircraft_models \
 # Launch the simulation container
 DOCKER_CMD="docker run -it --rm \
-  --volume ${PARENT_DIR}/simulation/simulation_resources:/aas/simulation_resources \
   --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
   --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
   --env AUTOPILOT=$AUTOPILOT --env HEADLESS=$HEADLESS --env CAMERA=$CAMERA --env LIDAR=$LIDAR --env CAMERA_PITCH=$CAMERA_PITCH \
