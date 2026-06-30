@@ -133,7 +133,7 @@ RUN pip3 install --no-cache-dir --upgrade pip \
 ################################################################################
 # Stage 6 - ?GB ################################################################
 ################################################################################
-FROM ros2-qgc-gst-mav-image AS ground-dev-image
+FROM ros2-qgc-gst-mav-yolo-image AS ground-dev-image
 
 # Install wmctrl and xrandr to resize QGC window
 RUN apt update \
