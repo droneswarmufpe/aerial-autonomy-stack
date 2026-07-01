@@ -11,14 +11,14 @@ aruco_controller_node:
     
     # Proportional controller gains for XY centering
     # Velocity = P_gain * (pixel_offset / image_center)
-    kp_x: 0.3  # Proportional gain for X-axis (roll correction)
-    kp_y: 0.3  # Proportional gain for Y-axis (pitch correction)
+    kp_x: 0.6  # Proportional gain for X-axis (roll correction)
+    kp_y: 0.6  # Proportional gain for Y-axis (pitch correction)
     
     # Descent control
-    descent_velocity: -0.5  # Downward velocity in m/s (negative = down)
+    descent_velocity: -0.2  # Downward velocity in m/s (negative = down)
     
     # Centering tolerance and thresholds
-    centering_tolerance_px: 20  # Pixels tolerance for centering (±20px = acceptable center)
+    centering_tolerance_px: 10  # Pixels tolerance for centering (±10px = acceptable center)
     min_alignment_confidence: 0.8  # Confidence threshold for good centering
     
     # Landing trigger thresholds
