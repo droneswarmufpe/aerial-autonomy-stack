@@ -15,10 +15,10 @@ AIR_SUBNET="${AIR_SUBNET:-10.22}" # Inter-vehicle subnet (default = 10.22) Note:
 SIM_ID="${SIM_ID:-100}" # Last byte of the simulation container IP (default = 100)
 GROUND_ID="${GROUND_ID:-101}" # Last byte of the simulation container IP (default = 101)
 #
-NUM_QUADS="${NUM_QUADS:-1}" # Number of quadcopters (default = 1)
+NUM_QUADS="${NUM_QUADS:-2}" # Number of quadcopters (default = 1)
 NUM_VTOLS="${NUM_VTOLS:-0}" # Number of VTOLs (default = 0)
 WORLD="${WORLD:-esefex_fbx}" # Options: impalpable_greyness (default), apple_orchard, shibuya_crossing, swiss_town
-CENTRALIZED="${CENTRALIZED:-true}" # Options: true, false (default) - If true, all cameras will stream to the ground container. If false, each camera will stream to its own IP (useful for testing network conditions and scalability)
+CENTRALIZED="${CENTRALIZED:-false}" # Options: true, false (default) - If true, all cameras will stream to the ground container. If false, each camera will stream to its own IP (useful for testing network conditions and scalability)
 X_OFFSET="${X_OFFSET:-5}" # X offset for drone placement in the world (default = 0)
 Y_OFFSET="${Y_OFFSET:--110}" # Y offset for drone placement in the world (default = 0)
 CUSTOM_TARGETS="${CUSTOM_TARGETS:-true}" # Options: true, false (default)
@@ -26,7 +26,7 @@ CUSTOM_TARGETS="${CUSTOM_TARGETS:-true}" # Options: true, false (default)
 DEV="${DEV:false}" # Options: true, false (default)
 HITL="${HITL:-false}" # Options: true, false (default)
 GND_CONTAINER="${GND_CONTAINER:-true}" # Options: true (default), false
-RTF="${RTF:-5.0}" # Real-time factor (default = 1.0), set to <=0.0 for as fast as possible execution
+RTF="${RTF:-1.0}" # Real-time factor (default = 1.0), set to <=0.0 for as fast as possible execution
 START_AS_PAUSED="${START_AS_PAUSED:-false}" # Options: true, false (default)
 INSTANCE="${INSTANCE:-0}" # Integer ID to make docker network/container names unique as well as offsetting the second byte of the subnets (default = 0)
 # Set unique subnets and container/network names based on INSTANCE
@@ -158,6 +158,8 @@ if [[ "$HITL" == "false" ]]; then
     DOCKER_CMD="docker run -it --rm \
       --ipc=host \
       --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
+      --volume ${PARENT_DIR}/github_clones/rcpilot:/aas/rcpilot \
+      --volume ${PARENT_DIR}/github_clones/MAVSys:/aas/MAVSys \
       --volume ${PARENT_DIR}/simulation/simulation_resources/patches:/aas/patches \
       --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
       --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \

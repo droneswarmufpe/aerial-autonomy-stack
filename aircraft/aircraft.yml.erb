@@ -35,7 +35,9 @@ windows:
   - ap_interface:
       layout: even-horizontal
       panes:
-        - clear && echo "So nice to have you with us, this is the aircraft <%= drone_id %> container."
+        - cd /aas/Projeto-Enxame-Drones/ && python3 pubsub_broker.py
+        - cd /aas/Projeto-Enxame-Drones/ && python3 gateway.py
+        - cd /aas/Projeto-Enxame-Drones/ && python3 mavsys.py
         <% if autopilot == 'px4' %>
         - ros2 run autopilot_interface px4_interface --ros-args -r __ns:=/Drone<%= drone_id %> <%= simulated_time ? '-p use_sim_time:=true' : '' %>
         <% elsif autopilot == 'ardupilot' %>
