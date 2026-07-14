@@ -44,11 +44,18 @@ MODEL_COUNT=0
 
 for row in $(jq -c '.objects[]' "$CUSTOM_OBJECTS_CONFIG_FILE"); do
   MODEL_COUNT=$((MODEL_COUNT + 1))
-  X=$(echo "$row" | jq '.x')
-  Y=$(echo "$row" | jq '.y')
+  LAT=$(echo "$row" | jq '.lat')
+  LON=$(echo "$row" | jq '.lon')
   Z=$(echo "$row" | jq '.z')
   MODEL=$(echo "$row" | jq -r '.model')
   STATIC=$(echo "$row" | jq -r '.static')
+
+  # Do not modify (IMAV world reference coordinates)
+  LAT_REF=48.802462
+  LON_REF=7.854108
+
+  X=$(python3 -c "import sys, math; lat, lon, lat_ref, lon_ref = map(float, sys.argv[1:5]); r = 6371000; d_lon = math.radians(lon - lon_ref); d_lat = math.radians(lat - lat_ref); print(r * d_lon * math.cos(math.radians(lat_ref)))" "$LAT" "$LON" "$LAT_REF" "$LON_REF")
+  Y=$(python3 -c "import sys, math; lat, lon, lat_ref, lon_ref = map(float, sys.argv[1:5]); r = 6371000; d_lat = math.radians(lat - lat_ref); print(r * d_lat)" "$LAT" "$LON" "$LAT_REF" "$LON_REF")
 
   # If there is no model field, set ime-target as default
   if [[ -z "$MODEL" || "$MODEL" == "null" ]]; then

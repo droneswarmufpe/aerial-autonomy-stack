@@ -2,40 +2,25 @@
   "objects": [
     {
       "id": 1,
-      "x": -16.8706,
-      "y": 800.9578,
+      "lat": 48.809613,
+      "lon": 7.858499,
       "z": 4.0,
       "model": "panhard_vbl",
       "static": false
     },
     {
       "id": 2,
-      "x": -6.8706,
-      "y": 850.9578,
+      "lat": 48.807618,
+      "lon": 7.853210,
       "z": 4.0,
-      "model": "renault_ccfm",
-      "static": false
+      "model": "renault_ccfm"
     },
     {
       "id": 3,
-      "x": -30.8706,
-      "y": 700.9578,
-      "z": 4.0,
-      "model": "renault_gbc180"
-    },
-    {
-      "id": 4,
-      "x": 11.8706,
-      "y": 900.9578,
+      "lat": 48.809936,
+      "lon": 7.855001,
       "z": 4.0,
       "model": "toyota_hilux"
-    },
-    {
-      "id": 5,
-      "x": 21.8706,
-      "y": 850.9578,
-      "z": 4.0,
-      "model": "arquus_vt4"
     }
   ]
 }
