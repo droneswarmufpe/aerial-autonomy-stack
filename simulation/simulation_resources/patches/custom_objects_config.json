@@ -5,7 +5,7 @@
       "lat": 48.809613,
       "lon": 7.858499,
       "z": 4.0,
-      "model": "panhard_vbl",
+      "model": "renault_gbc180",
       "static": false
     },
     {
@@ -21,6 +21,20 @@
       "lon": 7.855001,
       "z": 4.0,
       "model": "toyota_hilux"
+    },
+    {
+      "id": 4,
+      "lat": 48.809944,
+      "lon": 7.856987,
+      "z": 4.0,
+      "model": "arquus_vt4"
+    },
+    {
+      "id": 5,
+      "lat": 48.810179,
+      "lon": 7.853140,
+      "z": 4.0,
+      "model": "panhard_vbl"
     }
   ]
 }
