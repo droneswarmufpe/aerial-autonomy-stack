@@ -13,6 +13,19 @@
   world = ENV.fetch('WORLD', 'impalpable_greyness')
   x_offset = ENV.fetch('X_OFFSET', 0).to_i
   y_offset = ENV.fetch('Y_OFFSET', 0).to_i
+  custom_objects = ENV.fetch('CUSTOM_OBJECTS', 'false') == 'true'
+  env_or = ->(key, fallback) { value = ENV.fetch(key, ''); value.empty? ? fallback : value }
+  aruco_placement = ENV.fetch('ARUCO_PLACEMENT', 'under-drones')
+  aruco_z = ENV.fetch('ARUCO_Z', '0.03').to_f
+  aruco_spacing = ENV.fetch('ARUCO_SPACING', '2.0').to_f
+  aruco_model = ENV.fetch('ARUCO_MODEL', 'aruco_5x5_0')
+  aruco_count = env_or.call('ARUCO_COUNT', (num_quads + num_vtols).to_s).to_i
+  aruco_x_min = env_or.call('ARUCO_X_MIN', (x_offset - 20).to_s).to_f
+  aruco_x_max = env_or.call('ARUCO_X_MAX', (x_offset + 20).to_s).to_f
+  aruco_y_min = env_or.call('ARUCO_Y_MIN', (y_offset - 20).to_s).to_f
+  aruco_y_max = env_or.call('ARUCO_Y_MAX', (y_offset + 20).to_s).to_f
+  aruco_min_distance = ENV.fetch('ARUCO_MIN_DISTANCE', '1.5').to_f
+  aruco_seed = ENV.fetch('ARUCO_SEED', '')
   
   gnd_container = ENV.fetch('GND_CONTAINER', 'true') == 'true'
   centralized = ENV.fetch('CENTRALIZED', 'false') == 'true'
@@ -63,7 +76,25 @@ windows:
           <% if autopilot == 'ardupilot' %>
           /aas/simulation_resources/aircraft_models/_create_ardupilot_models.sh <%= num_quads %> <%= num_vtols %> <%= camera_pitch %> &&
           /aas/simulation_resources/simulation_worlds/_create_ardupilot_world.sh <%= num_quads %> <%= num_vtols %> <%= world %>.sdf <%= x_offset %> <%= y_offset %> &&
-          <% if ENV['CUSTOM_OBJECTS'] == 'true' %>
+          <% if custom_objects %>
+          python3 /aas/simulation_resources/scripts/generate_aruco_custom_objects.py
+          --placement <%= aruco_placement %>
+          --num-quads <%= num_quads %>
+          --num-vtols <%= num_vtols %>
+          --x-offset <%= x_offset %>
+          --y-offset <%= y_offset %>
+          --z <%= aruco_z %>
+          --spacing <%= aruco_spacing %>
+          --model <%= aruco_model %>
+          --count <%= aruco_count %>
+          --x-min <%= aruco_x_min %>
+          --x-max <%= aruco_x_max %>
+          --y-min <%= aruco_y_min %>
+          --y-max <%= aruco_y_max %>
+          --min-distance <%= aruco_min_distance %>
+          <%= aruco_seed.empty? ? '' : "--seed #{aruco_seed}" %>
+          --output /tmp/aruco_custom_objects_config.json &&
+          CUSTOM_OBJECTS_CONFIG_FILE=/tmp/aruco_custom_objects_config.json
           /aas/simulation_resources/simulation_worlds/_create_custom_objects_world.sh /aas/simulation_resources/simulation_worlds/populated_ardupilot.sdf &&
           <% end %>
           GZ_SIM_SYSTEM_PLUGIN_PATH=/aas/github_apps/ardupilot_gazebo/build:$GZ_SIM_SYSTEM_PLUGIN_PATH 

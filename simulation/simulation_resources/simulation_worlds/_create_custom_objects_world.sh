@@ -18,7 +18,7 @@ if [[ "$WORLD_FILE_PATH" != /* ]]; then
   WORLD_FILE_PATH="${SCRIPT_DIR}/${WORLD_FILE_PATH}"
 fi
 
-CUSTOM_OBJECTS_CONFIG_FILE="${SCRIPT_DIR}/../patches/custom_objects_config.json"
+CUSTOM_OBJECTS_CONFIG_FILE="${CUSTOM_OBJECTS_CONFIG_FILE:-${SCRIPT_DIR}/../patches/custom_objects_config.json}"
 
 if [[ ! -f "$CUSTOM_OBJECTS_CONFIG_FILE" ]]; then
   echo "WARNING: custom_objects_config.json not found at $CUSTOM_OBJECTS_CONFIG_FILE. No objects will be added."
@@ -48,6 +48,10 @@ for row in $(jq -c '.objects[]' "$CUSTOM_OBJECTS_CONFIG_FILE"); do
   Y=$(echo "$row" | jq '.y')
   Z=$(echo "$row" | jq '.z')
   MODEL=$(echo "$row" | jq -r '.model')
+  NAME=$(echo "$row" | jq -r '.name // empty')
+  ROLL=$(echo "$row" | jq '.roll // 90')
+  PITCH=$(echo "$row" | jq '.pitch // 0')
+  YAW=$(echo "$row" | jq '.yaw // 0')
   STATIC=$(echo "$row" | jq -r '.static')
 
   # If there is no model field, set ime-target as default
@@ -67,8 +71,12 @@ for row in $(jq -c '.objects[]' "$CUSTOM_OBJECTS_CONFIG_FILE"); do
     STATIC=false
   fi
 
-  echo "Adding model '$MODEL' at position ($X, $Y, $Z) with static=$STATIC"
-  MODEL_XML="    <include>\n        <uri>model://${MODEL}</uri>\n        <name>${MODEL}_${MODEL_COUNT}</name>\n        <pose degrees=\"true\">${X} ${Y} ${Z} 90 0 0</pose>\n        <static>${STATIC}</static>\n    </include>\n"
+  if [[ -z "$NAME" || "$NAME" == "null" ]]; then
+    NAME="${MODEL}_${MODEL_COUNT}"
+  fi
+
+  echo "Adding model '$MODEL' as '$NAME' at position ($X, $Y, $Z) with static=$STATIC"
+  MODEL_XML="    <include>\n        <uri>model://${MODEL}</uri>\n        <name>${NAME}</name>\n        <pose degrees=\"true\">${X} ${Y} ${Z} ${ROLL} ${PITCH} ${YAW}</pose>\n        <static>${STATIC}</static>\n    </include>\n"
   ALL_MODELS_XML+=$MODEL_XML
 done
 

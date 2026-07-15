@@ -21,6 +21,18 @@ WORLD="${WORLD:-esefex_fbx}" # Options: impalpable_greyness (default), apple_orc
 CENTRALIZED="${CENTRALIZED:-true}" # Options: true, false (default) - If true, all cameras will stream to the ground container. If false, each camera will stream to its own IP (useful for testing network conditions and scalability)
 X_OFFSET="${X_OFFSET:-5}" # X offset for drone placement in the world (default = 0)
 Y_OFFSET="${Y_OFFSET:--110}" # Y offset for drone placement in the world (default = 0)
+CUSTOM_OBJECTS="${CUSTOM_OBJECTS:-false}" # Options: true, false (default). If true, injects generated ArUco marker models into the world.
+ARUCO_PLACEMENT="${ARUCO_PLACEMENT:-under-drones}" # Options: under-drones, random.
+ARUCO_Z="${ARUCO_Z:-0.03}" # Marker Z coordinate. In terrain worlds, set this to the local ground height.
+ARUCO_SPACING="${ARUCO_SPACING:-2.0}" # Marker spacing, matching drone spawn spacing by default.
+ARUCO_MODEL="${ARUCO_MODEL:-aruco_5x5_0}" # Model directory under simulation_resources/simulation_worlds.
+ARUCO_COUNT="${ARUCO_COUNT:-}" # Number of random markers. Defaults to NUM_QUADS + NUM_VTOLS.
+ARUCO_X_MIN="${ARUCO_X_MIN:-}" # Random placement lower X bound.
+ARUCO_X_MAX="${ARUCO_X_MAX:-}" # Random placement upper X bound.
+ARUCO_Y_MIN="${ARUCO_Y_MIN:-}" # Random placement lower Y bound.
+ARUCO_Y_MAX="${ARUCO_Y_MAX:-}" # Random placement upper Y bound.
+ARUCO_MIN_DISTANCE="${ARUCO_MIN_DISTANCE:-1.5}" # Minimum distance between random markers.
+ARUCO_SEED="${ARUCO_SEED:-}" # Optional deterministic random seed.
 #
 RCPILOT="${RCPILOT:-false}" # Options: true, false (default) - If true, the rcpilot repo will be cloned and built. This is useful for testing the rcpilot SDK and its integration with the AAS.
 DEV="${DEV:false}" # Options: true, false (default)
@@ -40,7 +52,6 @@ SIM_NET_NAME="aas-sim-network-inst${INSTANCE}"
 AIR_NET_NAME="aas-air-network-inst${INSTANCE}"
 SIM_CONT_NAME="simulation-container-inst${INSTANCE}"
 GND_CONT_NAME="ground-container-inst${INSTANCE}"
-CUSTOM_OBJECTS="${CUSTOM_OBJECTS:-false}"
 
 # Detect the environment (Ubuntu/GNOME, WSL, etc.)
 if command -v gnome-terminal >/dev/null 2>&1 && [ -n "$XDG_CURRENT_DESKTOP" ]; then
@@ -132,7 +143,10 @@ DOCKER_CMD="docker run -it --rm \
   --env SIMULATED_TIME=true --env RTF=$RTF --env START_AS_PAUSED=$START_AS_PAUSED \
   --env SIM_SUBNET=$SIM_SUBNET --env GROUND_ID=$GROUND_ID \
   --env GND_CONTAINER=$GND_CONTAINER --env CENTRALIZED=$CENTRALIZED \
-  --env X_OFFSET=$X_OFFSET --env Y_OFFSET=$Y_OFFSET --env CUSTOM_OBJECTS=$CUSTOM_OBJECTS \
+  --env X_OFFSET=$X_OFFSET --env Y_OFFSET=$Y_OFFSET \
+  --env CUSTOM_OBJECTS=$CUSTOM_OBJECTS --env ARUCO_PLACEMENT=$ARUCO_PLACEMENT --env ARUCO_Z=$ARUCO_Z --env ARUCO_SPACING=$ARUCO_SPACING --env ARUCO_MODEL=$ARUCO_MODEL \
+  --env ARUCO_COUNT=$ARUCO_COUNT --env ARUCO_X_MIN=$ARUCO_X_MIN --env ARUCO_X_MAX=$ARUCO_X_MAX --env ARUCO_Y_MIN=$ARUCO_Y_MIN --env ARUCO_Y_MAX=$ARUCO_Y_MAX \
+  --env ARUCO_MIN_DISTANCE=$ARUCO_MIN_DISTANCE --env ARUCO_SEED=$ARUCO_SEED \
   --env ROS_DOMAIN_ID=$SIM_ID \
   --privileged \
   --name $SIM_CONT_NAME"
