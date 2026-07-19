@@ -34,17 +34,14 @@ windows:
       layout: even-horizontal
       panes:
         - clear && echo "So nice to have you with us, this is the aircraft <%= drone_id %> container."
-        - ros2 run autopilot_interface ardupilot_interface --ros-args -r __ns:=/Drone<%= drone_id %> <%= simulated_time ? '-p use_sim_time:=true' : '' %>
+        - cd /aas/Projeto-Enxame-Drones/ && python3 pubsub_broker.py
+        - cd /aas/Projeto-Enxame-Drones/ && python3 gateway.py <%= "#{drone_id}" %>
+        - cd /aas/Projeto-Enxame-Drones/ && python3 mavsys.py <%= "#{drone_id}" %>
 
   - mavlink_router:
       layout: even-horizontal
       panes:
-        - >
-          <% if simulated_time %>
-          mavlink-routerd -t 0 -e 127.0.0.1:14573 -e <%= "#{sim_subnet}.90.#{drone_id}" %>:14572 -e <%= "#{sim_subnet}.90.#{drone_id}" %>:14571 <%= "#{sim_subnet}.90.#{drone_id}" %>:14570
-          <% else %>
-          mavlink-routerd -t 0 -e 127.0.0.1:14573 -e <%= "#{sim_subnet}.90.#{drone_id}" %>:14572 -e <%= "#{sim_subnet}.90.#{drone_id}" %>:14571 /dev/ttyACM0:57600
-          <% end %>
+        - mavlink-routerd -t 0 -e 127.0.0.1:14572 <%= "10.42.90.#{drone_id}:14570" %>
 
   <% if rcpilot %>
   - rcpilot:

@@ -19,9 +19,14 @@ name: ground
 
 windows:
   - ground_system:
+
+  <% if not centralized %>
       layout: even-horizontal
       panes:
         - clear && echo "So nice to have you with us, this is the ground container."
+        - cd /aas/Projeto-Enxame-Drones/ && python3 gcs.py
+
+  <% end %>
 
   <% if centralized %>
   <% num_quads.times do |i| %>
@@ -29,6 +34,7 @@ windows:
   - mavlink_router_quad_<%= drone_id %>:
       layout: even-horizontal
       panes:
+        - clear && echo "Running in centralized mode, all processes are running in this ground container."
         - <%
           ground_ip = "#{sim_subnet}.90.#{ground_id}"
           master_port = 14570 + drone_id
