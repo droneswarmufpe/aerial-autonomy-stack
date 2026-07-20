@@ -5,7 +5,7 @@
       "lat": 48.809613,
       "lon": 7.858499,
       "z": 4.0,
-      "model": "renault_gbc180",
+      "model": "renault_ccfm_c",
       "static": false
     },
     {
@@ -13,14 +13,14 @@
       "lat": 48.807618,
       "lon": 7.853210,
       "z": 4.0,
-      "model": "renault_ccfm"
+      "model": "renault_ccfm_b"
     },
     {
       "id": 3,
       "lat": 48.809936,
       "lon": 7.855001,
       "z": 4.0,
-      "model": "toyota_hilux"
+      "model": "renault_ccfm_a"
     },
     {
       "id": 4,
