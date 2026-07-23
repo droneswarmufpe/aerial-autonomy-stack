@@ -5,7 +5,7 @@
       "lat": 48.809613,
       "lon": 7.858499,
       "z": 4.0,
-      "model": "renault_ccfm_c",
+      "model": "vltt_a",
       "static": false
     },
     {
@@ -13,7 +13,7 @@
       "lat": 48.807618,
       "lon": 7.853210,
       "z": 4.0,
-      "model": "renault_ccfm_b"
+      "model": "renault_gbc180"
     },
     {
       "id": 3,
