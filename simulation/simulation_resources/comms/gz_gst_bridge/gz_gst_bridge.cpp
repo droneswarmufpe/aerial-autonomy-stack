@@ -13,31 +13,91 @@ GstElement *pipeline = nullptr;
 GMainLoop *loop = nullptr;
 GstElement *appsrc = nullptr;
 bool configured = false;
+int configured_width = 0;
+int configured_height = 0;
+std::string configured_format;
 
 // Command line args
 std::string TARGET_IP = "127.0.0.1";
 int TARGET_PORT = 5600;
 int FRAMERATE = 10;
 
+std::string detect_gst_raw_format(const gz::msgs::Image &msg) {
+    const auto width = static_cast<gsize>(msg.width());
+    const auto height = static_cast<gsize>(msg.height());
+    if (width == 0 || height == 0) {
+        return "";
+    }
+
+    const gsize pixels = width * height;
+    if (pixels == 0) {
+        return "";
+    }
+
+    const gsize size = msg.data().size();
+    if (size % pixels != 0) {
+        return "";
+    }
+
+    const gsize bytes_per_pixel = size / pixels;
+    switch (bytes_per_pixel) {
+        case 1:
+            return "GRAY8";   // L8
+        case 2:
+#if G_BYTE_ORDER == G_LITTLE_ENDIAN
+            return "GRAY16_LE";  // L16 / L_INT16 on little-endian hosts
+#else
+            return "GRAY16_BE";
+#endif
+        case 3:
+            return "RGB";
+        case 4:
+            return "RGBA";
+        default:
+            return "";
+    }
+}
+
+void configure_caps_if_needed(const gz::msgs::Image &msg, const std::string &format) {
+    const bool changed = !configured ||
+        configured_width != static_cast<int>(msg.width()) ||
+        configured_height != static_cast<int>(msg.height()) ||
+        configured_format != format;
+
+    if (!changed) {
+        return;
+    }
+
+    GstCaps *caps = gst_caps_new_simple("video/x-raw",
+        "format", G_TYPE_STRING, format.c_str(),
+        "width", G_TYPE_INT, msg.width(),
+        "height", G_TYPE_INT, msg.height(),
+        "framerate", GST_TYPE_FRACTION, FRAMERATE, 1,
+        NULL);
+
+    gst_app_src_set_caps(GST_APP_SRC(appsrc), caps);
+    gst_caps_unref(caps);
+
+    configured = true;
+    configured_width = static_cast<int>(msg.width());
+    configured_height = static_cast<int>(msg.height());
+    configured_format = format;
+
+    std::cout << "Configured GStreamer for " << msg.width() << "x" << msg.height()
+              << " format=" << format << std::endl;
+}
+
 // Image callback
 void on_frame(const gz::msgs::Image &msg) {
     if (!appsrc) return;
 
-    // Configure Caps on the first frame
-    if (!configured) {
-        GstCaps *caps = gst_caps_new_simple("video/x-raw",
-            "format", G_TYPE_STRING, "RGB",
-            "width", G_TYPE_INT, msg.width(),
-            "height", G_TYPE_INT, msg.height(),
-            "framerate", GST_TYPE_FRACTION, FRAMERATE, 1,
-            NULL);
-        
-        gst_app_src_set_caps(GST_APP_SRC(appsrc), caps);
-        gst_caps_unref(caps);
-        
-        std::cout << "Configured GStreamer for " << msg.width() << "x" << msg.height() << std::endl;
-        configured = true;
+    const std::string format = detect_gst_raw_format(msg);
+    if (format.empty()) {
+        g_warning("Unsupported image layout: width=%u height=%u bytes=%zu",
+                  msg.width(), msg.height(), msg.data().size());
+        return;
     }
+    configure_caps_if_needed(msg, format);
 
     // Copy to GStreamer Buffer
     gsize size = msg.data().size();
