@@ -56,6 +56,22 @@
       "y": -0.9578,
       "z": 4.0,
       "model": "duck"
+    },
+    {
+      "id": 9,
+      "x": -11.1336,
+      "y": 792.0203,
+      "z": -2.8,
+      "model": "construction_cone",
+      "static": false
+    },
+    {
+      "id": 10,
+      "x": -56.7212,
+      "y": 870.6301,
+      "z": -2.8,
+      "model": "construction_cone",
+      "static": false
     }
   ]
 }
