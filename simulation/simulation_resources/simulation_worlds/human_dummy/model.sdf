@@ -25,8 +25,8 @@
         <pose degrees="true">0 0 0.85 -90 0 0</pose>
         <geometry>
           <mesh>
-            <scale>1.0 1.0 1.0</scale>
-            <uri>model://human_dummy/meshes/human_dummy.glb</uri>
+            <scale>0.5 0.5 0.5</scale>
+            <uri>model://human_dummy/meshes/mannequin.glb</uri>
           </mesh>
         </geometry>
       </visual>
