@@ -26,6 +26,7 @@ CUSTOM_TARGETS="${CUSTOM_TARGETS:-true}" # Options: true, false (default)
 DEV="${DEV:false}" # Options: true, false (default)
 HITL="${HITL:-false}" # Options: true, false (default)
 HITL_SUBNET="${HITL_SUBNET:-172.20.15}" # Subnet for HITL mode (default = 172.20.15)
+DRONE_IPS="${DRONE_IPS:-}" # Comma-separated list of drone last IP bytes for HITL mode (e.g., "101,102,103" for 3 drones with IPs)
 GND_CONTAINER="${GND_CONTAINER:-true}" # Options: true (default), false
 RTF="${RTF:-5.0}" # Real-time factor (default = 1.0), set to <=0.0 for as fast as possible execution
 START_AS_PAUSED="${START_AS_PAUSED:-false}" # Options: true, false (default)
@@ -144,7 +145,7 @@ DOCKER_CMD="docker run -it --rm \
   --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS --env WORLD=$WORLD \
   --env SIMULATED_TIME=true --env RTF=$RTF --env START_AS_PAUSED=$START_AS_PAUSED \
   --env SIM_SUBNET=$SIM_SUBNET --env GROUND_ID=$GROUND_ID \
-  --env HITL=$HITL --env HITL_SUBNET=$HITL_SUBNET \
+  --env HITL=$HITL --env HITL_SUBNET=$HITL_SUBNET --env DRONE_IPS=$DRONE_IPS \
   --env GND_CONTAINER=$GND_CONTAINER --env CENTRALIZED=$CENTRALIZED \
   --env X_OFFSET=$X_OFFSET --env Y_OFFSET=$Y_OFFSET --env CUSTOM_TARGETS=$CUSTOM_TARGETS \
   --env ROS_DOMAIN_ID=$SIM_ID \

@@ -130,9 +130,9 @@ windows:
             <% if drone_ips.size != num_quads %>
             echo "[WARNING] NUM_QUADS=<%= num_quads %> but DRONE_IPS contains <%= drone_ips.size %> entries"
             <% end %>
-          --out=udp:<%= "#{hitl_subnet}.#{drone_ips.fetch(sitl_instance, drone_id)}" %>:14570
+          --out=udp:<%= "#{hitl_subnet}.#{drone_ips.fetch(sitl_instance, drone_id)}" %>:<%= 14570 + drone_id %>
           <% else %>
-          --out=udp:<%= "#{sim_subnet}.90.#{drone_id}" %>:14570 
+          --out=udp:<%= "#{sim_subnet}.90.#{drone_id}" %>:<%= 14570 + drone_id %> 
           <% end %>
           <% if gnd_container %>
           --out=udp:<%= "#{sim_subnet}.90.#{ground_id}" %>:<%= 14550 + drone_id%>
