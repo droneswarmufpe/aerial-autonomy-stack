@@ -49,6 +49,9 @@ for row in $(jq -c '.objects[]' "$CUSTOM_OBJECTS_CONFIG_FILE"); do
   Z=$(echo "$row" | jq '.z')
   MODEL=$(echo "$row" | jq -r '.model')
   STATIC=$(echo "$row" | jq -r '.static')
+  YAW=$(echo "$row" | jq -r '.yaw')
+  PITCH=$(echo "$row" | jq -r '.pitch')
+  ROLL=$(echo "$row" | jq -r '.roll')
 
   # Do not modify (IMAV world reference coordinates)
   LAT_REF=48.802462
@@ -74,8 +77,25 @@ for row in $(jq -c '.objects[]' "$CUSTOM_OBJECTS_CONFIG_FILE"); do
     STATIC=false
   fi
 
-  echo "Adding model '$MODEL' at position ($X, $Y, $Z) with static=$STATIC"
-  MODEL_XML="    <include>\n        <uri>model://${MODEL}</uri>\n        <name>${MODEL}_${MODEL_COUNT}</name>\n        <pose degrees=\"true\">${X} ${Y} ${Z} 90 0 0</pose>\n        <static>${STATIC}</static>\n    </include>\n"
+  if [[ -z "$YAW" || "$YAW" == "null" ]]; then
+    echo "WARNING: No YAW value specified for object with id $MODEL_COUNT. Using default YAW value '0'."
+    YAW=0
+  fi
+
+  if [[ -z "$PITCH" || "$PITCH" == "null" ]]; then
+    echo "WARNING: No PITCH value specified for object with id $MODEL_COUNT. Using default PITCH value '90'."
+    PITCH=90
+  else
+    PITCH=$((PITCH + 90)) # For the IMAV world
+  fi
+
+  if [[ -z "$ROLL" || "$ROLL" == "null" ]]; then
+    echo "WARNING: No ROLL value specified for object with id $MODEL_COUNT. Using default ROLL value '0'."
+    ROLL=0
+  fi
+
+  echo "Adding model '$MODEL' at position ($X, $Y, $Z), attitude (R=$ROLL, P=$PITCH, Y=$YAW) with static=$STATIC"
+  MODEL_XML="    <include>\n        <uri>model://${MODEL}</uri>\n        <name>${MODEL}_${MODEL_COUNT}</name>\n        <pose degrees=\"true\">${X} ${Y} ${Z} ${PITCH} ${ROLL} -${YAW}</pose>\n        <static>${STATIC}</static>\n    </include>\n"
   ALL_MODELS_XML+=$MODEL_XML
 done
 

@@ -22,11 +22,11 @@
         </geometry>
       </collision>
       <visual name='base_link_visual'>
-        <pose degrees="true">0 0 -0.85 90 0 0</pose>
+        <pose degrees="true">0 0 0.85 -90 0 0</pose>
         <geometry>
           <mesh>
             <scale>1.0 1.0 1.0</scale>
-            <uri>model://human_dummy_down/meshes/human_dummy.glb</uri>
+            <uri>model://human_dummy/meshes/human_dummy.glb</uri>
           </mesh>
         </geometry>
       </visual>
