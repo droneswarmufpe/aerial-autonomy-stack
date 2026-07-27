@@ -1,0 +1,23 @@
+landing_controller:
+  ros__parameters:
+    camera_stream_port: 5600
+    command_topic: /mavros/setpoint_velocity/cmd_vel_unstamped
+    mavros_setpoint_velocity_node: /mavros/setpoint_velocity
+    mavros_velocity_frame: BODY_NED
+
+    marker_id: 0
+
+    kp_forward: 0.35
+    kp_right: 0.35
+    max_horizontal_velocity: 0.45
+    descent_velocity: -0.20
+
+    centering_tolerance_px: 14
+    center_hold_sec: 0.6
+    min_marker_area_px: 80
+    land_marker_area_px: 14000
+    marker_lost_timeout_sec: 1.5
+    centering_timeout_sec: 15.0
+    descent_timeout_sec: 60.0
+
+    publish_debug_images: false

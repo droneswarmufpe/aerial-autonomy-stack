@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'aruco_controller'
+package_name = 'landing_controller'
 
 setup(
     name=package_name,
@@ -10,7 +10,7 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        ('share/' + package_name + '/config', ['config/aruco_controller_params.yaml']),
+        ('share/' + package_name + '/config', ['config/landing_controller_params.yaml']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -18,7 +18,7 @@ setup(
     author_email='pcgr@cin.ufpe.br',
     maintainer='PedroCGR',
     maintainer_email='pcgr@cin.ufpe.br',
-    keywords=['ArUco', 'tracking', 'drone', 'controller'],
+    keywords=['landing', 'tracking', 'drone', 'controller'],
     classifiers=[
         'Intended Audience :: Developers',
         'License :: OSI Approved :: Apache Software License',
@@ -27,7 +27,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'aruco_controller = aruco_controller.aruco_controller_node:main',
+            'landing_controller = landing_controller.landing_controller_node:main',
         ],
     },
 )
