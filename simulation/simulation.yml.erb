@@ -77,25 +77,8 @@ windows:
           /aas/simulation_resources/aircraft_models/_create_ardupilot_models.sh <%= num_quads %> <%= num_vtols %> <%= camera_pitch %> &&
           /aas/simulation_resources/simulation_worlds/_create_ardupilot_world.sh <%= num_quads %> <%= num_vtols %> <%= world %>.sdf <%= x_offset %> <%= y_offset %> &&
           <% if custom_objects %>
-          python3 /aas/simulation_resources/scripts/generate_aruco_custom_objects.py
-          --placement <%= aruco_placement %>
-          --num-quads <%= num_quads %>
-          --num-vtols <%= num_vtols %>
-          --x-offset <%= x_offset %>
-          --y-offset <%= y_offset %>
-          --z <%= aruco_z %>
-          --spacing <%= aruco_spacing %>
-          --model <%= aruco_model %>
-          --count <%= aruco_count %>
-          --x-min <%= aruco_x_min %>
-          --x-max <%= aruco_x_max %>
-          --y-min <%= aruco_y_min %>
-          --y-max <%= aruco_y_max %>
-          --min-distance <%= aruco_min_distance %>
-          <%= aruco_seed.empty? ? '' : "--seed #{aruco_seed}" %>
-          --output /tmp/aruco_custom_objects_config.json &&
-          CUSTOM_OBJECTS_CONFIG_FILE=/tmp/aruco_custom_objects_config.json
-          /aas/simulation_resources/simulation_worlds/_create_custom_objects_world.sh /aas/simulation_resources/simulation_worlds/populated_ardupilot.sdf &&
+          python3 /aas/simulation_resources/scripts/generate_aruco_custom_objects.py --placement <%= aruco_placement %> --num-quads <%= num_quads %> --num-vtols <%= num_vtols %> --x-offset <%= x_offset %> --y-offset <%= y_offset %> --z <%= aruco_z %> --spacing <%= aruco_spacing %> --model <%= aruco_model %> --count <%= aruco_count %> --x-min <%= aruco_x_min %> --x-max <%= aruco_x_max %> --y-min <%= aruco_y_min %> --y-max <%= aruco_y_max %> --min-distance <%= aruco_min_distance %> <%= aruco_seed.empty? ? '' : "--seed #{aruco_seed}" %> --output /tmp/aruco_custom_objects_config.json &&
+          CUSTOM_OBJECTS_CONFIG_FILE=/tmp/aruco_custom_objects_config.json /aas/simulation_resources/simulation_worlds/_create_custom_objects_world.sh /aas/simulation_resources/simulation_worlds/populated_ardupilot.sdf &&
           <% end %>
           GZ_SIM_SYSTEM_PLUGIN_PATH=/aas/github_apps/ardupilot_gazebo/build:$GZ_SIM_SYSTEM_PLUGIN_PATH 
           <% end %>
