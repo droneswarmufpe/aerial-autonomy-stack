@@ -145,11 +145,11 @@ windows:
           /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
           /world/<%= world %>/model/<%= model_name %>/<%= sensor_path %>model/simple_camera/link/mono_cam/base_link/sensor/imager/image
           <% if centralized && !hitl %>
-          <%= "#{sim_subnet}.90.#{ground_id}" %> <%= 5600 + sitl_instance %> 8
+          <%= "#{sim_subnet}.90.#{ground_id}" %> <%= 5600 + sitl_instance %> 15
           <% elsif hitl %>
-          <%= "#{hitl_subnet}.#{drone_ips.fetch(sitl_instance, drone_id)}" %> 5600 8
+          <%= "#{hitl_subnet}.#{drone_ips.fetch(sitl_instance, drone_id)}" %> 5600 15
           <% else %>
-          <%= "#{sim_subnet}.90.#{drone_id}" %> 5600 8
+          <%= "#{sim_subnet}.90.#{drone_id}" %> 5600 15
           <% end %>
         <% end %>
         <% if lidar %>

@@ -29,22 +29,29 @@
         </material>
       </visual>
       <sensor name="imager" type="camera">
-      <!-- TODO: https://www.seeedstudio.com/IMX219-200-Camera-200-FOV-Applicable-for-Jetson-Nano-p-4609.html -->
         <camera>
-          <horizontal_fov>1.74</horizontal_fov>
-          <image>
-            <width>320</width>
-            <height>240</height>
-          </image>
-          <clip>
-            <near>0.1</near>
-            <far>2000</far>
-          </clip>
+            <horizontal_fov>1.2242</horizontal_fov>
+            <image>
+                <width>1280</width>
+                <height>720</height>
+            </image>
+            <clip>
+                <near>0.1</near>
+                <far>2000</far>
+            </clip>
+            <lens>
+              <intrinsics>
+                <fx>911.6</fx>
+                <fy>911.17</fy>
+                <cx>648.55</cx>
+                <cy>366.27</cy>
+                <s>0</s>
+              </intrinsics>
+            </lens>
         </camera>
         <always_on>1</always_on>
-        <update_rate>8</update_rate>
+        <update_rate>15</update_rate>
         <visualize>false</visualize>
-        <!-- <topic>camera_1</topic> -->
       </sensor>
       <gravity>true</gravity>
       <velocity_decay/>
