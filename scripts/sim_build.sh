@@ -70,6 +70,11 @@ DEV_REPOS=( # Format: "URL;BRANCH;LOCAL_DIR_NAME"
   "git@github.com:droneswarmufpe/Projeto-Enxame-Drones.git;main;Projeto-Enxame-Drones"
 )
 
+# If RCPILOT is set to "true", add the rcpilot repo to the DEV_REPOS list
+if [ "${RCPILOT:-false}" = "true" ]; then
+  DEV_REPOS+=("git@github.com:robocin/rcpilot.git;main;rcpilot")
+fi
+
 pgrep ssh-agent > /dev/null || eval "$(ssh-agent -s)"
 
 if ! ssh-add -l 2>/dev/null | grep -q "SHA256:"; then
@@ -110,6 +115,12 @@ if [ "$BUILD_DOCKER" = "true" ]; then
 
   # The first build takes ~10' and creates an 18GB image (8GB for ros-humble-desktop with nvidia runtime, 7GB for YOLOv8, ONNX)
   docker build -t aircraft-image -f "${SCRIPT_DIR}/docker/Dockerfile.aircraft" "${SCRIPT_DIR}/.."
+
+  if [ "${RCPILOT:-false}" = "true" ]; then
+    docker build -t rc-aircraft-image -f "${SCRIPT_DIR}/docker/Dockerfile.rc_aircraft" "${SCRIPT_DIR}/.."
+    docker build -t rc-ground-image -f "${SCRIPT_DIR}/docker/Dockerfile.rc_ground" "${SCRIPT_DIR}/.."
+  fi
+  
 else
   echo -e "Skipping Docker builds"
 fi

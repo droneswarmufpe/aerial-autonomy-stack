@@ -9,19 +9,24 @@
   sim_id = ENV.fetch('SIM_ID', '100')
   ground_id = ENV.fetch('GROUND_ID', '101')
 
-  simulated_time = ENV.fetch('SIMULATED_TIME', 'false') == 'true'
   centralized = ENV.fetch('CENTRALIZED', 'false') == 'true'
+  rcpilot = ENV.fetch('RCPILOT', 'true') == 'true'
+  
+  simulated_time = ENV.fetch('SIMULATED_TIME', 'false') == 'true'
 %>
 
 name: ground
 
 windows:
-
   - ground_system:
+
+  <% if not centralized %>
       layout: even-horizontal
       panes:
-        - cd /aas/Projeto-Enxame-Drones/
-        - cd /aas/Projeto-Enxame-Drones/
+        - clear && echo "So nice to have you with us, this is the ground container."
+        - cd /aas/Projeto-Enxame-Drones/ && python3 gcs.py
+
+  <% end %>
 
   <% if centralized %>
   <% num_quads.times do |i| %>
@@ -29,6 +34,7 @@ windows:
   - mavlink_router_quad_<%= drone_id %>:
       layout: even-horizontal
       panes:
+        - clear && echo "Running in centralized mode, all processes are running in this ground container."
         - <%
           ground_ip = "#{sim_subnet}.90.#{ground_id}"
           master_port = 14570 + drone_id
@@ -38,11 +44,26 @@ windows:
           mavlink-routerd <%= ground_ip %>:<%= master_port %> -e <%= ground_ip %>:<%= slave_port_1 %> -e <%= ground_ip %>:<%= slave_port_2 %>
   <% end %>
   <% end %>
-
-  - zenoh_and_qgc:
+  
+  <% if rcpilot %>
+  - rcpilot:
       layout: even-horizontal
       panes:
-        - zenoh-bridge-ros2dds -c /aas/ground_resources/comms/zenoh_config_ground.json5
+        <% num_quads.times do |i| %>
+        - >
+          python3 -c "import yaml; cfg = yaml.safe_load(open('/workspaces/rcpilot/install/bringup/share/bringup/config/config.dev.yaml')); cfg['communication']['mavsys']['ros__parameters']['clients']['drone']['connection_string'] = 'udp:<%= "#{sim_subnet}.90.#{ground_id}" %>:<%= 14000 + 100 * (i + 1) %>'; yaml.dump(cfg, open('/workspaces/rcpilot/install/bringup/share/bringup/config/config.dev.yaml', 'w'))" &&
+          ros2 launch bringup rcpilot.dev.launch.py
+        <% end %>
+        <% num_vtols.times do |i| %>
+        - >
+          python3 -c "import yaml; cfg = yaml.safe_load(open('/workspaces/rcpilot/install/bringup/share/bringup/config/config.dev.yaml')); cfg['communication']['mavsys']['ros__parameters']['clients']['drone']['connection_string'] = 'udp:<%= "#{sim_subnet}.90.#{ground_id}" %>:<%= 14000 + 100 * (num_quads + i + 1) %>'; yaml.dump(cfg, open('/workspaces/rcpilot/install/bringup/share/bringup/config/config.dev.yaml', 'w'))" &&
+          ros2 launch bringup rcpilot.dev.launch.py
+        <% end %>
+  <% end %>
+
+  - qgc:
+      layout: even-horizontal
+      panes:
         <% if headless %>
         - echo "Headless mode, not launching QGroundControl."
         <% else %>

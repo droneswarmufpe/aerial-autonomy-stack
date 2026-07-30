@@ -68,6 +68,7 @@ windows:
         - >
           <% unless camera %>
           sed -i '/<sensor/,/<\/sensor>/d' /aas/simulation_resources/aircraft_models/sensor_camera/model.sdf &&
+          sed -i '/<sensor/,/<\/sensor>/d' /aas/simulation_resources/aircraft_models/sensor_thermal_camera/model.sdf &&
           <% end %>
           <% unless lidar %>
           sed -i '/<sensor/,/<\/sensor>/d'  /aas/simulation_resources/aircraft_models/sensor_lidar/model.sdf &&
@@ -76,8 +77,8 @@ windows:
           <% if autopilot == 'ardupilot' %>
           /aas/simulation_resources/aircraft_models/_create_ardupilot_models.sh <%= num_quads %> <%= num_vtols %> <%= camera_pitch %> &&
           /aas/simulation_resources/simulation_worlds/_create_ardupilot_world.sh <%= num_quads %> <%= num_vtols %> <%= world %>.sdf <%= x_offset %> <%= y_offset %> &&
-          <% if ENV['CUSTOM_TARGETS'] == 'true' %>
-          /aas/simulation_resources/simulation_worlds/_create_custom_targets_world.sh /aas/simulation_resources/simulation_worlds/populated_ardupilot.sdf &&
+          <% if ENV['CUSTOM_OBJECTS'] == 'true' %>
+          /aas/simulation_resources/simulation_worlds/_create_custom_objects_world.sh /aas/simulation_resources/simulation_worlds/populated_ardupilot.sdf &&
           <% end %>
           GZ_SIM_SYSTEM_PLUGIN_PATH=/aas/github_apps/ardupilot_gazebo/build:$GZ_SIM_SYSTEM_PLUGIN_PATH 
           <% end %>
@@ -99,6 +100,23 @@ windows:
       vehicle_config = is_quad ? '-v ArduCopter -f gazebo-iris' : '-v ArduPlane'
       model_name = is_quad ? "iris_with_ardupilot_#{drone_id}" : "alti_transition_quad_#{drone_id}"
       sensor_path = is_quad ? 'model/iris/' : ''
+    end
+
+    rgb_camera_topic = "/world/#{world}/model/#{model_name}/#{sensor_path}model/simple_camera/link/mono_cam/base_link/sensor/imager/image"
+    thermal_camera_topic = "/world/#{world}/model/#{model_name}/#{sensor_path}model/simple_thermal_camera/link/thermal_cam/base_link/sensor/thermal_imager/image"
+
+    if centralized && !hitl
+      camera_target_ip = "#{sim_subnet}.90.#{ground_id}"
+      rgb_camera_port = 5600 + sitl_instance
+      thermal_camera_port = 5800 + sitl_instance
+    elsif hitl
+      camera_target_ip = "#{hitl_subnet}.#{drone_ips.fetch(sitl_instance, drone_id)}"
+      rgb_camera_port = 5600
+      thermal_camera_port = 5800
+    else
+      camera_target_ip = "#{sim_subnet}.90.#{drone_id}"
+      rgb_camera_port = 5600
+      thermal_camera_port = 5800
     end
   %>
   <% if autopilot == 'px4' %>
@@ -143,14 +161,12 @@ windows:
         <% if camera %>
         - >
           /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
-          /world/<%= world %>/model/<%= model_name %>/<%= sensor_path %>model/simple_camera/link/mono_cam/base_link/sensor/imager/image
-          <% if centralized && !hitl %>
-          <%= "#{sim_subnet}.90.#{ground_id}" %> <%= 5600 + sitl_instance %> 15
-          <% elsif hitl %>
-          <%= "#{hitl_subnet}.#{drone_ips.fetch(sitl_instance, drone_id)}" %> 5600 15
-          <% else %>
-          <%= "#{sim_subnet}.90.#{drone_id}" %> 5600 15
-          <% end %>
+          <%= rgb_camera_topic %>
+          <%= camera_target_ip %> <%= rgb_camera_port %> 15
+        - >
+          /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
+          <%= thermal_camera_topic %>
+          <%= camera_target_ip %> <%= thermal_camera_port %> 15
         <% end %>
         <% if lidar %>
         - >
