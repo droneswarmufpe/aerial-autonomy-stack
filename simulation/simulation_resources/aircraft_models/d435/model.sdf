@@ -1,0 +1,162 @@
+<sdf version='1.7'>
+  <model name='d435'>
+    <link name='base_footprint'>
+      <inertial>
+        <pose>0 0 0 0 0 0</pose>
+        <mass>0.19</mass>
+        <inertia>
+          <ixx>4.15e-6</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>2.407e-6</iyy>
+          <iyz>0</iyz>
+          <izz>2.407e-6</izz>
+        </inertia>
+      </inertial>
+      <collision name='base_footprint_fixed_joint_lump__d435_link_collision'>
+        <pose>0 0 0 0 -0 0</pose>
+        <geometry>
+          <box>
+            <size>0.02505 0.09 0.025</size>
+          </box>
+        </geometry>
+        <surface>
+          <contact>
+            <ode>
+              <kp>1e+13</kp>
+              <kd>1</kd>
+            </ode>
+          </contact>
+          <friction>
+            <ode>
+              <mu2>1</mu2>
+              <fdir1>0 0 0</fdir1>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+      <visual name='base_footprint_fixed_joint_lump__d435_link_visual'>
+        <pose>0.0149 0 0 1.5708 -0 1.5708</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>model://d435/meshes/realsense_d435.stl</uri>
+          </mesh>
+        </geometry>
+      </visual>
+      <self_collide>0</self_collide>
+      <enable_wind>0</enable_wind>
+      <kinematic>0</kinematic>
+      <gravity>1</gravity>
+      <sensor name='d435_color' type='camera'>
+        <gz_frame_id>d435_color_optical_frame</gz_frame_id>
+        <camera_info_topic>color/camera_info</camera_info_topic>
+        <update_rate>30</update_rate>
+        <camera name='d435'>
+          <horizontal_fov>1.48702</horizontal_fov>
+          <image>
+            <width>1280</width>
+            <height>720</height>
+            <format>RGB_INT8</format>
+          </image>
+          <clip>
+            <near>0.1</near>
+            <far>100</far>
+          </clip>
+          <noise>
+            <type>gaussian</type>
+            <mean>0</mean>
+            <stddev>0.007</stddev>
+          </noise>
+        </camera>
+        <always_on>1</always_on>
+        <update_rate>30</update_rate>
+        <visualize>1</visualize>
+        <pose>0 0 0.0085 0 0 0</pose>
+      </sensor>
+      <!-- The simulation currently bridges only the RGB color stream. -->
+      <!--
+      <sensor name='d435_ired1' type='camera'>
+        <gz_frame_id>d435_infra1_optical_frame</gz_frame_id>
+        <topic>infra1/image_raw</topic>
+        <camera_info_topic>infra1/camera_info</camera_info_topic>
+        <update_rate>30</update_rate>
+        <camera name='d435'>
+          <horizontal_fov>1.48702</horizontal_fov>
+          <image>
+            <width>1280</width>
+            <height>720</height>
+            <format>L_INT8</format>
+          </image>
+          <clip>
+            <near>0.1</near>
+            <far>100</far>
+          </clip>
+          <noise>
+            <type>gaussian</type>
+            <mean>0</mean>
+            <stddev>0.05</stddev>
+          </noise>
+        </camera>
+        <always_on>1</always_on>
+        <update_rate>90</update_rate>
+        <visualize>0</visualize>
+        <pose>0 -0.015 0.0085 0 0 0</pose>
+      </sensor>
+      <sensor name='d435_ired2' type='camera'>
+        <gz_frame_id>d435_infra2_optical_frame</gz_frame_id>
+        <topic>infra2/image_raw</topic>
+        <camera_info_topic>infra2/camera_info</camera_info_topic>
+        <update_rate>30</update_rate>
+        <camera name='d435'>
+          <horizontal_fov>1.48702</horizontal_fov>
+          <image>
+            <width>1280</width>
+            <height>720</height>
+            <format>L_INT8</format>
+          </image>
+          <clip>
+            <near>0.1</near>
+            <far>100</far>
+          </clip>
+          <noise>
+            <type>gaussian</type>
+            <mean>0</mean>
+            <stddev>0.05</stddev>
+          </noise>
+        </camera>
+        <always_on>1</always_on>
+        <update_rate>90</update_rate>
+        <visualize>0</visualize>
+        <pose>0 0.015 0.0085 0 0 0</pose>
+      </sensor>
+      <sensor name='d435_depth' type='depth_camera'>
+        <gz_frame_id>d435_depth_optical_frame</gz_frame_id>
+        <topic>depth/image_raw</topic>
+        <camera_info_topic>depth/camera_info</camera_info_topic>
+        <update_rate>30</update_rate>
+        <camera name='d435'>
+          <horizontal_fov>1.48702</horizontal_fov>
+          <image>
+            <width>1280</width>
+            <height>720</height>
+          </image>
+          <clip>
+            <near>0.1</near>
+            <far>100</far>
+          </clip>
+          <noise>
+            <type>gaussian</type>
+            <mean>0</mean>
+            <stddev>0.1</stddev>
+          </noise>
+        </camera>
+        <always_on>1</always_on>
+        <update_rate>90</update_rate>
+        <visualize>0</visualize>
+        <pose>0 0 0.0085 0 0 0</pose>
+      </sensor>
+      -->
+    </link>
+  </model>
+</sdf>

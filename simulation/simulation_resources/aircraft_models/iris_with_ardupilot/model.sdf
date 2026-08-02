@@ -505,13 +505,13 @@
       </joint>
 
       <include>
-        <uri>model://sensor_camera</uri>
-        <name>simple_camera</name>
+        <uri>model://d435</uri>
+        <name>d435</name>
         <pose>.175 0 -0.075 0 <!--CAMERA_PITCH_PLACEHOLDER--> 0</pose>
       </include>
       <joint name="CameraJoint" type="fixed">
         <parent>base_link</parent>
-        <child>simple_camera::mono_cam/base_link</child>
+        <child>d435::base_footprint</child>
       </joint>
 
       <include>

@@ -89,7 +89,7 @@ windows:
       sensor_path = is_quad ? 'model/iris/' : ''
     end
 
-    rgb_camera_topic = "/world/#{world}/model/#{model_name}/#{sensor_path}model/simple_camera/link/mono_cam/base_link/sensor/imager/image"
+    rgb_camera_topic = "/world/#{world}/model/#{model_name}/#{sensor_path}model/d435/link/base_footprint/sensor/d435_color/image"
     thermal_camera_topic = "/world/#{world}/model/#{model_name}/#{sensor_path}model/simple_thermal_camera/link/thermal_cam/base_link/sensor/thermal_imager/image"
 
     if centralized
