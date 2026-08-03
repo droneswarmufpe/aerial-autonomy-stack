@@ -1,6 +1,31 @@
 {
   "objects": [
     {
+      "id": 9,
+      "lat": 48.810376,
+      "lon": 7.851989,
+      "model": "human_dummy",
+      "z": 4,
+      "static": false
+    },
+    {
+      "id": 10,
+      "lat": 48.810632,
+      "lon": 7.851922,
+      "model": "human_dummy",
+      "z": 4,
+      "roll": 180,
+      "static": false
+    },
+    {
+      "id": 11,
+      "lat": 48.810575,
+      "lon": 7.851540,
+      "model": "human_dummy",
+      "z": 4,
+      "static": false
+    },
+    {
       "id": 1,
       "lat": 48.808406,
       "lon": 7.851906,
@@ -36,34 +61,6 @@
       "lon": 7.854341,
       "z": 4.0,
       "model": "panhard_vbl"
-    },
-    {
-      "id": 9,
-      "lat": 48.810586,
-      "lon": 7.851547,
-      "model": "human_dummy",
-      "z": 4,
-      "yaw": 71,
-      "static": false
-    },
-    {
-      "id": 10,
-      "lat": 48.810551,
-      "lon": 7.851836,
-      "model": "human_dummy",
-      "z": 4,
-      "yaw": 99,
-      "roll": 180,
-      "static": false
-    },
-    {
-      "id": 11,
-      "lat": 48.810416,
-      "lon": 7.851697,
-      "model": "human_dummy",
-      "z": 4,
-      "yaw": 168,
-      "static": false
     }
   ]
 }
