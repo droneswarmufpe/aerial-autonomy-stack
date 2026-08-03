@@ -1,0 +1,28 @@
+<?xml version="1.0" ?>
+<sdf version="1.5">
+  <model name="construction_cone">
+    <link name="link">
+      <collision name="collision">
+        <geometry>
+          <mesh>
+            <scale>10 10 10</scale>
+            <uri>meshes/construction_cone.dae</uri>
+          </mesh>
+        </geometry>
+      </collision>
+      <visual name="visual">
+        <plugin
+          filename="gz-sim-thermal-system"
+          name="gz::sim::systems::Thermal">
+          <temperature>873.15</temperature>
+        </plugin>
+        <geometry>
+          <mesh>
+            <scale>10 10 10</scale>
+            <uri>meshes/construction_cone.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+    </link>
+  </model>
+</sdf>

@@ -34,7 +34,11 @@ windows:
       layout: even-horizontal
       panes:
         - clear && echo "So nice to have you with us, this is the aircraft <%= drone_id %> container."
-        - ros2 run autopilot_interface ardupilot_interface --ros-args -r __ns:=/Drone<%= drone_id %> <%= simulated_time ? '-p use_sim_time:=true' : '' %>
+        - cd /aas/Projeto-Enxame-Drones/ && python3 pubsub_broker.py
+        - cd /aas/Projeto-Enxame-Drones/ && python3 gateway.py <%= "#{drone_id}" %>
+        - cd /aas/Projeto-Enxame-Drones/ && python3 embedded.py
+        - cd /aas/Projeto-Enxame-Drones/ && python3 behavior.py
+        - cd /aas/Projeto-Enxame-Drones/ && python3 mavsys.py <%= "#{drone_id}" %>
 
   - mavlink_router:
       layout: even-horizontal
