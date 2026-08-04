@@ -208,7 +208,10 @@
 
     <gravity>0 0 -9.8</gravity>
     <magnetic_field>6e-06 2.3e-05 -4.2e-05</magnetic_field>
-    <atmosphere type="adiabatic"/>
+    <atmosphere type="adiabatic">
+      <temperature>273.15</temperature>
+      <temperature_gradient>0.1</temperature_gradient>
+    </atmosphere>
     <scene>
       <grid>false</grid>
       <ambient>0.4 0.4 0.4 1</ambient>

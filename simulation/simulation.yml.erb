@@ -55,6 +55,7 @@ windows:
         - >
           <% unless camera %>
           sed -i '/<sensor/,/<\/sensor>/d' /aas/simulation_resources/aircraft_models/sensor_camera/model.sdf &&
+          sed -i '/<sensor/,/<\/sensor>/d' /aas/simulation_resources/aircraft_models/sensor_thermal_camera/model.sdf &&
           <% end %>
           <% unless lidar %>
           sed -i '/<sensor/,/<\/sensor>/d'  /aas/simulation_resources/aircraft_models/sensor_lidar/model.sdf &&
@@ -86,6 +87,19 @@ windows:
       vehicle_config = is_quad ? '-v ArduCopter -f gazebo-iris' : '-v ArduPlane'
       model_name = is_quad ? "iris_with_ardupilot_#{drone_id}" : "alti_transition_quad_#{drone_id}"
       sensor_path = is_quad ? 'model/iris/' : ''
+    end
+
+    rgb_camera_topic = "/world/#{world}/model/#{model_name}/#{sensor_path}model/simple_camera/link/mono_cam/base_link/sensor/imager/image"
+    thermal_camera_topic = "/world/#{world}/model/#{model_name}/#{sensor_path}model/simple_thermal_camera/link/thermal_cam/base_link/sensor/thermal_imager/image"
+
+    if centralized
+      camera_target_ip = "#{sim_subnet}.90.#{ground_id}"
+      rgb_camera_port = 5600 + sitl_instance
+      thermal_camera_port = 5800 + sitl_instance
+    else
+      camera_target_ip = "#{sim_subnet}.90.#{drone_id}"
+      rgb_camera_port = 5600
+      thermal_camera_port = 5800
     end
   %>
   <% if autopilot == 'px4' %>
@@ -125,12 +139,12 @@ windows:
         <% if camera %>
         - >
           /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
-          /world/<%= world %>/model/<%= model_name %>/<%= sensor_path %>model/simple_camera/link/mono_cam/base_link/sensor/imager/image
-          <% if centralized %>
-          <%= "#{sim_subnet}.90.#{ground_id}" %> <%=5600 + sitl_instance%> 8
-          <% else %>
-          <%= "#{sim_subnet}.90.#{drone_id}" %> 5600 8
-          <% end %>
+          <%= rgb_camera_topic %>
+          <%= camera_target_ip %> <%= rgb_camera_port %> 8
+        - >
+          /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
+          <%= thermal_camera_topic %>
+          <%= camera_target_ip %> <%= thermal_camera_port %> 8
         <% end %>
         <% if lidar %>
         - >

@@ -515,6 +515,16 @@
       </joint>
 
       <include>
+        <uri>model://sensor_thermal_camera</uri>
+        <name>simple_thermal_camera</name>
+        <pose>.175 0 -0.075 0 1.5707 0</pose>
+      </include>
+      <joint name="ThermalCameraJoint" type="fixed">
+        <parent>base_link</parent>
+        <child>simple_thermal_camera::thermal_cam/base_link</child>
+      </joint>
+
+      <include>
         <uri>model://sensor_lidar</uri>
         <name>simple_lidar</name>
         <pose>0 0 .08 0 0 0</pose>
