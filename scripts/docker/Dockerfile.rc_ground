@@ -1,7 +1,7 @@
 ################################################################################
 # Stage 1 - ?GB ################################################################
 ################################################################################
-FROM nvcr.io/nvidia/cuda:12.8.1-cudnn-runtime-ubuntu22.04 AS ros2-image
+FROM nvcr.io/nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04 AS ros2-image
 
 # Tell apt (and other Debian tools) not to prompt for user input during package installs
 ENV DEBIAN_FRONTEND=noninteractive
@@ -62,7 +62,7 @@ RUN apt update \
         libxcb-xinerama0 libxkbcommon-x11-0 libxcb-cursor-dev \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
-RUN wget https://d176tv9ibo4jno.cloudfront.net/latest/QGroundControl-x86_64.AppImage && \
+RUN wget https://github.com/mavlink/qgroundcontrol/releases/download/v5.0.6/QGroundControl-x86_64.AppImage && \
     chmod +x /QGroundControl-x86_64.AppImage && \
     /QGroundControl-x86_64.AppImage --appimage-extract && \
     rm /QGroundControl-x86_64.AppImage
@@ -157,6 +157,8 @@ RUN bash -c 'source /opt/ros/humble/setup.bash && pip install -e .'
 
 # Install dependencies
 RUN pip install numpy==1.26.4 transitions libtmux dearpygui zmq pymap3d utm cartopy filterpy
+RUN pip install --no-cache-dir --extra-index-url https://pypi.nvidia.com tensorrt
+RUN pip install --no-cache-dir pycuda
 
 # Install build dependencies for rcpilot
 RUN apt update \
@@ -196,7 +198,7 @@ RUN bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install
 
 # Copy resources and configuration files from this repository
 COPY ground/ground_resources/ /aas/ground_resources
-COPY ground/ground_resources/patches/QGroundControl.ini /home/qgcuser/.config/QGroundControl/QGroundControl.ini
+COPY --chown=qgcuser:qgcuser ground/ground_resources/patches/QGroundControl.ini /home/qgcuser/.config/QGroundControl/QGroundControl.ini
 
 # Source the workspaces
 RUN echo "source /aas/ground_ws/install/setup.bash" >> /root/.bashrc
