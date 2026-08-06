@@ -3,6 +3,7 @@
   <model name="aruco_5x5_0">
     <static>false</static>
     <link name="link">
+      <pose>0 0 0 1.570796 0 0</pose>
       <inertial>
         <mass>0.05</mass>
         <inertia>
