@@ -1,7 +1,7 @@
 ################################################################################
 # Stage 1 - ?GB ################################################################
 ################################################################################
-FROM nvcr.io/nvidia/cuda:12.8.1-cudnn-runtime-ubuntu22.04 AS ros2-image
+FROM nvcr.io/nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04 AS ros2-image
 
 # Tell apt (and other Debian tools) not to prompt for user input during package installs
 ENV DEBIAN_FRONTEND=noninteractive
@@ -141,6 +141,8 @@ RUN bash -c 'source /opt/ros/humble/setup.bash && pip install -e .'
 
 # Install dependencies
 RUN pip install numpy==1.26.4 transitions libtmux dearpygui zmq pymap3d utm cartopy filterpy
+RUN pip install --no-cache-dir --extra-index-url https://pypi.nvidia.com tensorrt
+RUN pip install --no-cache-dir pycuda
 
 # Install build dependencies for rcpilot
 RUN apt update \
