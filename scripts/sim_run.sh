@@ -158,7 +158,6 @@ if [[ "$HITL" == "false" ]]; then
     DOCKER_CMD="docker run -it --rm \
       --ipc=host \
       --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
-      --volume ${PARENT_DIR}/simulation/simulation_resources/patches:/aas/custom_objects \
       --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
       --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
       --env HEADLESS=$HEADLESS --env RCPILOT=$RCPILOT \
