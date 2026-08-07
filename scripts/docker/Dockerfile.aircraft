@@ -143,7 +143,7 @@ RUN bash -c 'source /opt/ros/humble/setup.bash && pip install -e .'
 RUN pip install -i https://test.pypi.org/simple/ rcpilot.mavsys
 
 # Install dependencies
-RUN pip install numpy==1.26.4 transitions libtmux dearpygui zmq pymap3d utm cartopy
+RUN pip install numpy==1.26.4 transitions libtmux dearpygui zmq pymap3d utm cartopy scikit-learn
 
 # Add MAVLink 2 C library
 COPY /github_clones/c_library_v2 /usr/local/include/mavlink/
