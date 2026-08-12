@@ -147,7 +147,7 @@ RUN pip install --no-cache-dir pycuda
 # Install build dependencies for rcpilot
 RUN apt update \
     && apt install -y --no-install-recommends \
-        ros-humble-geographic-msgs clang \
+        ros-humble-geographic-msgs clang libgmock-dev \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
 

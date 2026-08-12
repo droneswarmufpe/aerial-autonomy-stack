@@ -33,12 +33,12 @@ windows:
   - ap_interface:
       layout: even-horizontal
       panes:
-        - clear && echo "So nice to have you with us, this is the aircraft <%= drone_id %> container."
-        - cd /aas/Projeto-Enxame-Drones/ && python3 pubsub_broker.py
-        - cd /aas/Projeto-Enxame-Drones/ && python3 gateway.py <%= "#{drone_id}" %>
-        - cd /aas/Projeto-Enxame-Drones/ && python3 embedded.py
-        - cd /aas/Projeto-Enxame-Drones/ && python3 behavior.py
-        - cd /aas/Projeto-Enxame-Drones/ && python3 mavsys.py <%= "#{drone_id}" %>
+        <% if rcpilot %>
+        - clear && cd /aas/rcpilot/
+        - clear && cd /aas/Projeto-Enxame-Drones/
+        <% else %>
+        - clear && cd /aas/Projeto-Enxame-Drones/
+        <% end %>
 
   - mavlink_router:
       layout: even-horizontal
