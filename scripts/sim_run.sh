@@ -158,10 +158,6 @@ if [[ "$HITL" == "false" ]]; then
     DOCKER_CMD="docker run -it --rm \
       --ipc=host \
       --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
-      --volume ${PARENT_DIR}/github_clones/rcpilot:/aas/rcpilot \
-      --volume /aas/rcpilot/build \
-      --volume /aas/rcpilot/install \
-      --volume /aas/rcpilot/log \
       --volume ${PARENT_DIR}/simulation/simulation_resources/custom_objects:/aas/custom_objects \
       --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
       --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
@@ -201,10 +197,6 @@ if [[ "$HITL" == "false" ]]; then
         --ipc=host \
         --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
         --volume ${PARENT_DIR}/simulation/simulation_resources/custom_objects:/aas/custom_objects \
-        --volume ${PARENT_DIR}/github_clones/rcpilot:/aas/rcpilot \
-        --volume /aas/rcpilot/build \
-        --volume /aas/rcpilot/install \
-        --volume /aas/rcpilot/log \
         --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
         --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
         --env AUTOPILOT=$AUTOPILOT --env HEADLESS=$HEADLESS --env CAMERA=$CAMERA --env LIDAR=$LIDAR \
