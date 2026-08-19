@@ -210,7 +210,7 @@
     <magnetic_field>6e-06 2.3e-05 -4.2e-05</magnetic_field>
     <atmosphere type="adiabatic">
       <temperature>291</temperature>
-      <temperature_gradient>0.1</temperature_gradient>
+      <temperature_gradient>0.0065</temperature_gradient>
     </atmosphere>
     <scene>
       <grid>false</grid>
