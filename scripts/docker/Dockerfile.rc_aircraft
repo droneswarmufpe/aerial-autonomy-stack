@@ -58,8 +58,8 @@ RUN apt update \
     && rm -rf /var/lib/apt/lists/*
 
 # NOTE: we want system Python's OpenCV to have GStreamer support
-RUN pip3 install --no-cache-dir --upgrade pip \
-    && pip3 install --no-cache-dir --resume-retries 5 "numpy<2"
+RUN pip3 install --upgrade pip \
+    && pip3 install --resume-retries 5 "numpy<2"
 
 ################################################################################
 # Stage 3 - ?GB ################################################################
@@ -80,12 +80,12 @@ RUN apt update \
         python3-dev python3-opencv python3-wxgtk4.0 python3-pip python3-matplotlib python3-lxml python3-pygame \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
-RUN pip3 install --no-cache-dir --upgrade pip \
-    && pip3 install --no-cache-dir --resume-retries 5 "numpy<2" future mavproxy 
+RUN pip3 install --upgrade pip \
+    && pip3 install --resume-retries 5 "numpy<2" future mavproxy 
     
 # Add pymavlink for debugging and testing
-RUN pip3 install --no-cache-dir --upgrade pip \
-    && pip3 install --no-cache-dir --resume-retries 5 pymavlink pyserial
+RUN pip3 install --upgrade pip \
+    && pip3 install --resume-retries 5 pymavlink pyserial
 # Check with $ python3 -c "import pymavlink; print(pymavlink.__version__)"
 
 # Install mavlink-router 
@@ -108,11 +108,11 @@ RUN meson setup build . --buildtype=release \
 FROM ros2-gst-mav-image AS ros2-gst-mav-yolo-image
 
 # Install YOLO with --no-deps to avoid installing opencv from pip, upgrade sympy and install ultralytics dependencies manually
-RUN pip3 install --no-cache-dir --upgrade pip \
-    && pip3 install --no-cache-dir --resume-retries 5 --no-deps ultralytics \
-    && pip3 install --no-cache-dir --resume-retries 5 --upgrade --ignore-installed sympy \
-    && pip3 install --no-cache-dir --resume-retries 5 torch==2.10.0+cu128 torchvision==0.25.0+cu128 --index-url https://download.pytorch.org/whl/cu128 \
-    && pip3 install --no-cache-dir --resume-retries 5 matplotlib pillow pyyaml requests scipy tqdm psutil
+RUN pip3 install --upgrade pip \
+    && pip3 install --resume-retries 5 --no-deps ultralytics \
+    && pip3 install --resume-retries 5 --upgrade --ignore-installed sympy \
+    && pip3 install --resume-retries 5 torch==2.10.0+cu128 torchvision==0.25.0+cu128 --index-url https://download.pytorch.org/whl/cu128 \
+    && pip3 install --resume-retries 5 matplotlib pillow pyyaml requests scipy tqdm psutil
 
 ################################################################################
 # Stage 5 - ?GB ################################################################

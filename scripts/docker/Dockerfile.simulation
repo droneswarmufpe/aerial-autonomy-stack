@@ -144,8 +144,8 @@ RUN apt update \
         python3-dev python3-opencv python3-wxgtk4.0 python3-pip python3-matplotlib python3-lxml python3-pygame \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
-RUN pip3 install --no-cache-dir --upgrade pip \
-    && pip3 install --no-cache-dir --resume-retries 5 "numpy<2" future mavproxy 
+RUN pip3 install --upgrade pip \
+    && pip3 install --resume-retries 5 "numpy<2" future mavproxy 
 ENV GZ_VERSION=harmonic
 RUN mkdir build && cd build && \
     cmake .. -DCMAKE_BUILD_TYPE=Release && \
@@ -204,8 +204,8 @@ RUN apt update \
     && rm -rf /var/lib/apt/lists/*
 
 # Add pymavlink to emulate the ground system using telemetry data
-RUN pip3 install --no-cache-dir --upgrade pip \
-    && pip3 install --no-cache-dir --resume-retries 5 pymavlink pyserial
+RUN pip3 install --upgrade pip \
+    && pip3 install --resume-retries 5 pymavlink pyserial
 # Check with $ python3 -c "import pymavlink; print(pymavlink.__version__)"
 
 ################################################################################
@@ -228,16 +228,16 @@ RUN apt update \
 # COPY /github_clones/flight_review /aas/github_apps/flight_review
 # WORKDIR /aas/github_apps/flight_review/app
 # RUN python3 -m venv /px4fr-env
-# RUN /px4fr-env/bin/pip3 install --no-cache-dir --upgrade pip && \
-#     /px4fr-env/bin/pip3 install --no-cache-dir --resume-retries 5 -r requirements.txt
+# RUN /px4fr-env/bin/pip3 install --upgrade pip && \
+#     /px4fr-env/bin/pip3 install --resume-retries 5 -r requirements.txt
 
 # Install ZeroMQ
 RUN apt-get update && \
     apt-get install -y --no-install-recommends libzmq3-dev \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
-RUN pip3 install --no-cache-dir --upgrade pip \
-    && pip3 install --no-cache-dir --resume-retries 5 pyzmq
+RUN pip3 install --upgrade pip \
+    && pip3 install --resume-retries 5 pyzmq
 
 # Build the ROS 2 workspace
 COPY simulation/simulation_ws/src /aas/simulation_ws/src
