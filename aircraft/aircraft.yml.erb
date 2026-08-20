@@ -35,10 +35,10 @@ windows:
       panes:
         - clear && echo "So nice to have you with us, this is the aircraft <%= drone_id %> container."
         - cd /aas/Projeto-Enxame-Drones/ && python3 pubsub_broker.py
-        - cd /aas/Projeto-Enxame-Drones/ && python3 gateway.py <%= "#{drone_id}" %>
-        - cd /aas/Projeto-Enxame-Drones/ && python3 embedded.py <%= "#{drone_id}" %>
-        - cd /aas/Projeto-Enxame-Drones/ && python3 behavior.py
-        - cd /aas/Projeto-Enxame-Drones/ && python3 mavsys.py -id <%= "#{drone_id}" %>
+        - cd /aas/Projeto-Enxame-Drones/ && python3 gateway.py -id <%= "#{drone_id}" %> -config config/drone.yml
+        - cd /aas/Projeto-Enxame-Drones/ && python3 embedded.py -id <%= "#{drone_id}" %> -config config/drone.yml
+        - cd /aas/Projeto-Enxame-Drones/ && python3 behavior.py -id <%= "#{drone_id}" %> -config config/drone.yml
+        - cd /aas/Projeto-Enxame-Drones/ && python3 mavsys.py -id <%= "#{drone_id}" %> -config config/drone.yml
         - cd /aas/Projeto-Enxame-Drones/ && python3 comm_fanet.py -id <%= "#{drone_id}" %> -config config/drone.yml
 
   - mavlink_router:
