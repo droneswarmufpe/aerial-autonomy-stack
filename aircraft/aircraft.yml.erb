@@ -39,7 +39,7 @@ windows:
         - cd /aas/Projeto-Enxame-Drones/ && python3 embedded.py <%= "#{drone_id}" %>
         - cd /aas/Projeto-Enxame-Drones/ && python3 behavior.py
         - cd /aas/Projeto-Enxame-Drones/ && python3 mavsys.py -id <%= "#{drone_id}" %>
-        - cd /aas/Projeto-Enxame-Drones/ && python3 comm_fanet.py -id <%= "#{drone_id}" %>
+        - cd /aas/Projeto-Enxame-Drones/ && python3 comm_fanet.py -id <%= "#{drone_id}" %> -config drone.env
 
   - mavlink_router:
       layout: even-horizontal
