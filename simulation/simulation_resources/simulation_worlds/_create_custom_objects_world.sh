@@ -233,12 +233,13 @@ process_object() {
 # --------------------------------------------------------------------------
 
 parse_args() {
-    if [[ "$#" -ne 1 ]]; then
-        echo "Usage: $0 <full_path_to_world>"
-        echo "Example: ./_create_custom_targets_world.sh /aas/simulation_resources/simulation_worlds/populated_ardupilot.sdf"
+    if [[ "$#" -ne 2 ]]; then
+        echo "Usage: $0 <full_path_to_world> <custom_objects_config>"
+        echo "Example: ./_create_custom_targets_world.sh /aas/simulation_resources/simulation_worlds/populated_ardupilot.sdf /path/to/custom_objects_config.json"
         exit 1
     fi
-    echo "$1"
+
+    echo "$1 $2"
 }
 
 # Resolve WORLD_FILE_PATH relative to the script's directory if it isn't absolute.
@@ -251,18 +252,20 @@ resolve_world_file_path() {
 }
 
 main() {
-    WORLD_FILE_PATH="$(parse_args "$@")"
+    read -r WORLD_FILE_PATH OBJECTS_FILE < <(parse_args "$@")
+
     echo "WORLD_FILE_PATH: $WORLD_FILE_PATH"
+    echo "OBJECTS_FILE: $OBJECTS_FILE"
 
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     WORLD_FILE_PATH="$(resolve_world_file_path "$WORLD_FILE_PATH")"
 
-    CUSTOM_OBJECTS_CONFIG_FILE="${SCRIPT_DIR}/../custom_objects/custom_objects_config.json"
+    CUSTOM_OBJECTS_CONFIG_FILE="${SCRIPT_DIR}/../custom_objects/${OBJECTS_FILE}.json"
     LATLON_TO_XY_SCRIPT="${SCRIPT_DIR}/../custom_objects/latlon_to_xy.py"
     MODELS_DIR="$(dirname "$WORLD_FILE_PATH")"
 
     if [[ ! -f "$CUSTOM_OBJECTS_CONFIG_FILE" ]]; then
-        log_warn "custom_objects_config.json not found at $CUSTOM_OBJECTS_CONFIG_FILE. No objects will be added."
+        log_warn "${OBJECTS_FILE}.json not found at $CUSTOM_OBJECTS_CONFIG_FILE. No objects will be added."
         exit 0
     fi
 

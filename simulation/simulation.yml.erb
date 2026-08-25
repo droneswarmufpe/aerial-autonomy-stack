@@ -26,6 +26,7 @@
   world = ENV.fetch('WORLD', 'impalpable_greyness')
   x_offset = ENV.fetch('X_OFFSET', 0).to_i
   y_offset = ENV.fetch('Y_OFFSET', 0).to_i
+  objects = ENV.fetch('OBJECTS', 'custom_objects_config')
   
   gnd_container = ENV.fetch('GND_CONTAINER', 'true') == 'true'
   centralized = ENV.fetch('CENTRALIZED', 'false') == 'true'
@@ -78,7 +79,7 @@ windows:
           /aas/simulation_resources/aircraft_models/_create_ardupilot_models.sh <%= num_quads %> <%= num_vtols %> <%= camera_pitch %> &&
           /aas/simulation_resources/simulation_worlds/_create_ardupilot_world.sh <%= num_quads %> <%= num_vtols %> <%= world %>.sdf <%= x_offset %> <%= y_offset %> &&
           <% if ENV['CUSTOM_OBJECTS'] == 'true' %>
-          /aas/simulation_resources/simulation_worlds/_create_custom_objects_world.sh /aas/simulation_resources/simulation_worlds/populated_ardupilot.sdf &&
+          /aas/simulation_resources/simulation_worlds/_create_custom_objects_world.sh /aas/simulation_resources/simulation_worlds/populated_ardupilot.sdf <%= objects %> &&
           <% end %>
           GZ_SIM_SYSTEM_PLUGIN_PATH=/aas/github_apps/ardupilot_gazebo/build:$GZ_SIM_SYSTEM_PLUGIN_PATH 
           <% end %>

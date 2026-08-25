@@ -43,6 +43,7 @@ AIR_NET_NAME="aas-air-network-inst${INSTANCE}"
 SIM_CONT_NAME="simulation-container-inst${INSTANCE}"
 GND_CONT_NAME="ground-container-inst${INSTANCE}"
 CUSTOM_OBJECTS="${CUSTOM_OBJECTS:-false}"
+OBJECTS="${OBJECTS:-custom_objects_config}"
 
 echo "Simulation configuration:"
 echo "  SIM_BYTE_1: $SIM_BYTE_1"
@@ -137,6 +138,8 @@ PARENT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 
 # Launch the simulation container
 DOCKER_CMD="docker run -it --rm \
+  --volume ${PARENT_DIR}/simulation/simulation_resources/simulation_worlds:/aas/simulation_resources/simulation_worlds \
+  --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
   --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
   --volume ${PARENT_DIR}/simulation/simulation_resources/custom_objects:/aas/simulation_resources/custom_objects \
   --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
@@ -146,7 +149,7 @@ DOCKER_CMD="docker run -it --rm \
   --env SIM_SUBNET=$SIM_SUBNET --env GROUND_ID=$GROUND_ID \
   --env HITL=$HITL --env HITL_SUBNET=$HITL_SUBNET --env DRONE_IPS=$DRONE_IPS \
   --env GND_CONTAINER=$GND_CONTAINER --env CENTRALIZED=$CENTRALIZED \
-  --env X_OFFSET=$X_OFFSET --env Y_OFFSET=$Y_OFFSET --env CUSTOM_OBJECTS=$CUSTOM_OBJECTS \
+  --env X_OFFSET=$X_OFFSET --env Y_OFFSET=$Y_OFFSET --env CUSTOM_OBJECTS=$CUSTOM_OBJECTS --env OBJECTS=$OBJECTS \
   --env ROS_DOMAIN_ID=$SIM_ID \
   --privileged \
   --name $SIM_CONT_NAME"
@@ -174,6 +177,7 @@ if [[ "$HITL" == "false" ]]; then
     # Launch the ground container
     DOCKER_CMD="docker run -it --rm \
       --ipc=host \
+      --volume ${PARENT_DIR}/simulation/simulation_resources/custom_objects:/aas/simulation_resources/custom_objects \
       --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
       --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
       --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
