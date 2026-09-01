@@ -5,10 +5,27 @@ set -e
 
 # Find the script's path
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+CONTAINER="${CONTAINER:-all}" # Options: all (default), simulation, ground, aircraft, rc_aircraft, rc_ground
+
+is_valid_container() {
+  case "$1" in
+    all|simulation|ground|aircraft|rc_aircraft|rc_ground) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+should_build_container() {
+  [ "$CONTAINER" = "all" ] || [ "$CONTAINER" = "$1" ]
+}
+
+if ! is_valid_container "$CONTAINER"; then
+  echo "Error: invalid CONTAINER='$CONTAINER'. Valid options: all, simulation, ground, aircraft, rc_aircraft, rc_ground" >&2
+  exit 1
+fi
 
 if [ "${CLEAN_BUILD:-false}" = "true" ]; then
   rm -rf "${SCRIPT_DIR}/../github_clones"
-  docker rmi aircraft-image:latest ground-image:latest simulation-image:latest || true
+  docker rmi aircraft-image:latest ground-image:latest simulation-image:latest rc-aircraft-image:latest rc-ground-image:latest || true
   docker builder prune -f # If CLEAN_BUILD is "true", rebuild everything from scratch
 fi
 
@@ -70,8 +87,8 @@ DEV_REPOS=( # Format: "URL;BRANCH;LOCAL_DIR_NAME"
   "git@github.com:droneswarmufpe/Projeto-Enxame-Drones.git;main;Projeto-Enxame-Drones"
 )
 
-# If RCPILOT is set to "true", add the rcpilot repo to the DEV_REPOS list
-if [ "${RCPILOT:-false}" = "true" ]; then
+# If RCPILOT is set to "true" or an rc_* image was selected, add the rcpilot repo to the DEV_REPOS list
+if [ "${RCPILOT:-false}" = "true" ] || [ "$CONTAINER" = "rc_aircraft" ] || [ "$CONTAINER" = "rc_ground" ]; then
   DEV_REPOS+=("git@github.com:robocin/rcpilot.git;main;rcpilot")
 fi
 
@@ -107,18 +124,42 @@ if [ "$BUILD_DOCKER" = "true" ]; then
   git lfs install
   git lfs pull
 
-  # The first build takes ~15' and creates a 21GB image (8GB for ros-humble-desktop with nvidia runtime, 10GB for PX4 and ArduPilot SITL)
-  docker build -t simulation-image -f "${SCRIPT_DIR}/docker/Dockerfile.simulation" "${SCRIPT_DIR}/.."
+  if [ "$CONTAINER" = "all" ]; then
+    # The first build takes ~15' and creates a 21GB image (8GB for ros-humble-desktop with nvidia runtime, 10GB for PX4 and ArduPilot SITL)
+    docker build -t simulation-image -f "${SCRIPT_DIR}/docker/Dockerfile.simulation" "${SCRIPT_DIR}/.."
 
-  # The first build takes <5' and creates an 9GB image (8GB for ros-humble-desktop with nvidia runtime)
-  docker build -t ground-image -f "${SCRIPT_DIR}/docker/Dockerfile.ground" "${SCRIPT_DIR}/.."
+    if [ "${RCPILOT:-false}" = "true" ]; then
+      docker build -t rc-ground-image -f "${SCRIPT_DIR}/docker/Dockerfile.rc_ground" "${SCRIPT_DIR}/.."
+      docker build -t rc-aircraft-image -f "${SCRIPT_DIR}/docker/Dockerfile.rc_aircraft" "${SCRIPT_DIR}/.."
+    else
+      # The first build takes <5' and creates an 9GB image (8GB for ros-humble-desktop with nvidia runtime)
+      docker build -t ground-image -f "${SCRIPT_DIR}/docker/Dockerfile.ground" "${SCRIPT_DIR}/.."
+      # The first build takes ~10' and creates an 18GB image (8GB for ros-humble-desktop with nvidia runtime, 7GB for YOLOv8, ONNX)
+      docker build -t aircraft-image -f "${SCRIPT_DIR}/docker/Dockerfile.aircraft" "${SCRIPT_DIR}/.."
+    fi
+  else
+    if should_build_container "simulation"; then
+      # The first build takes ~15' and creates a 21GB image (8GB for ros-humble-desktop with nvidia runtime, 10GB for PX4 and ArduPilot SITL)
+      docker build -t simulation-image -f "${SCRIPT_DIR}/docker/Dockerfile.simulation" "${SCRIPT_DIR}/.."
+    fi
 
-  # The first build takes ~10' and creates an 18GB image (8GB for ros-humble-desktop with nvidia runtime, 7GB for YOLOv8, ONNX)
-  docker build -t aircraft-image -f "${SCRIPT_DIR}/docker/Dockerfile.aircraft" "${SCRIPT_DIR}/.."
+    if should_build_container "ground"; then
+      # The first build takes <5' and creates an 9GB image (8GB for ros-humble-desktop with nvidia runtime)
+      docker build -t ground-image -f "${SCRIPT_DIR}/docker/Dockerfile.ground" "${SCRIPT_DIR}/.."
+    fi
 
-  if [ "${RCPILOT:-false}" = "true" ]; then
-    docker build -t rc-aircraft-image -f "${SCRIPT_DIR}/docker/Dockerfile.rc_aircraft" "${SCRIPT_DIR}/.."
-    docker build -t rc-ground-image -f "${SCRIPT_DIR}/docker/Dockerfile.rc_ground" "${SCRIPT_DIR}/.."
+    if should_build_container "aircraft"; then
+      # The first build takes ~10' and creates an 18GB image (8GB for ros-humble-desktop with nvidia runtime, 7GB for YOLOv8, ONNX)
+      docker build -t aircraft-image -f "${SCRIPT_DIR}/docker/Dockerfile.aircraft" "${SCRIPT_DIR}/.."
+    fi
+
+    if should_build_container "rc_aircraft"; then
+      docker build -t rc-aircraft-image -f "${SCRIPT_DIR}/docker/Dockerfile.rc_aircraft" "${SCRIPT_DIR}/.."
+    fi
+
+    if should_build_container "rc_ground"; then
+      docker build -t rc-ground-image -f "${SCRIPT_DIR}/docker/Dockerfile.rc_ground" "${SCRIPT_DIR}/.."
+    fi
   fi
   
 else
