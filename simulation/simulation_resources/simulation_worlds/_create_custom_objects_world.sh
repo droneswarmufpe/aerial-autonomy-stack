@@ -257,12 +257,12 @@ main() {
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     WORLD_FILE_PATH="$(resolve_world_file_path "$WORLD_FILE_PATH")"
 
-    CUSTOM_OBJECTS_CONFIG_FILE="${SCRIPT_DIR}/../custom_objects/custom_objects_config.json"
+    CUSTOM_OBJECTS_CONFIG_FILE="${SCRIPT_DIR}/../custom_objects/imav_hotspots_config.json"
     LATLON_TO_XY_SCRIPT="${SCRIPT_DIR}/../custom_objects/latlon_to_xy.py"
     MODELS_DIR="$(dirname "$WORLD_FILE_PATH")"
 
     if [[ ! -f "$CUSTOM_OBJECTS_CONFIG_FILE" ]]; then
-        log_warn "custom_objects_config.json not found at $CUSTOM_OBJECTS_CONFIG_FILE. No objects will be added."
+        log_warn "custom_object config file not found at $CUSTOM_OBJECTS_CONFIG_FILE. No objects will be added."
         exit 0
     fi
 
