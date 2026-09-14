@@ -160,6 +160,11 @@ if [[ "$HITL" == "false" ]]; then
       --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
       --volume ${PARENT_DIR}/simulation/simulation_resources/custom_objects:/aas/custom_objects \
       --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
+      --volume ${PARENT_DIR}/github_clones/rcpilot/src:/workspaces/rcpilot/src:cached \
+      --volume ${PARENT_DIR}/github_clones/rcpilot/build:/workspaces/rcpilot/build:cached \
+      --volume ${PARENT_DIR}/github_clones/rcpilot/install:/workspaces/rcpilot/install:cached \
+      --volume ${PARENT_DIR}/github_clones/rcpilot/log:/workspaces/rcpilot/log:cached \
+      --volume ${PARENT_DIR}/github_clones/rcpilot/sdk:/workspaces/rcpilot/sdk:cached \
       --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
       --env HEADLESS=$HEADLESS --env RCPILOT=$RCPILOT \
       --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS \
@@ -196,6 +201,11 @@ if [[ "$HITL" == "false" ]]; then
       DOCKER_CMD="docker run -it --rm \
         --ipc=host \
         --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
+        --volume ${PARENT_DIR}/github_clones/rcpilot/src:/workspaces/rcpilot/src:cached \
+        --volume ${PARENT_DIR}/github_clones/rcpilot/sdk:/workspaces/rcpilot/sdk:cached \
+        --volume ${PARENT_DIR}/github_clones/rcpilot/build:/workspaces/rcpilot/build:cached \
+        --volume ${PARENT_DIR}/github_clones/rcpilot/install:/workspaces/rcpilot/install:cached \
+        --volume ${PARENT_DIR}/github_clones/rcpilot/log:/workspaces/rcpilot/log:cached \
         --volume ${PARENT_DIR}/simulation/simulation_resources/custom_objects:/aas/custom_objects \
         --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
         --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
