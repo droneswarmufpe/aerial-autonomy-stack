@@ -55,8 +55,8 @@
         <camera name='d435'>
           <horizontal_fov>1.48702</horizontal_fov>
           <image>
-            <width>1280</width>
-            <height>720</height>
+            <width>1920</width>
+            <height>1080</height>
             <format>RGB_INT8</format>
           </image>
           <clip>

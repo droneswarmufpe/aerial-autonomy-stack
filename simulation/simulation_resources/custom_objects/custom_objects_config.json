@@ -22,10 +22,40 @@
     },
     {
       "id": 2,
-      "local_position": {
-        "x": 5.0,
-        "y": 0.0,
-        "z": 1.0
+      "global_position": {
+        "lat": 48.81045990,
+        "lon": 7.85147490,
+        "alt": 1
+      },
+      "attitude": {
+        "roll": 0,
+        "pitch": 0,
+        "yaw": 0
+      },
+      "model": "human_dummy",
+      "static": false
+    },
+    {
+      "id": 3,
+      "global_position": {
+        "lat": 48.81056410,
+        "lon": 7.85164650,
+        "alt": 1
+      },
+      "attitude": {
+        "roll": 0,
+        "pitch": 0,
+        "yaw": 0
+      },
+      "model": "human_dummy",
+      "static": false
+    },
+    {
+      "id": 4,
+      "global_position": {
+        "lat": 48.81055880,
+        "lon": 7.85174850,
+        "alt": 1
       },
       "attitude": {
         "roll": 0,
@@ -36,7 +66,7 @@
       "static": false
     },
     {
-      "id": 3,
+      "id": 5,
       "local_position": {
         "x": -5.0,
         "y": 0.0,
@@ -49,6 +79,16 @@
       },
       "model": "renault_ccfm_c",
       "static": false
+    },
+    {
+      "id": 6,
+      "global_position": {
+        "lat": 48.80650310,
+        "lon": 7.85218030,
+        "alt": 2
+      },
+
+      "model": "aruco_5x5_0"
     }
   ]
 }

@@ -38,6 +38,7 @@ RUN apt update \
     && apt install -y --no-install-recommends \
         ros-humble-desktop ros-dev-tools \
         ros-humble-bondcpp ros-humble-ament-cmake-clang-format \
+        ros-humble-image-transport-plugins \
         ros-humble-vision-msgs \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
@@ -161,9 +162,13 @@ RUN git config --global --add safe.directory /workspaces/rcpilot && \
     git submodule sync && \
     git submodule update --init --recursive
 
-# Build rcpilot SDK and workspace
-RUN ./install-sdk.bash cpp python && \
-    bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install --packages-skip localization"
+# Install grpc-tools for protobuf code generation
+RUN pip3 install --no-cache-dir grpcio-tools
+
+# Build rcpilot dependencies, SDK, and workspace using the rcpilot orchestrator
+RUN ./rcpilot install deps -y && \
+    ./rcpilot install sdk -y && \
+    bash -c "source /opt/ros/humble/setup.bash && ./rcpilot build -y"
 
 ################################################################################
 # Stage 7 - ?GB ################################################################
