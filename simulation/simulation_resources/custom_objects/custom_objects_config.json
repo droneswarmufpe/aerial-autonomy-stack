@@ -32,8 +32,8 @@
         "pitch": 0,
         "yaw": 0
       },
-      "model": "human_dummy",
-      "static": false
+      "model": "rescue_randy",
+      "static": true
     },
     {
       "id": 3,
@@ -47,8 +47,8 @@
         "pitch": 0,
         "yaw": 0
       },
-      "model": "human_dummy",
-      "static": false
+      "model": "rescue_randy",
+      "static": true
     },
     {
       "id": 4,
@@ -62,8 +62,8 @@
         "pitch": 90,
         "yaw": 0
       },
-      "model": "human_dummy",
-      "static": false
+      "model": "rescue_randy",
+      "static": true
     },
     {
       "id": 5,

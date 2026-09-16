@@ -69,12 +69,6 @@ RUN wget https://d176tv9ibo4jno.cloudfront.net/latest/QGroundControl-x86_64.AppI
     rm /QGroundControl-x86_64.AppImage
 # Run with $ gosu qgcuser /squashfs-root/AppRun
 
-# Install Zenoh
-RUN echo "deb [trusted=yes] https://download.eclipse.org/zenoh/debian-repo/ /" | sudo tee -a /etc/apt/sources.list > /dev/null
-RUN apt-get update && \
-    apt-get install -y zenoh-bridge-ros2dds \
-    && apt clean \
-    && rm -rf /var/lib/apt/lists/*
 
 ################################################################################
 # Stage 3 - 9GB ################################################################

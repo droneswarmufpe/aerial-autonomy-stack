@@ -23,7 +23,7 @@ X_OFFSET="${X_OFFSET:-5}" # X offset for drone placement in the world (default =
 Y_OFFSET="${Y_OFFSET:--110}" # Y offset for drone placement in the world (default = 0)
 #
 RCPILOT="${RCPILOT:-true}" # Options: true, false (default) - If true, the rcpilot repo will be cloned and built. This is useful for testing the rcpilot SDK and its integration with the AAS.
-DEV="${DEV:false}" # Options: true, false (default)
+DEV="${DEV:-false}" # Options: true, false (default)
 HITL="${HITL:-false}" # Options: true, false (default)
 GND_CONTAINER="${GND_CONTAINER:-true}" # Options: true (default), false
 RTF="${RTF:-1.0}" # Real-time factor (default = 1.0), set to <=0.0 for as fast as possible execution
@@ -68,6 +68,8 @@ if [[ "$DEV" == "true" ]]; then
   DEV_AIR_OPTS+=" -v ${SCRIPT_DIR}/../aircraft/aircraft_resources/:/aas/aircraft_resources:cached"
   DEV_AIR_OPTS+=" -v ${SCRIPT_DIR}/../aircraft/aircraft_ws/src:/aas/aircraft_ws/src:cached"
   DEV_AIR_OPTS+=" -v ${SCRIPT_DIR}/../ground/ground_ws/src/ground_system_msgs:/aas/aircraft_ws/src/ground_system_msgs:cached"
+  RCPILOT_WORKSPACE_OPTS=" --volume ${SCRIPT_DIR}/../github_clones/rcpilot/build:/workspaces/rcpilot/build:cached"
+  RCPILOT_WORKSPACE_OPTS+=" --volume ${SCRIPT_DIR}/../github_clones/rcpilot/install:/workspaces/rcpilot/install:cached"
 fi
 
 # Create docker networks for SITL
@@ -161,8 +163,7 @@ if [[ "$HITL" == "false" ]]; then
       --volume ${PARENT_DIR}/simulation/simulation_resources/custom_objects:/aas/custom_objects \
       --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
       --volume ${PARENT_DIR}/github_clones/rcpilot/src:/workspaces/rcpilot/src:cached \
-      --volume ${PARENT_DIR}/github_clones/rcpilot/build:/workspaces/rcpilot/build:cached \
-      --volume ${PARENT_DIR}/github_clones/rcpilot/install:/workspaces/rcpilot/install:cached \
+      ${RCPILOT_WORKSPACE_OPTS} \
       --volume ${PARENT_DIR}/github_clones/rcpilot/log:/workspaces/rcpilot/log:cached \
       --volume ${PARENT_DIR}/github_clones/rcpilot/sdk:/workspaces/rcpilot/sdk:cached \
       --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
@@ -203,8 +204,7 @@ if [[ "$HITL" == "false" ]]; then
         --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
         --volume ${PARENT_DIR}/github_clones/rcpilot/src:/workspaces/rcpilot/src:cached \
         --volume ${PARENT_DIR}/github_clones/rcpilot/sdk:/workspaces/rcpilot/sdk:cached \
-        --volume ${PARENT_DIR}/github_clones/rcpilot/build:/workspaces/rcpilot/build:cached \
-        --volume ${PARENT_DIR}/github_clones/rcpilot/install:/workspaces/rcpilot/install:cached \
+        ${RCPILOT_WORKSPACE_OPTS} \
         --volume ${PARENT_DIR}/github_clones/rcpilot/log:/workspaces/rcpilot/log:cached \
         --volume ${PARENT_DIR}/simulation/simulation_resources/custom_objects:/aas/custom_objects \
         --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
