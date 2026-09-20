@@ -8,6 +8,7 @@
   air_subnet = ENV.fetch('AIR_SUBNET', '10.22')
   sim_id = ENV.fetch('SIM_ID', '100')
   ground_id = ENV.fetch('GROUND_ID', '101')
+  jetson = ENV.fetch('JETSON', 'true') == 'true'
 
   drone_type = ENV.fetch('DRONE_TYPE', 'quad')
   drone_id = ENV.fetch('DRONE_ID', 1).to_i
@@ -24,6 +25,14 @@
 name: drone
 
 windows:
+
+  <% if jetson %>
+  - jetson:
+      layout: even-horizontal
+      panes:
+        - clear && echo "Running on Jetson."
+  <% end %>
+  <% unless jetson %>
   <% if centralized %>
   - ap_interface:
       layout: even-horizontal
@@ -57,5 +66,6 @@ windows:
         - >
           python3 -c "import yaml; cfg = yaml.safe_load(open('/workspaces/rcpilot/install/bringup/share/bringup/config/config.dev.yaml')); cfg['communication']['mavsys']['ros__parameters']['clients']['drone']['connection_string'] = 'udp:<%= "#{sim_subnet}.90.#{drone_id}" %>:14572'; yaml.dump(cfg, open('/workspaces/rcpilot/install/bringup/share/bringup/config/config.dev.yaml', 'w'))" &&
           ros2 launch bringup rcpilot.dev.launch.py
+  <% end %>
   <% end %>
   <% end %>

@@ -25,7 +25,7 @@
       "global_position": {
         "lat": 48.81045990,
         "lon": 7.85147490,
-        "alt": 1
+        "alt": -1.5
       },
       "attitude": {
         "roll": 0,
@@ -40,7 +40,7 @@
       "global_position": {
         "lat": 48.81056410,
         "lon": 7.85164650,
-        "alt": 1
+        "alt": -1.5
       },
       "attitude": {
         "roll": 0,
@@ -55,12 +55,12 @@
       "global_position": {
         "lat": 48.81055880,
         "lon": 7.85174850,
-        "alt": 1
+        "alt": -1.5
       },
       "attitude": {
         "roll": 0,
-        "pitch": 90,
-        "yaw": 0
+        "pitch": 0,
+        "yaw": 90
       },
       "model": "rescue_randy",
       "static": true

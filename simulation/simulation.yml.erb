@@ -13,6 +13,7 @@
   world = ENV.fetch('WORLD', 'impalpable_greyness')
   x_offset = ENV.fetch('X_OFFSET', 0).to_i
   y_offset = ENV.fetch('Y_OFFSET', 0).to_i
+  jetson = ENV.fetch('JETSON', 'true') == 'true'
   
   gnd_container = ENV.fetch('GND_CONTAINER', 'true') == 'true'
   centralized = ENV.fetch('CENTRALIZED', 'false') == 'true'
@@ -135,6 +136,9 @@ windows:
           <% else %>
           --out=udp:127.0.0.1:<%= 14550 + sitl_instance %>
           <% end %>
+          <% if jetson %>
+          --out=udp:<%= "192.168.55.1" %>:14550
+          <% end %>
   <% end %>
         <% if camera %>
         - >
@@ -145,6 +149,16 @@ windows:
           /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
           <%= thermal_camera_topic %>
           <%= camera_target_ip %> <%= thermal_camera_port %> 8
+        <% if jetson %>
+        - >
+          /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
+          <%= rgb_camera_topic %>
+          192.168.55.1 <%= rgb_camera_port %> 8
+        - >
+          /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
+          <%= thermal_camera_topic %>
+          192.168.55.1 <%= thermal_camera_port %> 8
+        <% end %>
         <% end %>
         <% if lidar %>
         - >
