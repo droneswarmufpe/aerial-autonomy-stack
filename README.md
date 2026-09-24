@@ -31,80 +31,89 @@ https://github.com/user-attachments/assets/57e5bc91-8bee-4bae-8f81-a9aacef471e7
 
 ## Overview
 
+### 1. Decentralized Mode (`CENTRALIZED=false`)
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 'fontFamily': 'monospace'}}}%%
-flowchart TB
-    subgraph aas [" "]
-        subgraph sim ["#nbsp;simulation#nbsp;container#nbsp;(amd64)"]
-            sitl("[N x] PX4 || <br/> ArduPilot SITL"):::resource
-            gz(Gazebo Sim):::resource
-            subgraph models [Models]
-                drones(aircraft_models):::resource
-                worlds(simulation_worlds):::resource
-            end
-
-            drones --> gz
-            worlds --> gz
-            sitl <--> |"gz_bridge || ardupilot_gazebo"| gz
-        end
-
-        subgraph gnd ["#nbsp;ground#nbsp;container#nbsp;(amd64)"]
-            ground_system[/ground_system\]:::algo
-            qgc(QGroundControl):::resource
-            zenoh_gnd{{zenoh-bridge}}:::bridge
-
-            ground_system ~~~ qgc
-            ground_system --> |"/tracks"| zenoh_gnd  
-        end
-
-        subgraph air ["[N#nbsp;x]#nbsp;aircraft#nbsp;container(s)#nbsp;(amd64/arm64)"]
-            subgraph perception [Perception]
-                yolo_py[/yolo_py/]:::algo
-                kiss_icp[/kiss_icp/]:::algo
-            end
-            subgraph control [Control]
-                offboard_control(offboard_control):::algo
-                autopilot_interface(autopilot_interface):::algo
-                mission(mission):::algo
-            end
-            ap_link{{"uxrce_dds <br/> || MAVROS"}}:::bridge
-            subgraph swarm [Swarm]
-                state_sharing[/state_sharing\]:::algo
-            end
-            zenoh_air{{zenoh-bridge}}:::bridge
-
-            kiss_icp -.-> |"/TBD"| ap_link
-            ap_link <--> autopilot_interface
-            ap_link --> state_sharing
-            yolo_py --> |"/detections"| offboard_control
-            offboard_control --> |"/reference"| autopilot_interface
-            mission --> |"ros2 action/srv"| autopilot_interface
-            zenoh_air <--> |"/state_sharing_drone_n"| state_sharing
-        end
-
-        repo(((aerial#nbsp;autonomy#nbsp;stack)))
+flowchart LR
+    subgraph sim ["#nbsp;simulation#nbsp;container#nbsp;(amd64)"]
+        direction TB
+        gz(Gazebo Sim):::resource
+        sitl("[N x] PX4 / ArduPilot SITL"):::resource
+        gz <--> |"gz_bridge"| sitl
     end
 
-    repo ~~~ gz
-    gz --> |"gz_gst_bridge <br/> [SIM_SUBNET]"| yolo_py
-    gz --> |"/lidar_points <br/> [SIM_SUBNET]"| kiss_icp
-    sitl <--> |"UDP <br/> [SIM_SUBNET]"| ap_link
-    sitl <--> |"MAVLink <br/> [SIM_SUBNET]"| qgc 
-    sitl --> |"MAVLink <br/> [SIM_SUBNET]"| ground_system
-    zenoh_gnd <-.-> |"TCP <br/> [AIR_SUBNET]"| zenoh_air
+    subgraph air ["[N#nbsp;x]#nbsp;aircraft#nbsp;container(s)#nbsp;(amd64/arm64)"]
+        direction TB
+        lidar_in(("/lidar_points<br/>(Unconsumed)")):::algo
+        
+        mavrouter["mavlink-routerd<br/>:14570 → :14571, :14572"]:::bridge
+        rcpilot[/"rcpilot"\]:::algo
+        script04[/"04_localiza_alvo.py<br/>(Projeto-Enxame-Drones)"\]:::algo
+
+        mavrouter <--> |"UDP :14572 (Local)"| rcpilot
+        mavrouter <--> |"UDP :14571 (Local)"| script04
+    end
+
+    subgraph gnd ["#nbsp;ground#nbsp;container#nbsp;(amd64)"]
+        direction TB
+        qgc(QGroundControl):::resource
+    end
+
+    %% External Network Routing
+    sitl <--> |"MAVLink UDP :14550+N <br/> [SIM_SUBNET]"| qgc
+    sitl <--> |"MAVLink UDP :14570 <br/> [SIM_SUBNET]"| mavrouter
+    gz --> |"gz_gst_bridge (Camera Frame) <br/> [SIM_SUBNET]"| script04
+    gz --> |"LiDAR Pointcloud <br/> [SIM_SUBNET]"| lidar_in
 
     classDef bridge fill:#ffebd6,stroke:#f5a623,stroke-width:2px;
     classDef algo fill:#e1f5fe,stroke:#0277bd,stroke-width:2px;
     classDef resource fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
-    classDef blueStyle  fill:#e1f0ff,stroke:#666,stroke-width:2px;
     classDef whiteStyle fill:#f9f9f9,stroke:#666,stroke-width:1px,stroke-dasharray: 5 5;
-    classDef greyStyle  fill:#eeeeee,stroke:#666,stroke-width:1px,stroke-dasharray: 5 5;
+    
+    class sim,air,gnd whiteStyle;
+```
+### 2. Centralized Mode (`CENTRALIZED=true`)
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'fontFamily': 'monospace'}}}%%
+flowchart LR
+    subgraph sim ["simulation container (amd64) [SIM_SUBNET]"]
+        direction TB
+        gz(Gazebo Sim):::resource
+        sitl("[N x] PX4 / ArduPilot SITL"):::resource
+        gz <--> |"gz_bridge"| sitl
+    end
 
-    class aas,repo blueStyle;
-    class air,gnd,sim whiteStyle;
-    class perception,control,models,swarm greyStyle;
-    linkStyle 13,14,15,16,17 stroke:teal,stroke-width:3px;
-    linkStyle 18 stroke:blue,stroke-width:4px;
+    subgraph gnd ["#nbsp;ground#nbsp;container#nbsp;(amd64)"]
+        direction TB
+        lidar_in(("/lidar_points<br/>(Unconsumed)")):::algo
+        qgc(QGroundControl):::resource
+
+        mavrouter["mavlink-routerd<br/>:14570+N → :14000+100*N, :14001+100*N"]:::bridge
+        rcpilot[/"rcpilot"\]:::algo
+        script04[/"04_localiza_alvo.py<br/>(Projeto-Enxame-Drones)"\]:::algo
+
+        mavrouter <--> |"UDP :14000+100*N (Local)"| rcpilot
+        mavrouter <--> |"UDP :14001+100*N (Local)"| script04
+    end
+
+    subgraph air ["[N#nbsp;x]#nbsp;aircraft#nbsp;container(s)#nbsp;(amd64/arm64)"]
+        direction TB
+        idle_node["All active routing<br/>and control processes<br/>have been moved to the<br/>Ground Container."]:::idleStyle
+    end
+
+    %% External Network Routing
+    sitl <--> |"MAVLink UDP :14550+N <br/> [SIM_SUBNET]"| qgc
+    sitl <--> |"MAVLink UDP :14570+N <br/> [SIM_SUBNET]"| mavrouter
+    gz --> |"gz_gst_bridge (Camera Frame) <br/> [SIM_SUBNET]"| script04
+    gz --> |"LiDAR Pointcloud <br/> [SIM_SUBNET]"| lidar_in
+
+    classDef bridge fill:#ffebd6,stroke:#f5a623,stroke-width:2px;
+    classDef algo fill:#e1f5fe,stroke:#0277bd,stroke-width:2px;
+    classDef resource fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+    classDef whiteStyle fill:#f9f9f9,stroke:#666,stroke-width:1px,stroke-dasharray: 5 5;
+    classDef idleStyle fill:#f5f5f5,stroke:#bbb,stroke-width:1px,color:#555,stroke-dasharray: 4 4;
+    
+    class sim,air,gnd whiteStyle;
 ```
 
 <details>
@@ -199,22 +208,25 @@ cd aerial-autonomy-stack/scripts/
   </a>
 </div>
 
-## Simulation (TODO: update this section showing how to run in centralized mode and execute missions from python scripts)
+## Simulation
 
 ![workspace](https://github.com/user-attachments/assets/ad909fcc-69de-44ac-84b3-c5bc7a1c896f)
 
 > On a low-mid range laptop—i7-11 with 16GB RAM and RTX 3060—AAS can simulate a PX4 quad with YOLO and LiDAR at **10x real-time-factor** with flag `RTF=0.0`. Run multiple `sim_run.sh` in parallel adding flag `INSTANCE=1`, `INSTANCE=2`, etc. for even higher throughput. Make sure you run `sudo prime-select nvidia` and rebooted to leverage GPU rendering and compute.
 
 ```sh
-# 1. Start AAS
+# 1. Start AAS (centralized mode)
 cd aerial-autonomy-stack/scripts
-AUTOPILOT=px4 NUM_QUADS=1 NUM_VTOLS=1 WORLD=swiss_town RTF=3.0 ./sim_run.sh                   # Start a simulation, check the script for more options (note: ArduPilot SITL checks take ~40s before being ready to arm)
+AUTOPILOT=ardupilot NUM_QUADS=1 NUM_VTOLS=1 WORLD=esefex_fbx CENTRALIZED=true RTF=3.0 ./sim_run.sh
 ```
 
-In any of the `QUAD` or `VTOL` Xterm terminals:
+Centralized mode streams all aircraft data (including MAVLink) to the ground container, so the stack runs as external processing rather than onboard. Set `CENTRALIZED=false` to keep streams local to each aircraft container.
+
+In the `Ground` Xterm terminal:
 ```sh
-# 2. Fly
-ros2 run mission mission --ros-args -r __ns:=/Drone$DRONE_ID -p use_sim_time:=true            # This mission is a defined in /aircraft/aircraft_resources/missions/test_mission.yaml
+# 2. Run a mission script
+cd /aas/Projeto-Enxame-Drones
+python3 01_busca_do_alvo.py                                                                  # Or run another script from this repo
 ```
 
 In the `Simulation`'s Xterm terminal:
@@ -222,6 +234,8 @@ In the `Simulation`'s Xterm terminal:
 # 3. Analyze
 /aas/simulation_resources/scripts/plot_logs.sh                                                # Analyze the flight logs at http://10.42.90.100:5006/browse or in MAVExplorer
 ```
+
+Full parameter list: [supplementary/DOCKER_PARAMS.md](/supplementary/DOCKER_PARAMS.md)
 
 Optionally, add or disable **wind effects**, in the `Simulation`'s Xterm terminal:
 
@@ -310,11 +324,36 @@ python3 /aas/simulation_resources/scripts/gz_wind.py --stop_wind
 
 ![worlds](https://github.com/user-attachments/assets/b9f7635a-0b1f-4698-ba6a-70ab1b412aef)
 
-> `WORLD`s (in clock-wise order): 
-> *(i)* `apple_orchard`, a GIS world created using [BlenderGIS](https://github.com/domlysz/BlenderGIS)
-> / *(ii)* `impalpable_greyness`, an empty world with simple shapes
-> / *(iii)* `shibuya_crossing`, a 3D world adapted from [cgtrader](https://www.cgtrader.com/)
-> / *(iv)* `swiss_town`, a photogrammetry world courtesy of [Pix4D / pix4d.com](https://support.pix4d.com/hc/en-us/articles/360000235126)
+### Available worlds
+
+- `apple_orchard` — a GIS world created using [BlenderGIS](https://github.com/domlysz/BlenderGIS)
+- `esefex_fbx` — RJ military base
+- `imav` — custom world
+- `impalpable_greyness` — an empty world with simple shapes
+- `jockey` — custom world
+- `shibuya_crossing` — a 3D world adapted from [cgtrader](https://www.cgtrader.com/)
+- `swiss_town` — a photogrammetry world courtesy of [Pix4D / pix4d.com](https://support.pix4d.com/hc/en-us/articles/360000235126)
+
+### Available models
+
+- `airstream`
+- `apple`
+- `apple_grid`
+- `birch`
+- `birch_row`
+- `crash`
+- `duck`
+- `fog_generator` — particle filter model that emits fog via a particle emitter
+- `gazebo`
+- `grenade` — static grenade mesh used as an environment prop
+- `imav`
+- `ime-target` - target used for pose estimation in esefex world
+- `jeep`
+- `jockey`
+- `rabbit`
+- `subaru`
+- `suburb`
+- `unicorn`
 
 ## License 
 
