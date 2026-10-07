@@ -1,0 +1,44 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+
+  <model name="betione">
+    <static>true</static>
+
+    <link name="link">
+
+      <!-- FAST collision -->
+      <collision name="collision">
+        <geometry>
+          <mesh>
+            <uri>model://betione/meshes/betione.glb</uri>
+            <scale>1.0 1.0 1.0</scale>
+          </mesh>
+        </geometry>
+
+        <surface>
+          <friction>
+            <ode>
+              <mu>1.0</mu>
+              <mu2>1.0</mu2>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+
+      <!-- Visual mesh -->
+      <visual name="visual">
+        <geometry>
+          <mesh>
+            <uri>model://betione/meshes/betione.glb</uri>
+            <scale>1.0 1.0 1.0</scale>
+          </mesh>
+        </geometry>
+      </visual>
+
+    </link>
+
+  </model>
+
+</sdf>
+
+
