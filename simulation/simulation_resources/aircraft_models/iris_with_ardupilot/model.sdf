@@ -517,7 +517,7 @@
       <include>
         <uri>model://sensor_thermal_camera</uri>
         <name>simple_thermal_camera</name>
-        <pose>.175 0 -0.075 0 1.5707 0</pose>
+        <pose>.175 0 -0.075 3.1415 1.5707 0</pose>
       </include>
       <joint name="ThermalCameraJoint" type="fixed">
         <parent>base_link</parent>
