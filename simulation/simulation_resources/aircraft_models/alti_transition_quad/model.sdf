@@ -701,6 +701,7 @@
       </axis>
     </joint>
 
+    <!-- RGBD_CAMERA_BEGIN -->
     <include>
       <uri>model://d435</uri>
       <name>d435</name>
@@ -710,7 +711,9 @@
       <parent>base_link</parent>
       <child>d435::base_footprint</child>
     </joint>
+    <!-- RGBD_CAMERA_END -->
 
+    <!-- THERMAL_CAMERA_BEGIN -->
     <include>
       <uri>model://sensor_thermal_camera</uri>
       <name>simple_thermal_camera</name>
@@ -720,6 +723,7 @@
       <parent>base_link</parent>
       <child>simple_thermal_camera::thermal_cam/base_link</child>
     </joint>
+    <!-- THERMAL_CAMERA_END -->
 
     <include>
       <uri>model://sensor_lidar</uri>

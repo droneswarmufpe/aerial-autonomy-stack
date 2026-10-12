@@ -12,6 +12,9 @@ fi
 NUM_QUADS=$1
 NUM_VTOLS=$2
 CAMERA_PITCH=$3
+CAMERA=${CAMERA:-true}
+RGBD_CAMERA=${RGBD_CAMERA:-true}
+THERMAL_CAMERA=${THERMAL_CAMERA:-true}
 
 BASE_PORT=9002
 
@@ -49,6 +52,12 @@ create_model() {
     sed -i "s/<fdm_port_in>${BASE_PORT}<\/fdm_port_in>/<fdm_port_in>$(($BASE_PORT + ($DRONE_ID - 1) * 10))<\/fdm_port_in>/g" "${NEW_MODEL_DIR}/model.sdf"
     # Set camera pitch
     sed -i "s|<!--CAMERA_PITCH_PLACEHOLDER-->|${CAMERA_PITCH}|g" "${NEW_MODEL_DIR}/model.sdf"
+    if [ "$CAMERA" != "true" ] || [ "$RGBD_CAMERA" != "true" ]; then
+        sed -i '/<!-- RGBD_CAMERA_BEGIN -->/,/<!-- RGBD_CAMERA_END -->/d' "${NEW_MODEL_DIR}/model.sdf"
+    fi
+    if [ "$CAMERA" != "true" ] || [ "$THERMAL_CAMERA" != "true" ]; then
+        sed -i '/<!-- THERMAL_CAMERA_BEGIN -->/,/<!-- THERMAL_CAMERA_END -->/d' "${NEW_MODEL_DIR}/model.sdf"
+    fi
 
     ### Payload plugin adaptations
     # Update topic tags: <topic>/base_model_name/... -> <topic>/new_model_name/...

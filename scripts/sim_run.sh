@@ -7,6 +7,8 @@ set -e
 AUTOPILOT="${AUTOPILOT:-ardupilot}" # Options: ardupilot, px4 (removed support)
 HEADLESS="${HEADLESS:-false}" # Options: true, false (default)
 CAMERA="${CAMERA:-true}" # Options: true (default), false
+THERMAL_CAMERA="${THERMAL_CAMERA:-false}" # Options: true (default), false
+RGBD_CAMERA="${RGBD_CAMERA:-true}" # Options: true (default), false
 LIDAR="${LIDAR:-false}" # Options: true (default), false 
 CAMERA_PITCH="${CAMERA_PITCH:-1.5707}" # Camera pitch in radians (default = 1.5707, 90 deg down)
 #
@@ -19,8 +21,8 @@ NUM_QUADS="${NUM_QUADS:-1}" # Number of quadcopters (default = 1)
 NUM_VTOLS="${NUM_VTOLS:-0}" # Number of VTOLs (default = 0)
 WORLD="${WORLD:-esefex_fbx}" # Options: impalpable_greyness (default), apple_orchard, shibuya_crossing, swiss_town
 CENTRALIZED="${CENTRALIZED:-false}" # Options: true, false (default) - If true, all cameras will stream to the ground container. If false, each camera will stream to its own IP (useful for testing network conditions and scalability)
-X_OFFSET="${X_OFFSET:-5}" # X offset for drone placement in the world (default = 0)
-Y_OFFSET="${Y_OFFSET:--110}" # Y offset for drone placement in the world (default = 0)
+X_OFFSET="${X_OFFSET:-0}" # X offset for drone placement in the world (default = 0)
+Y_OFFSET="${Y_OFFSET:-0}" # Y offset for drone placement in the world (default = 0)
 #
 RCPILOT="${RCPILOT:-true}" # Options: true, false (default) - If true, the rcpilot repo will be cloned and built. This is useful for testing the rcpilot SDK and its integration with the AAS.
 DEV="${DEV:-false}" # Options: true, false (default)
@@ -129,7 +131,7 @@ DOCKER_CMD="docker run -it --rm \
   --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
   --volume ${PARENT_DIR}/simulation/simulation_resources/custom_objects:/aas/simulation_resources/custom_objects \
   --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
-  --env AUTOPILOT=$AUTOPILOT --env HEADLESS=$HEADLESS --env CAMERA=$CAMERA --env LIDAR=$LIDAR --env CAMERA_PITCH=$CAMERA_PITCH \
+  --env AUTOPILOT=$AUTOPILOT --env HEADLESS=$HEADLESS --env CAMERA=$CAMERA --env THERMAL_CAMERA=$THERMAL_CAMERA --env RGBD_CAMERA=$RGBD_CAMERA --env LIDAR=$LIDAR --env CAMERA_PITCH=$CAMERA_PITCH \
   --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS --env WORLD=$WORLD \
   --env SIMULATED_TIME=true --env RTF=$RTF --env START_AS_PAUSED=$START_AS_PAUSED \
   --env JETSON=$JETSON \

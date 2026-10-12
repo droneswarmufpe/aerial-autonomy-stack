@@ -211,6 +211,24 @@ cd aerial-autonomy-stack/scripts
 AUTOPILOT=px4 NUM_QUADS=1 NUM_VTOLS=1 WORLD=swiss_town RTF=3.0 ./sim_run.sh                   # Start a simulation, check the script for more options (note: ArduPilot SITL checks take ~40s before being ready to arm)
 ```
 
+### Camera switches
+
+`CAMERA` is the master camera switch in `sim_run.sh`; setting `CAMERA=false` prevents both RGB-D and thermal sensors from spawning, regardless of the individual switches. With `CAMERA=true` (the default), `RGBD_CAMERA` controls the D435 color, infrared, and depth streams, while `THERMAL_CAMERA` controls the thermal sensor and stream. Both individual switches default to `true`.
+
+```sh
+CAMERA=true RGBD_CAMERA=false THERMAL_CAMERA=true ./sim_run.sh    # Thermal only
+CAMERA=true RGBD_CAMERA=true THERMAL_CAMERA=false ./sim_run.sh    # D435 RGB-D only
+CAMERA=false ./sim_run.sh                                         # Disable all cameras
+```
+
+Gazebo derives the D435 infrared and depth image topics from each model's
+world/model path, so all four RGB-D streams are distinct for every drone.
+Infrared and depth run at 30 Hz.
+
+The default spawn offset is the world's local origin (`X_OFFSET=0`,
+`Y_OFFSET=0`). Set `X_OFFSET` and `Y_OFFSET` explicitly when a different
+start position is required.
+
 In any of the `QUAD` or `VTOL` Xterm terminals:
 ```sh
 # 2. Fly

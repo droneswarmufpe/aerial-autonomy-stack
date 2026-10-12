@@ -51,7 +51,6 @@
       <sensor name='d435_color' type='camera'>
         <gz_frame_id>d435_color_optical_frame</gz_frame_id>
         <camera_info_topic>color/camera_info</camera_info_topic>
-        <update_rate>30</update_rate>
         <camera name='d435'>
           <horizontal_fov>1.48702</horizontal_fov>
           <image>
@@ -74,13 +73,8 @@
         <visualize>1</visualize>
         <pose>0 0 0.0085 0 0 0</pose>
       </sensor>
-      <!-- The simulation currently bridges only the RGB color stream. -->
-      <!--
       <sensor name='d435_ired1' type='camera'>
         <gz_frame_id>d435_infra1_optical_frame</gz_frame_id>
-        <topic>infra1/image_raw</topic>
-        <camera_info_topic>infra1/camera_info</camera_info_topic>
-        <update_rate>30</update_rate>
         <camera name='d435'>
           <horizontal_fov>1.48702</horizontal_fov>
           <image>
@@ -99,15 +93,12 @@
           </noise>
         </camera>
         <always_on>1</always_on>
-        <update_rate>90</update_rate>
+        <update_rate>30</update_rate>
         <visualize>0</visualize>
         <pose>0 -0.015 0.0085 0 0 0</pose>
       </sensor>
       <sensor name='d435_ired2' type='camera'>
         <gz_frame_id>d435_infra2_optical_frame</gz_frame_id>
-        <topic>infra2/image_raw</topic>
-        <camera_info_topic>infra2/camera_info</camera_info_topic>
-        <update_rate>30</update_rate>
         <camera name='d435'>
           <horizontal_fov>1.48702</horizontal_fov>
           <image>
@@ -126,15 +117,12 @@
           </noise>
         </camera>
         <always_on>1</always_on>
-        <update_rate>90</update_rate>
+        <update_rate>30</update_rate>
         <visualize>0</visualize>
         <pose>0 0.015 0.0085 0 0 0</pose>
       </sensor>
       <sensor name='d435_depth' type='depth_camera'>
         <gz_frame_id>d435_depth_optical_frame</gz_frame_id>
-        <topic>depth/image_raw</topic>
-        <camera_info_topic>depth/camera_info</camera_info_topic>
-        <update_rate>30</update_rate>
         <camera name='d435'>
           <horizontal_fov>1.48702</horizontal_fov>
           <image>
@@ -152,11 +140,10 @@
           </noise>
         </camera>
         <always_on>1</always_on>
-        <update_rate>90</update_rate>
+        <update_rate>30</update_rate>
         <visualize>0</visualize>
         <pose>0 0 0.0085 0 0 0</pose>
       </sensor>
-      -->
     </link>
   </model>
 </sdf>
