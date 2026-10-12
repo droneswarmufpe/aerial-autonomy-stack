@@ -1,0 +1,22 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+  <model name="Robocup1">
+    <static>true</static>
+    <link name="link">
+      <visual name="visual">
+        <geometry>
+          <mesh>
+            <uri>model://Robocup1/meshes/Robocup1.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+      <collision name="collision">
+        <geometry>
+          <mesh>
+            <uri>model://Robocup1/meshes/Robocup1.dae</uri>
+          </mesh>
+        </geometry>
+      </collision>
+    </link>
+  </model>
+</sdf>
