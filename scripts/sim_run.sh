@@ -53,6 +53,26 @@ else
 fi
 echo "Desktop environment: $DESK_ENV"
 
+GPU_AVAILABLE=false
+if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1 \
+    && docker info --format '{{json .Runtimes}}' 2>/dev/null | grep -q '"nvidia"'; then
+  GPU_AVAILABLE=true
+else
+  echo "Docker NVIDIA runtime not detected; launching containers without GPU flags."
+fi
+
+GPU_FLAGS=""
+NVIDIA_ENV_FLAGS=""
+if [[ "$GPU_AVAILABLE" == "true" ]]; then
+  GPU_FLAGS="--gpus all"
+  NVIDIA_ENV_FLAGS="--env NVIDIA_VISIBLE_DEVICES=all --env NVIDIA_DRIVER_CAPABILITIES=all"
+fi
+
+D3D_DEVICE_ARGS=""
+if [[ -e /dev/dri ]]; then
+  D3D_DEVICE_ARGS="--device /dev/dri"
+fi
+
 # In dev mode, resources and workspaces are mounted from the host
 if [[ "$DEV" == "true" ]]; then
   SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -123,8 +143,8 @@ PARENT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 
 # Launch the simulation container
 DOCKER_CMD="docker run -it --rm \
-  --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
-  --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
+  --volume /tmp/.X11-unix:/tmp/.X11-unix:rw ${D3D_DEVICE_ARGS} ${GPU_FLAGS} \
+  --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 ${NVIDIA_ENV_FLAGS} --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
   --env AUTOPILOT=$AUTOPILOT --env HEADLESS=$HEADLESS --env CAMERA=$CAMERA --env LIDAR=$LIDAR --env CAMERA_PITCH=$CAMERA_PITCH \
   --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS --env WORLD=$WORLD \
   --env SIMULATED_TIME=true --env RTF=$RTF --env START_AS_PAUSED=$START_AS_PAUSED \
@@ -157,8 +177,9 @@ if [[ "$HITL" == "false" ]]; then
     DOCKER_CMD="docker run -it --rm \
       --ipc=host \
       --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
-      --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
-      --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
+      --volume ${PARENT_DIR}/github_clones/evaat_embedded_py:/aas/evaat_embedded_py \
+      --volume /tmp/.X11-unix:/tmp/.X11-unix:rw ${D3D_DEVICE_ARGS} ${GPU_FLAGS} \
+      --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 ${NVIDIA_ENV_FLAGS} --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
       --env HEADLESS=$HEADLESS --env RCPILOT=$RCPILOT \
       --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS \
       --env SIMULATED_TIME=true --env CENTRALIZED=$CENTRALIZED \
@@ -183,6 +204,19 @@ if [[ "$HITL" == "false" ]]; then
   # Initialize a counter for the drone IDs
   DRONE_ID=1 # 1, 2, .., N drones
 
+  wait_for_container() {
+    local name="$1"
+    local timeout_seconds="${2:-30}"
+    for _ in $(seq 1 "$timeout_seconds"); do
+      if docker ps -a --format '{{.Names}}' | grep -qx "$name"; then
+        return 0
+      fi
+      sleep 1
+    done
+    echo "Timed out waiting for container: $name" >&2
+    return 1
+  }
+
   # Function to launch the aircraft containers
   launch_aircraft_containers() {
     local drone_type=$1
@@ -195,8 +229,9 @@ if [[ "$HITL" == "false" ]]; then
         --ipc=host \
         --volume ${PARENT_DIR}/aircraft/aircraft.yml.erb:/aas/aircraft.yml.erb \
         --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
-        --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
-        --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
+        --volume ${PARENT_DIR}/github_clones/evaat_embedded_py:/aas/evaat_embedded_py \
+        --volume /tmp/.X11-unix:/tmp/.X11-unix:rw ${D3D_DEVICE_ARGS} ${GPU_FLAGS} \
+        --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 ${NVIDIA_ENV_FLAGS} --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
         --env AUTOPILOT=$AUTOPILOT --env HEADLESS=$HEADLESS --env CAMERA=$CAMERA --env LIDAR=$LIDAR \
         --env DRONE_TYPE=$drone_type --env DRONE_ID=$DRONE_ID \
         --env SIMULATED_TIME=true --env CENTRALIZED=$CENTRALIZED \
@@ -227,10 +262,13 @@ if [[ "$HITL" == "false" ]]; then
   launch_aircraft_containers "vtol" $NUM_VTOLS  
 
   if [[ "$GND_CONTAINER" == "true" ]]; then
+    wait_for_container "$GND_CONT_NAME" || exit 1
     sleep 2.0 # Once all containers are up, connect ground and aircraft containers to the air network
     docker network connect --ip=${AIR_SUBNET}.90.$GROUND_ID $AIR_NET_NAME $GND_CONT_NAME
     for i in $(seq 1 $((NUM_QUADS + NUM_VTOLS))); do
-      docker network connect --ip=${AIR_SUBNET}.90.$i $AIR_NET_NAME "aircraft-container-inst${INSTANCE}_${i}"
+      local_aircraft_name="aircraft-container-inst${INSTANCE}_${i}"
+      wait_for_container "$local_aircraft_name" || exit 1
+      docker network connect --ip=${AIR_SUBNET}.90.$i $AIR_NET_NAME "$local_aircraft_name"
     done
   fi
 fi
@@ -245,12 +283,15 @@ cleanup() {
   CONTAINER_NAMES=("${SIM_CONT_NAME}" "${GND_CONT_NAME}" "aircraft-container-inst${INSTANCE}")
   CONTAINERS_TO_STOP=""
   for name in "${CONTAINER_NAMES[@]}"; do
-      CONTAINERS_TO_STOP+=$(docker ps -a -q --filter name="${name}" 2>/dev/null || true)
-      CONTAINERS_TO_STOP+=" "
+    local_ids=$(docker ps -a -q --filter name="${name}" 2>/dev/null || true)
+    if [ -n "$local_ids" ]; then
+      CONTAINERS_TO_STOP+="$local_ids "
+    fi
   done
+  CONTAINERS_TO_STOP=$(echo "$CONTAINERS_TO_STOP" | sed 's/[[:space:]]\+/ /g; s/^ //; s/ $//')
   echo "Stopping Docker containers (this will take a few seconds)..."
   if [ -n "$CONTAINERS_TO_STOP" ]; then
-      echo "$CONTAINERS_TO_STOP" | xargs docker stop
+      echo "$CONTAINERS_TO_STOP" | xargs -r docker stop
   fi
   docker network rm $SIM_NET_NAME 2>/dev/null && echo "Removed $SIM_NET_NAME" || echo "Network $SIM_NET_NAME not found or already removed"
   docker network rm $AIR_NET_NAME 2>/dev/null && echo "Removed $AIR_NET_NAME" || echo "Network $AIR_NET_NAME not found or already removed"

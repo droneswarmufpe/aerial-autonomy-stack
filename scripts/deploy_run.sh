@@ -28,8 +28,8 @@ GROUND="${GROUND:-false}" # Options: true, false (default)
 if [[ "$GROUND" == "true" ]]; then
   # This is a bit hacky, but allows to use the deploy_run.sh script for the ground container
   docker run -it --rm \
-    --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
-    --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR \
+    --volume /tmp/.X11-unix:/tmp/.X11-unix:rw ${D3D_DEVICE_ARGS} ${GPU_FLAGS} \
+    --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 ${NVIDIA_ENV_FLAGS} --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR \
     --env HEADLESS=$HEADLESS \
     --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS \
     --env SIMULATED_TIME=$HITL \
@@ -55,6 +55,28 @@ if [ "$HEADLESS" = "false" ]; then
   xhost +local:docker # Avoid this when building the TensorRT cache for the first time
 fi
 
+GPU_AVAILABLE=false
+if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1 \
+    && docker info --format '{{json .Runtimes}}' 2>/dev/null | grep -q '"nvidia"'; then
+  GPU_AVAILABLE=true
+else
+  echo "Docker NVIDIA runtime not detected; launching containers without GPU flags."
+fi
+
+GPU_RUNTIME_FLAGS=""
+GPU_FLAGS=""
+NVIDIA_ENV_FLAGS=""
+if [[ "$GPU_AVAILABLE" == "true" ]]; then
+  GPU_RUNTIME_FLAGS="--runtime nvidia"
+  GPU_FLAGS="--gpus all"
+  NVIDIA_ENV_FLAGS="--env NVIDIA_VISIBLE_DEVICES=all --env NVIDIA_DRIVER_CAPABILITIES=all"
+fi
+
+D3D_DEVICE_ARGS=""
+if [[ -e /dev/dri ]]; then
+  D3D_DEVICE_ARGS="--device /dev/dri"
+fi
+
 if [ "$HITL" = "true" ]; then
   DOCKER_RUN_FLAGS="-it --rm" # Interactive mode with auto-remove
 else
@@ -72,10 +94,10 @@ fi
 
 # Launch the aircraft container
 docker run $DOCKER_RUN_FLAGS \
-  --runtime nvidia \
-  --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
+  ${GPU_RUNTIME_FLAGS} \
+  --volume /tmp/.X11-unix:/tmp/.X11-unix:rw ${D3D_DEVICE_ARGS} ${GPU_FLAGS} \
   --volume /tmp/argus_socket:/tmp/argus_socket --volume ~/tensorrt_cache/:/tensorrt_cache --device=/dev/ttyTHS1:/dev/ttyTHS1 \
-  --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
+  --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 ${NVIDIA_ENV_FLAGS} --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
   --env AUTOPILOT=$AUTOPILOT --env HEADLESS=$HEADLESS --env CAMERA=$CAMERA --env LIDAR=$LIDAR \
   --env HITL=$HITL --env SIMULATED_TIME=$HITL \
   --env DRONE_TYPE=$DRONE_TYPE --env DRONE_ID=$DRONE_ID \

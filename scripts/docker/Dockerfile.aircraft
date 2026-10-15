@@ -67,11 +67,54 @@ RUN pip3 install --upgrade pip \
 FROM ros2-gst-image AS ros2-gst-mav-image
 
 # MAVROS
+# NOTE: ros-humble-mavros is not present in the current ROS package archive for this image;
+# build it from source instead so the project can continue with the supported ros2 branch.
 RUN apt-get update && \
-    apt-get install -y ros-humble-mavros ros-humble-mavros-extras ros-humble-mavros-msgs \
+    apt-get install -y --no-install-recommends \
+        git \
+        build-essential \
+        cmake \
+        python3-rosdep \
+        python3-vcstool \
+        ros-humble-mavros-msgs \
+        ros-humble-geographic-msgs \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
-RUN /opt/ros/humble/lib/mavros/install_geographiclib_datasets.sh
+WORKDIR /tmp
+RUN mkdir -p /tmp/mavros_ws/src && \
+    git clone --depth 1 --branch ros2 https://github.com/mavlink/mavros.git /tmp/mavros_ws/src/mavros && \
+    python3 - <<'PY'
+import re
+from pathlib import Path
+p = Path('/tmp/mavros_ws/src/mavros/mavros/src/lib/uas_stringify.cpp')
+text = p.read_text()
+pattern = re.compile(
+    r"\n\s*}\s*else if\s*\(\s*(?:false\s*&&\s*)?MAV_AUTOPILOT::FLIX\s*==\s*ap\s*\)\s*\{\n"
+    r"\s*return\s+str_mode_cmap\(flix_cmode_map,\s*custom_mode\);\n"
+    r"\s*\}\s*else if",
+    re.MULTILINE,
+)
+text, count = pattern.subn("\n  } else if", text, count=1)
+if count == 0:
+    raise SystemExit('FLIX branch not found in uas_stringify.cpp')
+if 'MAV_AUTOPILOT::FLIX' in text:
+    raise SystemExit('FLIX symbol still present after compatibility patch')
+p.write_text(text)
+PY
+WORKDIR /tmp/mavros_ws
+RUN bash -lc "source /opt/ros/humble/setup.bash && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ros-humble-ament-cmake-google-benchmark \
+        libasio-dev \
+        ros-humble-mavlink \
+        libgeographic-dev \
+        geographiclib-tools \
+        ros-humble-diagnostic-updater \
+        ros-humble-eigen-stl-containers \
+        python3-click \
+    && colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release"
+RUN echo "source /tmp/mavros_ws/install/setup.bash" >> /root/.bashrc
 # Run with $ ros2 launch mavros apm.launch fcu_url:=[URI]
 
 # MAVProxy 
