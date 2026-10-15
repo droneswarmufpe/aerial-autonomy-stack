@@ -34,12 +34,16 @@ windows:
       layout: even-horizontal
       panes:
         - clear && echo "So nice to have you with us, this is the aircraft <%= drone_id %> container."
+        - cd /aas/evaat_embedded_py && ./evaatctl run drone config/sitl/drone<%= drone_id %>.yml -y
+
         # - cd /aas/Projeto-Enxame-Drones/ && python3 pubsub_broker.py
         # - cd /aas/Projeto-Enxame-Drones/ && python3 gateway.py -id <%= "#{drone_id}" %> -config config/drone.yml
         # - cd /aas/Projeto-Enxame-Drones/ && python3 embedded.py -id <%= "#{drone_id}" %> -config config/drone.yml
         # - cd /aas/Projeto-Enxame-Drones/ && python3 behavior.py -id <%= "#{drone_id}" %> -config config/drone.yml
         # - cd /aas/Projeto-Enxame-Drones/ && python3 mavsys.py -id <%= "#{drone_id}" %> -config config/drone.yml
         # - cd /aas/Projeto-Enxame-Drones/ && python3 comm_fanet.py -id <%= "#{drone_id}" %> -config config/drone.yml
+
+  <% end %>
 
   - mavlink_router:
       layout: even-horizontal
@@ -54,5 +58,4 @@ windows:
         - >
           python3 -c "import yaml; cfg = yaml.safe_load(open('/workspaces/rcpilot/install/bringup/share/bringup/config/config.dev.yaml')); cfg['communication']['mavsys']['ros__parameters']['clients']['drone']['connection_string'] = 'udp:<%= "#{sim_subnet}.90.#{drone_id}" %>:14572'; yaml.dump(cfg, open('/workspaces/rcpilot/install/bringup/share/bringup/config/config.dev.yaml', 'w'))" &&
           ros2 launch bringup rcpilot.dev.launch.py
-  <% end %>
   <% end %>

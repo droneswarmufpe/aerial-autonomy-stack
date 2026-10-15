@@ -24,9 +24,8 @@ windows:
       layout: even-horizontal
       panes:
         - clear && echo "So nice to have you with us, this is the ground container."
-        # - cd /aas/Projeto-Enxame-Drones/ && python3 gcs.py
+        - cd /aas/evaat_embedded_py && EVAAT_GCS_VENV=/opt/evaat-gcs-venv ./evaatctl run gcs config/sitl/gcs.yml -y
         # - cd /aas/Projeto-Enxame-Drones/ && python3 comm_fanet.py -id 0 -config config/gcs.yml
-
   <% end %>
 
   <% if centralized %>

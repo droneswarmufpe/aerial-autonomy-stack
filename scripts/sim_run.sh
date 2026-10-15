@@ -176,10 +176,14 @@ if [[ "$HITL" == "false" ]]; then
     # Launch the ground container
     DOCKER_CMD="docker run -it --rm \
       --ipc=host \
+      --volume ${PARENT_DIR}/ground/ground.yml.erb:/aas/ground.yml.erb \
       --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
       --volume ${PARENT_DIR}/github_clones/evaat_embedded_py:/aas/evaat_embedded_py \
       --volume /tmp/.X11-unix:/tmp/.X11-unix:rw ${D3D_DEVICE_ARGS} ${GPU_FLAGS} \
       --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 ${NVIDIA_ENV_FLAGS} --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
+      --env QTWEBENGINE_CHROMIUM_FLAGS=\"--no-sandbox --disable-gpu --disable-gpu-compositing --disable-vulkan\" \
+      --env QTWEBENGINE_DISABLE_SANDBOX=1 --env QTWEBENGINE_DISABLE_GPU=1 \
+      --env QT_QUICK_BACKEND=software --env QT_XCB_GL_INTEGRATION=none --env LIBGL_ALWAYS_SOFTWARE=1 \
       --env HEADLESS=$HEADLESS --env RCPILOT=$RCPILOT \
       --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS \
       --env SIMULATED_TIME=true --env CENTRALIZED=$CENTRALIZED \

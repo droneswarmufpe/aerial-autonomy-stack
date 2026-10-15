@@ -138,7 +138,7 @@ FROM ros2-qgc-gst-mav-yolo-image AS ground-dev-image
 # Install wmctrl and xrandr to resize QGC window
 RUN apt update \
     && apt install -y --no-install-recommends \
-        wmctrl x11-xserver-utils \
+        build-essential libxcb-cursor0 libxkbfile1 wmctrl x11-xserver-utils xterm \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -147,6 +147,20 @@ RUN apt update \
 ################################################################################
 
 ## Infra Software Install
+COPY github_clones/evaat_embedded_py/requirements /tmp/evaat_requirements
+
+# Match ./evaatctl install gcs: base and GCS Python dependencies.
+RUN pip install -r /tmp/evaat_requirements/base.txt \
+    -r /tmp/evaat_requirements/gcs.txt
+
+# Isolate the Qt/WebEngine GCS from the system Python used by comm_network.
+RUN pip install uv \
+    && uv python install 3.12 \
+    && uv venv --python 3.12 /opt/evaat-gcs-venv \
+    && uv pip install --python /opt/evaat-gcs-venv/bin/python \
+        -r /tmp/evaat_requirements/base.txt \
+        -r /tmp/evaat_requirements/gcs.txt
+
 COPY github_clones/MAVKit /libs/MAVKit
 WORKDIR /libs/MAVKit
 RUN pip install -e .
