@@ -9,6 +9,7 @@ HEADLESS="${HEADLESS:-false}" # Options: true, false (default)
 CAMERA="${CAMERA:-true}" # Options: true (default), false
 THERMAL_CAMERA="${THERMAL_CAMERA:-false}" # Options: true (default), false
 RGBD_CAMERA="${RGBD_CAMERA:-true}" # Options: true (default), false
+VIO_BRIDGE="${VIO_BRIDGE:-false}" # ROS stereo + Gazebo IMU and OpenVINS (ArduPilot Iris)
 LIDAR="${LIDAR:-false}" # Options: true (default), false 
 CAMERA_PITCH="${CAMERA_PITCH:-1.5707}" # Camera pitch in radians (default = 1.5707, 90 deg down)
 #
@@ -43,7 +44,18 @@ SIM_NET_NAME="aas-sim-network-inst${INSTANCE}"
 AIR_NET_NAME="aas-air-network-inst${INSTANCE}"
 SIM_CONT_NAME="simulation-container-inst${INSTANCE}"
 GND_CONT_NAME="ground-container-inst${INSTANCE}"
-CUSTOM_OBJECTS="${CUSTOM_OBJECTS:-true}"
+CUSTOM_OBJECTS="${CUSTOM_OBJECTS:-false}"
+
+if [[ "$VIO_BRIDGE" != "true" && "$VIO_BRIDGE" != "false" ]]; then
+  echo "VIO_BRIDGE must be true or false" >&2
+  exit 1
+fi
+if [[ "$VIO_BRIDGE" == "true" ]]; then
+  if [[ "$AUTOPILOT" != "ardupilot" || "$NUM_VTOLS" != "0" || "$CAMERA" != "true" || "$RGBD_CAMERA" != "true" || "$HITL" == "true" || "$JETSON" == "true" || "$RCPILOT" != "true" ]]; then
+    echo "VIO_BRIDGE requires ArduPilot Iris SITL, RCPILOT=true, CAMERA=true, RGBD_CAMERA=true, NUM_VTOLS=0, JETSON=false" >&2
+    exit 1
+  fi
+fi
 
 # Detect the environment (Ubuntu/GNOME, WSL, etc.)
 if command -v gnome-terminal >/dev/null 2>&1 && [ -n "$XDG_CURRENT_DESKTOP" ]; then
@@ -125,6 +137,13 @@ XTERM_CONFIG_ARGS=(
 )
 
 PARENT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+VIO_SIM_OPTS=""
+VIO_AIR_OPTS=""
+if [[ "$VIO_BRIDGE" == "true" ]]; then
+  # Use identical source geometry for Gazebo and calibration, even with older images.
+  VIO_SIM_OPTS="--volume ${PARENT_DIR}/simulation/simulation_resources/aircraft_models/d435:/aas/simulation_resources/aircraft_models/d435:ro --volume ${PARENT_DIR}/simulation/simulation_resources/aircraft_models/iris_with_ardupilot:/aas/simulation_resources/aircraft_models/iris_with_ardupilot:ro"
+  VIO_AIR_OPTS="--volume ${PARENT_DIR}/simulation/simulation_resources/aircraft_models:/aas/vio_models:ro"
+fi
 
 # Launch the simulation container
 DOCKER_CMD="docker run -it --rm \
@@ -133,6 +152,7 @@ DOCKER_CMD="docker run -it --rm \
   --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
   --env AUTOPILOT=$AUTOPILOT --env HEADLESS=$HEADLESS --env CAMERA=$CAMERA --env THERMAL_CAMERA=$THERMAL_CAMERA --env RGBD_CAMERA=$RGBD_CAMERA --env LIDAR=$LIDAR --env CAMERA_PITCH=$CAMERA_PITCH \
   --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS --env WORLD=$WORLD \
+  --env VIO_BRIDGE=$VIO_BRIDGE $VIO_SIM_OPTS \
   --env SIMULATED_TIME=true --env RTF=$RTF --env START_AS_PAUSED=$START_AS_PAUSED \
   --env JETSON=$JETSON \
   --env SIM_SUBNET=$SIM_SUBNET --env GROUND_ID=$GROUND_ID \
@@ -215,6 +235,7 @@ if [[ "$HITL" == "false" ]]; then
         --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
         --env AUTOPILOT=$AUTOPILOT --env HEADLESS=$HEADLESS --env CAMERA=$CAMERA --env LIDAR=$LIDAR \
         --env DRONE_TYPE=$drone_type --env DRONE_ID=$DRONE_ID \
+        --env VIO_BRIDGE=$VIO_BRIDGE --env CAMERA_PITCH=$CAMERA_PITCH $VIO_AIR_OPTS \
         --env SIMULATED_TIME=true --env CENTRALIZED=$CENTRALIZED \
         --env JETSON=$JETSON \
         --env SIM_SUBNET=$SIM_SUBNET --env AIR_SUBNET=$AIR_SUBNET --env SIM_ID=$SIM_ID --env GROUND_ID=$GROUND_ID \

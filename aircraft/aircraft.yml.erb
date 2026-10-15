@@ -19,12 +19,27 @@
   rcpilot = ENV.fetch('RCPILOT', 'true') == 'true'
 
   simulated_time = ENV.fetch('SIMULATED_TIME', 'false') == 'true'
+  vio_bridge = ENV.fetch('VIO_BRIDGE', 'false') == 'true'
+  camera_pitch = ENV.fetch('CAMERA_PITCH', '1.5707').to_f
 
 %>
 
 name: drone
 
 windows:
+
+  <% if vio_bridge %>
+  - openvins:
+      panes:
+        - >
+          python3 /aas/aircraft_resources/scripts/generate_vio_config.py
+          --models /aas/vio_models --camera-pitch <%= camera_pitch %>
+          --template /aas/aircraft_ws/install/ov_msckf/share/ov_msckf/config/gazebo_ros2/estimator_config.yaml
+          --output /tmp/aas_vio &&
+          ros2 run ov_msckf run_subscribe_msckf --ros-args
+          -r __ns:=/ov_msckf
+          -p use_sim_time:=true -p config_path:=/tmp/aas_vio/estimator_config.yaml
+  <% end %>
 
   <% if jetson %>
   - jetson:

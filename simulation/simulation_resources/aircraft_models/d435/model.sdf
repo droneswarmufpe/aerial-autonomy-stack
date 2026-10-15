@@ -80,7 +80,7 @@
           <image>
             <width>1280</width>
             <height>720</height>
-            <format>L_INT8</format>
+            <format>RGB_INT8</format>
           </image>
           <clip>
             <near>0.1</near>
@@ -95,7 +95,8 @@
         <always_on>1</always_on>
         <update_rate>30</update_rate>
         <visualize>0</visualize>
-        <pose>0 -0.015 0.0085 0 0 0</pose>
+        <!-- D435 left imager: +Y is left in Gazebo's camera frame. -->
+        <pose>0 0.025 0.0085 0 0 0</pose>
       </sensor>
       <sensor name='d435_ired2' type='camera'>
         <gz_frame_id>d435_infra2_optical_frame</gz_frame_id>
@@ -104,7 +105,7 @@
           <image>
             <width>1280</width>
             <height>720</height>
-            <format>L_INT8</format>
+            <format>RGB_INT8</format>
           </image>
           <clip>
             <near>0.1</near>
@@ -119,7 +120,8 @@
         <always_on>1</always_on>
         <update_rate>30</update_rate>
         <visualize>0</visualize>
-        <pose>0 0.015 0.0085 0 0 0</pose>
+        <!-- D435 right imager: 50 mm stereo baseline. -->
+        <pose>0 -0.025 0.0085 0 0 0</pose>
       </sensor>
       <sensor name='d435_depth' type='depth_camera'>
         <gz_frame_id>d435_depth_optical_frame</gz_frame_id>

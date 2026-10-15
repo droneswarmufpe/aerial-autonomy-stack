@@ -4,6 +4,7 @@
   camera = ENV.fetch('CAMERA', 'true') == 'true'
   thermal_camera = ENV.fetch('THERMAL_CAMERA', 'true') == 'true'
   rgbd_camera = ENV.fetch('RGBD_CAMERA', 'true') == 'true'
+  vio_bridge = ENV.fetch('VIO_BRIDGE', 'false') == 'true'
   lidar = ENV.fetch('LIDAR', 'true') == 'true'
   camera_pitch = ENV.fetch('CAMERA_PITCH', '1.5707').to_f 
   
@@ -158,6 +159,7 @@ windows:
           /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
           <%= rgb_camera_topic %>
           <%= camera_target_ip %> <%= rgb_camera_port %> 8
+        <% unless vio_bridge %>
         - >
           /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
           <%= infrared_1_camera_topic %>
@@ -166,6 +168,7 @@ windows:
           /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
           <%= infrared_2_camera_topic %>
           <%= camera_target_ip %> <%= infrared_2_camera_port %> 8
+        <% end %>
         - >
           /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
           <%= depth_camera_topic %>
@@ -188,6 +191,18 @@ windows:
           <%= depth_camera_topic %>
           192.168.55.1 <%= depth_camera_port %> 8
         <% end %>
+        <% end %>
+        <% if vio_bridge %>
+        - >
+          ROS_DOMAIN_ID=<%= drone_id %> ros2 run vio_bridge stereo_bridge --ros-args
+          -p use_sim_time:=true
+          -p gz_topic0:=<%= infrared_1_camera_topic %>
+          -p gz_topic1:=<%= infrared_2_camera_topic %>
+        - >
+          ROS_DOMAIN_ID=<%= drone_id %> ros2 run ros_gz_bridge parameter_bridge
+          /world/<%= world %>/model/<%= model_name %>/model/iris/link/imu_link/sensor/imu_sensor/imu@sensor_msgs/msg/Imu[gz.msgs.IMU
+          --ros-args -p use_sim_time:=true
+          -r /world/<%= world %>/model/<%= model_name %>/model/iris/link/imu_link/sensor/imu_sensor/imu:=/vio/imu
         <% end %>
         <% if camera && thermal_camera %>
         - >
