@@ -143,9 +143,9 @@ docker run -it --rm --entrypoint bash -v ~/Downloads:/temp simulation-image -c \
 
 To flash the newly created `.apj` file to your autopilot board, follow [QGC's User Guide](https://docs.qgroundcontrol.com/Stable_V5.0/en/qgc-user-guide/setup_view/firmware.html) 
 
-## ArduPilot: Configure 6X's Serial for MAVROS
+## ArduPilot: Configure 6X's Serial for MAVLink
 
-MAVROS can be connected to MAVLink using the Pixhawk 6X's `TELEM2` serial port (this is ArduPilot's `SERIAL2` and Orin's `/dev/ttyTHS1`)
+The Orin can exchange MAVLink with the autopilot using the Pixhawk 6X's `TELEM2` serial port (this is ArduPilot's `SERIAL2` and Orin's `/dev/ttyTHS1`)
 
 In QGroundControl -> "Vehicle Configuration" -> "Parameters" set:
 
@@ -161,6 +161,5 @@ SERIAL2_PROTOCOL MAVLink2
 <!-- 
 - [ArduPilot serial configuration](https://ardupilot.org/copter/docs/common-serial-options.html)
 - [Jetson baseboard serial configuration](https://github.com/PX4/PX4-Autopilot/blob/main/docs/en/companion_computer/holybro_pixhawk_jetson_baseboard.md#serial-connection)
-- [MAVROS connection](https://github.com/mavlink/mavros/blob/ros2/mavros/README.md)
 - [Requesting MAVLink data from ArduPilot](https://ardupilot.org/dev/docs/mavlink-requesting-data.html)
 -->

@@ -40,6 +40,5 @@ For even more resources, check out [`aerial_robotic_landscape`](https://github.c
 - **Deployment** focus
     - Clear, Dockerized split between aircraft, ground, and simulation software
     - ROS2 intra-companion board messaging
-    - MAVROS autopilot-to-companion board ROS2 bridge
     - GStreamer camera-to-companion board acquisition pipelines
     - Dual network—in both SITL and HITL—to separate synthetic sensor data from inter-vehicle communication

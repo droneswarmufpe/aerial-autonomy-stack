@@ -10,7 +10,6 @@
 <summary><b>Feature list</b> <i>(click to expand)</i></summary>
 
 - **ArduPilot multi-vehicle** simulation (**quadrotors and VTOLs**)
-- ROS2 action-based autopilot interface (*via* MAVROS)
 - **YOLOv8** (with ONNX GPU Runtimes) and simulated 3D **LiDAR**
 - 3D worlds for perception-based simulation
 - **Steppable** [Gymnasium environment](https://gymnasium.farama.org/index.html) and **faster-than-real-time**, **multi-instance** simulation
@@ -435,7 +434,6 @@ Distributed under the MIT License. See `LICENSE.txt` for more information. Copyr
 
 - ArduPilot SITL for Iris uses option -f that also sets "external": True, this is not the case for the Alti Transition from ArduPilot/SITL_Models
 - QGC is started with a virtual joystick (with low throttle if using only VTOLs and centered throttle if there are quads), this is reflective of real-life but note that this counts as "RC loss" when switching focus from one autopilot instance to another
-- On non-configured real-life AP, missing topics: ros2 topic echo /mavros/local_position/odom ros2 topic echo /mavros/home_position/home
 - Command 178 MAV_CMD_DO_CHANGE_SPEED is accepted but not effective in changing speed for ArduPilot VTOL
 - In ArdupilotInterface's action callbacks, std::shared_lock<std::shared_mutex> lock(node_data_mutex_); could be used on the reads of lat_, lon_, alt_
 
