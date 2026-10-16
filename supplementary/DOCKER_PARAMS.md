@@ -4,7 +4,7 @@ This document lists the environment variables supported by the Docker helper scr
 
 ## scripts/sim_run.sh
 
-Starts the simulation, ground, and aircraft containers (SITL by default, HITL when enabled).
+Starts the simulation, ground, and aircraft containers (SITL by default, Jetson-in-the-loop with `JETSON=true`).
 
 | Variable | Default | Description |
 | --- | --- | --- |
@@ -24,7 +24,7 @@ Starts the simulation, ground, and aircraft containers (SITL by default, HITL wh
 | `X_OFFSET` | `5` | X offset used to place drones. |
 | `Y_OFFSET` | `-110` | Y offset used to place drones. |
 | `DEV` | `false` | Mount workspaces/resources from host and use `/bin/bash` as entrypoint. |
-| `HITL` | `false` | Use host networking and skip SITL networks when `true`. |
+| `JETSON` | `false` | Jetson-in-the-loop: publish SITL and camera streams to an external device that runs the embedded software. |
 | `GND_CONTAINER` | `true` | Start the ground container when `true`. |
 | `RTF` | `5.0` | Real-time factor (`<= 0.0` runs as fast as possible). |
 | `START_AS_PAUSED` | `false` | Start simulation paused when `true`. |

@@ -27,7 +27,6 @@ Y_OFFSET="${Y_OFFSET:-0}" # Y offset for drone placement in the world (default =
 #
 RCPILOT="${RCPILOT:-true}" # Options: true, false (default) - If true, the rcpilot repo will be cloned and built. This is useful for testing the rcpilot SDK and its integration with the AAS.
 DEV="${DEV:-false}" # Options: true, false (default)
-HITL="${HITL:-false}" # Options: true, false (default)
 JETSON="${JETSON:-false}" # Options: true, false (default)
 GND_CONTAINER="${GND_CONTAINER:-true}" # Options: true (default), false
 RTF="${RTF:-1.0}" # Real-time factor (default = 1.0), set to <=0.0 for as fast as possible execution
@@ -51,7 +50,7 @@ if [[ "$VIO_BRIDGE" != "true" && "$VIO_BRIDGE" != "false" ]]; then
   exit 1
 fi
 if [[ "$VIO_BRIDGE" == "true" ]]; then
-  if [[ "$AUTOPILOT" != "ardupilot" || "$NUM_VTOLS" != "0" || "$CAMERA" != "true" || "$RGBD_CAMERA" != "true" || "$HITL" == "true" || "$JETSON" == "true" || "$RCPILOT" != "true" ]]; then
+  if [[ "$AUTOPILOT" != "ardupilot" || "$NUM_VTOLS" != "0" || "$CAMERA" != "true" || "$RGBD_CAMERA" != "true" || "$JETSON" == "true" || "$RCPILOT" != "true" ]]; then
     echo "VIO_BRIDGE requires ArduPilot Iris SITL, RCPILOT=true, CAMERA=true, RGBD_CAMERA=true, NUM_VTOLS=0, JETSON=false" >&2
     exit 1
   fi
@@ -88,17 +87,14 @@ if [[ "$DEV" == "true" ]]; then
   #
   DEV_AIR_OPTS="--entrypoint /bin/bash"
   DEV_AIR_OPTS+=" -v ${SCRIPT_DIR}/../aircraft/aircraft_resources/:/aas/aircraft_resources:cached"
-  DEV_AIR_OPTS+=" -v ${SCRIPT_DIR}/../aircraft/aircraft_ws/src:/aas/aircraft_ws/src:cached"
   DEV_AIR_OPTS+=" -v ${SCRIPT_DIR}/../ground/ground_ws/src/ground_system_msgs:/aas/aircraft_ws/src/ground_system_msgs:cached"
   RCPILOT_WORKSPACE_OPTS=" --volume ${SCRIPT_DIR}/../github_clones/rcpilot/build:/workspaces/rcpilot/build:cached"
   RCPILOT_WORKSPACE_OPTS+=" --volume ${SCRIPT_DIR}/../github_clones/rcpilot/install:/workspaces/rcpilot/install:cached"
 fi
 
-# Create docker networks for SITL
-if [[ "$HITL" == "false" ]]; then
-  docker network inspect $SIM_NET_NAME >/dev/null 2>&1 || docker network create --subnet=${SIM_SUBNET}.0.0/16 $SIM_NET_NAME
-  docker network inspect $AIR_NET_NAME >/dev/null 2>&1 || docker network create --subnet=${AIR_SUBNET}.0.0/16 $AIR_NET_NAME
-fi
+# Create docker networks
+docker network inspect $SIM_NET_NAME >/dev/null 2>&1 || docker network create --subnet=${SIM_SUBNET}.0.0/16 $SIM_NET_NAME
+docker network inspect $AIR_NET_NAME >/dev/null 2>&1 || docker network create --subnet=${AIR_SUBNET}.0.0/16 $AIR_NET_NAME
 
 # Grant access to the X server
 if command -v xhost >/dev/null 2>&1; then 
@@ -187,12 +183,7 @@ DOCKER_CMD="docker run -it --rm \
   --env ROS_DOMAIN_ID=$SIM_ID \
   --privileged \
   --name $SIM_CONT_NAME"
-# Configure network for HITL or SITL
-if [[ "$HITL" == "true" ]]; then
-  DOCKER_CMD="$DOCKER_CMD --net=host"
-else
-  DOCKER_CMD="$DOCKER_CMD --net=$SIM_NET_NAME --ip=${SIM_SUBNET}.90.${SIM_ID}"
-fi
+DOCKER_CMD="$DOCKER_CMD --net=$SIM_NET_NAME --ip=${SIM_SUBNET}.90.${SIM_ID}"
 # Add WSL-specific options and complete the command
 if [[ "$DESK_ENV" == "wsl" ]]; then
   DOCKER_CMD="$DOCKER_CMD $WSL_OPTS"
@@ -200,97 +191,94 @@ fi
 DOCKER_CMD="$DOCKER_CMD ${DEV_SIM_OPTS} simulation-image"
 launch_terminal "Simulation" 0 "$DOCKER_CMD"
 
-if [[ "$HITL" == "false" ]]; then
+if [[ "$GND_CONTAINER" == "true" ]]; then
+  sleep 1.0 # Limit resource usage
+  # Launch the ground container
+  DOCKER_CMD="docker run -it --rm \
+    --ipc=host \
+    --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
+    --volume ${PARENT_DIR}/simulation/simulation_resources/custom_objects:/aas/custom_objects \
+    --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
+    --volume ${PARENT_DIR}/github_clones/rcpilot/src:/workspaces/rcpilot/src:cached \
+    ${RCPILOT_WORKSPACE_OPTS} \
+    --volume ${PARENT_DIR}/github_clones/rcpilot/log:/workspaces/rcpilot/log:cached \
+    --volume ${PARENT_DIR}/github_clones/rcpilot/sdk:/workspaces/rcpilot/sdk:cached \
+    --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
+    --env HEADLESS=$HEADLESS --env RCPILOT=$RCPILOT \
+    --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS \
+    --env SIMULATED_TIME=true --env CENTRALIZED=$CENTRALIZED \
+    --env ROS_DOMAIN_ID=$GROUND_ID \
+    --net=$SIM_NET_NAME --ip=${SIM_SUBNET}.90.${GROUND_ID} \
+    --privileged \
+    --name $GND_CONT_NAME"
+  # Add WSL-specific options and complete the command
+  if [[ "$DESK_ENV" == "wsl" ]]; then
+    DOCKER_CMD="$DOCKER_CMD $WSL_OPTS"
+  fi
+  if [[ "$RCPILOT" == "true" ]]; then
+    DOCKER_CMD="$DOCKER_CMD ${DEV_GND_OPTS} rc-ground-image"
+  else
+    DOCKER_CMD="$DOCKER_CMD ${DEV_GND_OPTS} ground-image"
+  fi
+  launch_terminal "Ground" 1 "$DOCKER_CMD"
+fi
 
-  if [[ "$GND_CONTAINER" == "true" ]]; then
+# Initialize a counter for the drone IDs
+DRONE_ID=1 # 1, 2, .., N drones
+
+# Function to launch the aircraft containers
+launch_aircraft_containers() {
+  local drone_type=$1
+  local num_drones=$2
+  
+  for i in $(seq 1 $num_drones); do
     sleep 1.0 # Limit resource usage
-    # Launch the ground container
+    local NAME_AIRCRAFT_CNT="aircraft-container-inst${INSTANCE}_${DRONE_ID}"
     DOCKER_CMD="docker run -it --rm \
       --ipc=host \
       --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
-      --volume ${PARENT_DIR}/simulation/simulation_resources/custom_objects:/aas/custom_objects \
-      --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
       --volume ${PARENT_DIR}/github_clones/rcpilot/src:/workspaces/rcpilot/src:cached \
+      --volume ${PARENT_DIR}/github_clones/rcpilot/sdk:/workspaces/rcpilot/sdk:cached \
       ${RCPILOT_WORKSPACE_OPTS} \
       --volume ${PARENT_DIR}/github_clones/rcpilot/log:/workspaces/rcpilot/log:cached \
-      --volume ${PARENT_DIR}/github_clones/rcpilot/sdk:/workspaces/rcpilot/sdk:cached \
+      --volume ${PARENT_DIR}/simulation/simulation_resources/custom_objects:/aas/custom_objects \
+      --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
       --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
-      --env HEADLESS=$HEADLESS --env RCPILOT=$RCPILOT \
-      --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS \
+      --env AUTOPILOT=$AUTOPILOT --env HEADLESS=$HEADLESS --env CAMERA=$CAMERA --env LIDAR=$LIDAR \
+      --env DRONE_TYPE=$drone_type --env DRONE_ID=$DRONE_ID \
+      --env VIO_BRIDGE=$VIO_BRIDGE --env CAMERA_PITCH=$CAMERA_PITCH $VIO_AIR_OPTS \
       --env SIMULATED_TIME=true --env CENTRALIZED=$CENTRALIZED \
-      --env ROS_DOMAIN_ID=$GROUND_ID \
-      --net=$SIM_NET_NAME --ip=${SIM_SUBNET}.90.${GROUND_ID} \
+      --env JETSON=$JETSON \
+      --env SIM_SUBNET=$SIM_SUBNET --env AIR_SUBNET=$AIR_SUBNET --env SIM_ID=$SIM_ID --env GROUND_ID=$GROUND_ID \
+      --env GND_CONTAINER=$GND_CONTAINER --env RCPILOT=$RCPILOT \
+      --env ROS_DOMAIN_ID=$DRONE_ID \
+      --net=$SIM_NET_NAME --ip=${SIM_SUBNET}.90.$DRONE_ID \
       --privileged \
-      --name $GND_CONT_NAME"
+      --name $NAME_AIRCRAFT_CNT"
     # Add WSL-specific options and complete the command
     if [[ "$DESK_ENV" == "wsl" ]]; then
       DOCKER_CMD="$DOCKER_CMD $WSL_OPTS"
     fi
     if [[ "$RCPILOT" == "true" ]]; then
-      DOCKER_CMD="$DOCKER_CMD ${DEV_GND_OPTS} rc-ground-image"
+      DOCKER_CMD="$DOCKER_CMD ${DEV_AIR_OPTS} rc-aircraft-image"
     else
-      DOCKER_CMD="$DOCKER_CMD ${DEV_GND_OPTS} ground-image"
+      DOCKER_CMD="$DOCKER_CMD ${DEV_AIR_OPTS} aircraft-image"
     fi
-    launch_terminal "Ground" 1 "$DOCKER_CMD"
-  fi
+    launch_terminal "${drone_type^^} $DRONE_ID" $(($DRONE_ID + 1)) "$DOCKER_CMD"
+    DRONE_ID=$((DRONE_ID + 1))
+  done
+}
+# Launch the Quad containers
+launch_aircraft_containers "quad" $NUM_QUADS
+# Launch the VTOL containers
+launch_aircraft_containers "vtol" $NUM_VTOLS  
 
-  # Initialize a counter for the drone IDs
-  DRONE_ID=1 # 1, 2, .., N drones
-
-  # Function to launch the aircraft containers
-  launch_aircraft_containers() {
-    local drone_type=$1
-    local num_drones=$2
-    
-    for i in $(seq 1 $num_drones); do
-      sleep 1.0 # Limit resource usage
-      local NAME_AIRCRAFT_CNT="aircraft-container-inst${INSTANCE}_${DRONE_ID}"
-      DOCKER_CMD="docker run -it --rm \
-        --ipc=host \
-        --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
-        --volume ${PARENT_DIR}/github_clones/rcpilot/src:/workspaces/rcpilot/src:cached \
-        --volume ${PARENT_DIR}/github_clones/rcpilot/sdk:/workspaces/rcpilot/sdk:cached \
-        ${RCPILOT_WORKSPACE_OPTS} \
-        --volume ${PARENT_DIR}/github_clones/rcpilot/log:/workspaces/rcpilot/log:cached \
-        --volume ${PARENT_DIR}/simulation/simulation_resources/custom_objects:/aas/custom_objects \
-        --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
-        --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
-        --env AUTOPILOT=$AUTOPILOT --env HEADLESS=$HEADLESS --env CAMERA=$CAMERA --env LIDAR=$LIDAR \
-        --env DRONE_TYPE=$drone_type --env DRONE_ID=$DRONE_ID \
-        --env VIO_BRIDGE=$VIO_BRIDGE --env CAMERA_PITCH=$CAMERA_PITCH $VIO_AIR_OPTS \
-        --env SIMULATED_TIME=true --env CENTRALIZED=$CENTRALIZED \
-        --env JETSON=$JETSON \
-        --env SIM_SUBNET=$SIM_SUBNET --env AIR_SUBNET=$AIR_SUBNET --env SIM_ID=$SIM_ID --env GROUND_ID=$GROUND_ID \
-        --env GND_CONTAINER=$GND_CONTAINER --env RCPILOT=$RCPILOT \
-        --env ROS_DOMAIN_ID=$DRONE_ID \
-        --net=$SIM_NET_NAME --ip=${SIM_SUBNET}.90.$DRONE_ID \
-        --privileged \
-        --name $NAME_AIRCRAFT_CNT"
-      # Add WSL-specific options and complete the command
-      if [[ "$DESK_ENV" == "wsl" ]]; then
-        DOCKER_CMD="$DOCKER_CMD $WSL_OPTS"
-      fi
-      if [[ "$RCPILOT" == "true" ]]; then
-        DOCKER_CMD="$DOCKER_CMD ${DEV_AIR_OPTS} rc-aircraft-image"
-      else
-        DOCKER_CMD="$DOCKER_CMD ${DEV_AIR_OPTS} aircraft-image"
-      fi
-      launch_terminal "${drone_type^^} $DRONE_ID" $(($DRONE_ID + 1)) "$DOCKER_CMD"
-      DRONE_ID=$((DRONE_ID + 1))
-    done
-  }
-  # Launch the Quad containers
-  launch_aircraft_containers "quad" $NUM_QUADS
-  # Launch the VTOL containers
-  launch_aircraft_containers "vtol" $NUM_VTOLS  
-
-  if [[ "$GND_CONTAINER" == "true" ]]; then
-    sleep 2.0 # Once all containers are up, connect ground and aircraft containers to the air network
-    docker network connect --ip=${AIR_SUBNET}.90.$GROUND_ID $AIR_NET_NAME $GND_CONT_NAME
-    for i in $(seq 1 $((NUM_QUADS + NUM_VTOLS))); do
-      docker network connect --ip=${AIR_SUBNET}.90.$i $AIR_NET_NAME "aircraft-container-inst${INSTANCE}_${i}"
-    done
-  fi
+if [[ "$GND_CONTAINER" == "true" ]]; then
+  sleep 2.0 # Once all containers are up, connect ground and aircraft containers to the air network
+  docker network connect --ip=${AIR_SUBNET}.90.$GROUND_ID $AIR_NET_NAME $GND_CONT_NAME
+  for i in $(seq 1 $((NUM_QUADS + NUM_VTOLS))); do
+    docker network connect --ip=${AIR_SUBNET}.90.$i $AIR_NET_NAME "aircraft-container-inst${INSTANCE}_${i}"
+  done
 fi
 
 echo "Fly, my pretties, fly!"

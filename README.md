@@ -18,7 +18,7 @@
 - **Dockerized simulation** based on [`nvcr.io/nvidia/cuda:12.8.1-cudnn-runtime-ubuntu22.04`](https://catalog.ngc.nvidia.com/orgs/nvidia/containers/cuda/tags)
 - **Dockerized deployment** based on [`nvcr.io/nvidia/l4t-jetpack:r36.4.0`](https://catalog.ngc.nvidia.com/orgs/nvidia/containers/l4t-jetpack/tags)
 - **Windows 11** compatibility *via* WSLg
-- Multi-**Jetson-in-the-loop (HITL) simulation** to test NVIDIA- and ARM-based on-board compute
+- Multi-**Jetson-in-the-loop simulation** (`JETSON=true`) to test NVIDIA- and ARM-based on-board compute
 - Dual network to separate simulated sensors (`SIM_SUBNET`) and inter-vehicle comms (`AIR_SUBNET`)
 - [Zenoh](https://github.com/eclipse-zenoh/zenoh-plugin-ros2dds) inter-vehicle ROS2 bridge
 - [PX4 Offboard](https://docs.px4.io/main/en/flight_modes/offboard.html) interface (e.g. CTBR/`VehicleRatesSetpoint` for agile, GNSS-denied flight) 
@@ -128,36 +128,33 @@ aerial-autonomy-stack
 │           └── aas_env.py                          # aerial-autonomy-stack as a Gymnasium environment
 │
 ├── aircraft
-│   ├── aircraft_ws
-│   │   └── src
-│   │       ├── autopilot_interface                 # Ardupilot/PX4 high-level actions (Takeoff, Orbit, Offboard, Land)
-│   │       ├── mission                             # Orchestrator of the actions in `autopilot_interface` 
-│   │       ├── offboard_control                    # Low-level references for the Offboard action in `autopilot_interface` 
-│   │       ├── state_sharing                       # Publisher of the `/state_sharing_drone_N` topic broadcasted by Zenoh
-│   │       └── yolo_py                             # GStreamer video acquisition and publisher of YOLO bounding boxes
-│   │
-│   └── aircraft.yml.erb                            # Aircraft docker tmux entrypoint
+│   ├── aircraft_resources                          # Aircraft scripts, patches, models, and Zenoh config
+│   └── aircraft.yml.erb                            # Aircraft docker tmux entrypoint
 │
 ├── ground
-│   ├── ground_ws
-│   │   └── src
-│   │       └── ground_system                       # Publisher of topic `/tracks` broadcasted by Zenoh
+│   ├── ground_resources                            # Ground scripts, patches, and Zenoh config
+│   ├── ground_ws
+│   │   └── src
+│   │       ├── ground_system                       # Publisher of topic `/tracks` broadcasted by Zenoh
+│   │       └── ground_system_msgs                  # Custom messages (also built in the aircraft workspace)
 │   │
-│   └── ground.yml.erb                              # Ground docker tmux entrypoint
+│   └── ground.yml.erb                              # Ground docker tmux entrypoint
 │
 ├── scripts
-│   ├── docker
-│   │   ├── Dockerfile.aircraft                     # Docker image for aircraft simulation and deployment
-│   │   ├── Dockerfile.ground                       # Docker image for ground system simulation and deployment
-│   │   └── Dockerfile.simulation                   # Docker image for SITL and HITL simulation
-│   │
-│   ├── deploy_build.sh                             # Build `Dockerfile.aircraft` for arm64/Orin
-│   ├── deploy_run.sh                               # Start the aircraft docker on arm64/Orin or the ground docker on amd64 (deploy or HITL)
-│   │
-│   ├── gym_run.py                                  # Examples for the Gymnasium aas-gym package
-│   │
-│   ├── sim_build.sh                                # Build all dockerfiles for amd64/simulation
-│   └── sim_run.sh                                  # Start the simulation (SITL or HITL)
+│   ├── docker
+│   │   ├── Dockerfile.aircraft                     # Docker image for aircraft simulation and deployment
+│   │   ├── Dockerfile.rc_aircraft                  # Aircraft image with rcpilot and OpenVINS (used when RCPILOT=true)
+│   │   ├── Dockerfile.ground                       # Docker image for ground system simulation and deployment
+│   │   ├── Dockerfile.rc_ground                    # Ground image with rcpilot (used when RCPILOT=true)
+│   │   └── Dockerfile.simulation                   # Docker image for SITL simulation
+│   │
+│   ├── deploy_build.sh                             # Build `Dockerfile.aircraft` for arm64/Orin
+│   ├── deploy_run.sh                               # Start the aircraft docker on arm64/Orin or the ground docker on amd64
+│   │
+│   ├── gym_run.py                                  # Examples for the Gymnasium aas-gym package
+│   │
+│   ├── sim_build.sh                                # Build all dockerfiles for amd64/simulation
+│   └── sim_run.sh                                  # Start the simulation (SITL, or Jetson-in-the-loop with JETSON=true)
 │
 └── simulation
     ├── simulation_resources
@@ -308,16 +305,9 @@ start position is required.
 
 Centralized mode streams all aircraft data (including MAVLink) to the ground container, so the stack runs as external processing rather than onboard. Set `CENTRALIZED=false` to keep streams local to each aircraft container.
 
-In the `Ground` Xterm terminal:
-```sh
-# 2. Run a mission script
-cd /aas/Projeto-Enxame-Drones
-python3 01_busca_do_alvo.py                                                                  # Or run another script from this repo
-```
-
 In the `Simulation`'s Xterm terminal:
 ```sh
-# 3. Analyze
+# 2. Analyze
 /aas/simulation_resources/scripts/plot_logs.sh                                                # Analyze the flight logs at http://10.42.90.100:5006/browse or in MAVExplorer
 ```
 
@@ -354,11 +344,11 @@ python3 /aas/simulation_resources/scripts/gz_wind.py --stop_wind
 > <details>
 > <summary>Tip 2: <b>develop within running containers</b> <i>(click to expand)</i></summary>
 > 
-> Launching the `sim_run.sh` script with `DEV=true`, does **not** start the simulation and mounts folders `[aircraft|ground|simulation]_resources`, `[aircraft|ground]_ws/src` as volumes to more easily track, commit, push changes while building and testing them within the containers:
+> Launching the `sim_run.sh` script with `DEV=true`, does **not** start the simulation and mounts folders `[aircraft|ground|simulation]_resources`, `ground_ws/src` (and `ground_system_msgs` into the aircraft workspace) as volumes to more easily track, commit, push changes while building and testing them within the containers:
 > 
 > ```sh
 > cd aerial-autonomy-stack/scripts/
-> DEV=true ./sim_run.sh                                                                       # Starts one simulation-image, one ground-image, and one aircraft-image where the *_resources/ and *_ws/src/ folders are mounted from the host
+> DEV=true ./sim_run.sh                                                                       # Starts one simulation-image, one ground-image, and one aircraft-image where the *_resources/ and ground_ws/src/ folders are mounted from the host
 > ```
 > 
 > To build changes—**made on the host**—in the `Ground` or `QUAD` Xterm terminal:

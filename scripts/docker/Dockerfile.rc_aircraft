@@ -177,7 +177,6 @@ COPY /github_clones/c_library_v2 /usr/local/include/mavlink/
 # Build the ROS 2 workspace (NOTE: also includes ground_system_msgs from the ground_ws)
 COPY ground/ground_ws/src/ground_system_msgs /aas/aircraft_ws/src/ground_system_msgs
 COPY github_clones/open_vins_ardupilot /aas/aircraft_ws/src/open_vins_ardupilot
-COPY aircraft/aircraft_ws/src /aas/aircraft_ws/src
 WORKDIR /aas/aircraft_ws
 RUN rosdep update
 RUN rosdep install --from-paths src/ --ignore-src --rosdistro humble --skip-keys "Eigen3" -y
