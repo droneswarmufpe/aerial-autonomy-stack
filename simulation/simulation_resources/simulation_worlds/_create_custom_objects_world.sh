@@ -121,8 +121,8 @@ resolve_local_position() {
     echo "$x $y $z"
 }
 
-# Resolve an object's attitude, applying defaults and the IMAV pitch offset.
-# Prints "ROLL PITCH YAW" on stdout.
+# Resolve an object's attitude (degrees), applying defaults.
+# Prints "ROLL PITCH YAW" on stdout, as written in the config.
 resolve_attitude() {
     local row="$1" obj_label="$2"
     local roll pitch yaw
@@ -132,16 +132,19 @@ resolve_attitude() {
     yaw=$(get_field "$row" '.attitude.yaw')
 
     roll=$(default_if_empty "$roll" "0" "$obj_label" "ROLL")
+    pitch=$(default_if_empty "$pitch" "0" "$obj_label" "PITCH")
     yaw=$(default_if_empty "$yaw" "0" "$obj_label" "YAW")
 
-    if [[ -z "$pitch" || "$pitch" == "null" ]]; then
-        log_warn "No PITCH value specified for object with id $obj_label. Using default PITCH value '90'."
-        pitch=90
-    else
-        pitch=$((pitch + 90)) # For the IMAV world
-    fi
-
     echo "$roll $pitch $yaw"
+}
+
+# Convert a config attitude to the SDF <pose> angles (roll pitch yaw, degrees).
+# Roll gets +90 to stand the models' meshes upright (they are Y-up), and the
+# config yaw is negated. Uses awk so decimal and negative values work.
+# Prints "ROLL PITCH YAW" on stdout.
+attitude_to_sdf() {
+    local roll="$1" pitch="$2" yaw="$3"
+    awk -v r="$roll" -v p="$pitch" -v y="$yaw" 'BEGIN { printf "%g %g %g\n", r + 90, p + 0, -y + 0 }'
 }
 
 # Resolve and validate an object's model name against MODELS_DIR.
@@ -186,10 +189,10 @@ model_exists() {
 # SDF generation
 # --------------------------------------------------------------------------
 
-# Build the <include> block for one object.
+# Build the <include> block for one object. Angles are SDF roll, pitch, yaw in degrees.
 build_include_xml() {
     local model="$1" index="$2" x="$3" y="$4" z="$5" roll="$6" pitch="$7" yaw="$8" static="$9"
-    echo "    <include>\n        <uri>model://${model}</uri>\n        <name>${model}_${index}</name>\n        <pose degrees=\"true\">${x} ${y} ${z} ${pitch} ${roll} -${yaw}</pose>\n        <static>${static}</static>\n    </include>\n"
+    echo "    <include>\n        <uri>model://${model}</uri>\n        <name>${model}_${index}</name>\n        <pose degrees=\"true\">${x} ${y} ${z} ${roll} ${pitch} ${yaw}</pose>\n        <static>${static}</static>\n    </include>\n"
 }
 
 # Insert the accumulated <include> blocks just before </world> and write the
@@ -210,7 +213,7 @@ write_world_file() {
 process_object() {
     local row="$1" index="$2"
     local obj_id obj_label position attitude model static
-    local x y z roll pitch yaw
+    local x y z roll pitch yaw sdf_roll sdf_pitch sdf_yaw
 
     obj_id=$(get_field "$row" '.id')
     obj_label="${obj_id:-$index}"
@@ -220,12 +223,13 @@ process_object() {
 
     attitude=$(resolve_attitude "$row" "$obj_label")
     read -r roll pitch yaw <<< "$attitude"
+    read -r sdf_roll sdf_pitch sdf_yaw <<< "$(attitude_to_sdf "$roll" "$pitch" "$yaw")"
 
     model=$(resolve_model "$row" "$obj_label") || return 1
     static=$(resolve_static "$row" "$obj_label")
 
     echo "Adding model '$model' at position ($x, $y, $z), attitude (R=$roll, P=$pitch, Y=$yaw) with static=$static" >&2
-    build_include_xml "$model" "$index" "$x" "$y" "$z" "$roll" "$pitch" "$yaw" "$static"
+    build_include_xml "$model" "$index" "$x" "$y" "$z" "$sdf_roll" "$sdf_pitch" "$sdf_yaw" "$static"
 }
 
 # --------------------------------------------------------------------------
