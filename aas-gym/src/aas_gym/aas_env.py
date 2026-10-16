@@ -19,7 +19,6 @@ class AASEnv(gym.Env):
             instance: int=0,
             gym_freq_hz: int=50,
             camera: bool=True,
-            lidar: bool=True,
             num_quads: int=1,
             render_mode=None
         ):
@@ -54,7 +53,6 @@ class AASEnv(gym.Env):
         # AAS Setup
         self.HEADLESS = False if self.render_mode == "human" else True # Only display GUIs if render_mode is "human"
         self.CAMERA = camera
-        self.LIDAR = lidar
         self.NUM_QUADS = num_quads
         self.NUM_VTOLS = 0
         self.WORLD = "impalpable_greyness"
@@ -172,7 +170,6 @@ class AASEnv(gym.Env):
                 "GST_DEBUG": "3",
                 "HEADLESS": str(self.HEADLESS).lower(),
                 "CAMERA": str(self.CAMERA).lower(),
-                "LIDAR": str(self.LIDAR).lower(),
                 "NUM_QUADS": str(self.NUM_QUADS),
                 "NUM_VTOLS": str(self.NUM_VTOLS),
                 "WORLD": self.WORLD,
@@ -225,7 +222,6 @@ class AASEnv(gym.Env):
                     "GST_DEBUG": "3",
                     "HEADLESS": str(self.HEADLESS).lower(),
                     "CAMERA": str(self.CAMERA).lower(),
-                    "LIDAR": str(self.LIDAR).lower(),
                     "DRONE_TYPE": drone_type,
                     "DRONE_ID": str(i),
                     "SIMULATED_TIME": "true",

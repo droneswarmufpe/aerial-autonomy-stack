@@ -10,7 +10,6 @@ Starts the simulation, ground, and aircraft containers (SITL by default, Jetson-
 | --- | --- | --- |
 | `HEADLESS` | `false` | Disable GUI when `true`. |
 | `CAMERA` | `true` | Enable camera sensors. |
-| `LIDAR` | `false` | Enable LiDAR sensors. |
 | `CAMERA_PITCH` | `1.5707` | Camera pitch in radians (90 deg down). |
 | `SIM_SUBNET` | `10.42` | Base simulation subnet (overridden when `INSTANCE != 0`). |
 | `AIR_SUBNET` | `10.22` | Base inter-vehicle subnet (overridden when `INSTANCE != 0`). |

@@ -3,14 +3,14 @@
 *Aerial autonomy stack* (AAS) is an all-in-one software stack to:
 
 1. **Develop** multi-drone autonomy—with ROS2 and ArduPilot
-2. **Simulate** faster-than-real-time perception and control—with YOLOv8 and 3D LiDAR 
+2. **Simulate** faster-than-real-time perception and control—with YOLOv8
 3. **Deploy** in real drones—with JetPack and NVIDIA Orin
 
 <details>
 <summary><b>Feature list</b> <i>(click to expand)</i></summary>
 
 - **ArduPilot multi-vehicle** simulation (**quadrotors and VTOLs**)
-- **YOLOv8** (with ONNX GPU Runtimes) and simulated 3D **LiDAR**
+- **YOLOv8** (with ONNX GPU Runtimes)
 - 3D worlds for perception-based simulation
 - **Steppable** [Gymnasium environment](https://gymnasium.farama.org/index.html) and **faster-than-real-time**, **multi-instance** simulation
 - Gazebo's wind effects plugin
@@ -40,7 +40,6 @@ flowchart LR
 
     subgraph air ["[N#nbsp;x]#nbsp;aircraft#nbsp;container(s)#nbsp;(amd64/arm64)"]
         direction TB
-        lidar_in(("/lidar_points<br/>(Unconsumed)")):::algo
         
         mavrouter["mavlink-routerd<br/>:14570 → :14571, :14572"]:::bridge
         rcpilot[/"rcpilot"\]:::algo
@@ -59,7 +58,6 @@ flowchart LR
     sitl <--> |"MAVLink UDP :14550+N <br/> [SIM_SUBNET]"| qgc
     sitl <--> |"MAVLink UDP :14570 <br/> [SIM_SUBNET]"| mavrouter
     gz --> |"gz_gst_bridge (Camera Frame) <br/> [SIM_SUBNET]"| script04
-    gz --> |"LiDAR Pointcloud <br/> [SIM_SUBNET]"| lidar_in
 
     classDef bridge fill:#ffebd6,stroke:#f5a623,stroke-width:2px;
     classDef algo fill:#e1f5fe,stroke:#0277bd,stroke-width:2px;
@@ -81,7 +79,6 @@ flowchart LR
 
     subgraph gnd ["#nbsp;ground#nbsp;container#nbsp;(amd64)"]
         direction TB
-        lidar_in(("/lidar_points<br/>(Unconsumed)")):::algo
         qgc(QGroundControl):::resource
 
         mavrouter["mavlink-routerd<br/>:14570+N → :14000+100*N, :14001+100*N"]:::bridge
@@ -101,7 +98,6 @@ flowchart LR
     sitl <--> |"MAVLink UDP :14550+N <br/> [SIM_SUBNET]"| qgc
     sitl <--> |"MAVLink UDP :14570+N <br/> [SIM_SUBNET]"| mavrouter
     gz --> |"gz_gst_bridge (Camera Frame) <br/> [SIM_SUBNET]"| script04
-    gz --> |"LiDAR Pointcloud <br/> [SIM_SUBNET]"| lidar_in
 
     classDef bridge fill:#ffebd6,stroke:#f5a623,stroke-width:2px;
     classDef algo fill:#e1f5fe,stroke:#0277bd,stroke-width:2px;
@@ -149,8 +145,7 @@ aerial-autonomy-stack
     │   ├── aircraft_models
     │   │   ├── alti_transition_quad                # ArduPilot VTOL model
     │   │   ├── iris_with_ardupilot                 # ArduPilot quad model
-    │   │   ├── sensor_camera                       # Camera model
-    │   │   └── sensor_lidar                        # LiDAR model
+    │   │   └── sensor_camera                       # Camera model
     │   └── simulation_worlds
     │       ├── apple_orchard.sdf
     │       ├── impalpable_greyness.sdf
@@ -381,15 +376,3 @@ Distributed under the MIT License. See `LICENSE.txt` for more information. Copyr
 - Command 178 MAV_CMD_DO_CHANGE_SPEED is accepted but not effective in changing speed for ArduPilot VTOL
 - In ArdupilotInterface's action callbacks, std::shared_lock<std::shared_mutex> lock(node_data_mutex_); could be used on the reads of lat_, lon_, alt_
 
-## TODOs
-
-LiDAR-inertial Odometry and SLAM
-- LiDAR driver https://github.com/Livox-SDK/livox_ros_driver2 in aircraft-image (the LiDAR should publish on topic `/lidar_points`)
-- Integrate [SPARK-FAST-LIO](https://github.com/MIT-SPARK/spark-fast-lio) or [SuperOdom](https://github.com/superxslam/SuperOdom) as additional baselines
-- Create a 3D world.sdf for LIO-based navigation and mapping
-- Create a 3D world.sdf WITHOUT GPS PLUGIN (and configure ArduPilot accordingly) for LIO-based navigation and mapping
-- Add examples in the README.md showing exploration of these world with 3D mapping
-- Develop own/custom SLAM/collaborative SLAM approach
-- Study how to compare/use/fuse LIO with ArduPilot state estimation
-
--->

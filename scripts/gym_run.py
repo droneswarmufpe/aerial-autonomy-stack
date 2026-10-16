@@ -24,7 +24,6 @@ def main():
     parser.add_argument("--mode", type=str, default="step", choices=["step", "speedup", "vectorenv-speedup", "learn"])
     parser.add_argument("--repetitions", type=int, default=1),
     parser.add_argument("--camera", action=argparse.BooleanOptionalAction, default=True, help="Enable/Disable Camera")
-    parser.add_argument("--lidar", action=argparse.BooleanOptionalAction, default=True, help="Enable/Disable Lidar")
     parser.add_argument("--num_quads", type=int, default=1)
     args = parser.parse_args()
 
@@ -33,7 +32,6 @@ def main():
             "AASEnv-v0",
             gym_freq_hz=1,
             camera=args.camera,
-            lidar=args.lidar,
             num_quads=args.num_quads,
             render_mode="human"
         )
@@ -62,7 +60,6 @@ def main():
             instance=1,
             gym_freq_hz=CTRL_FREQ_HZ,
             camera=args.camera,
-            lidar=args.lidar,
             num_quads=args.num_quads,
             render_mode="ansi" # "ansi" for progress bar, "human" for GUI
         )
@@ -108,7 +105,6 @@ def main():
                     instance=rank,
                     gym_freq_hz=freq_hz,
                     camera=args.camera,
-                    lidar=args.lidar,
                     num_quads=args.num_quads,
                     render_mode=None
                 )

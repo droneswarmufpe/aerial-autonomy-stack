@@ -725,16 +725,6 @@
     </joint>
     <!-- THERMAL_CAMERA_END -->
 
-    <include>
-      <uri>model://sensor_lidar</uri>
-      <name>simple_lidar</name>
-      <pose degrees="true">0 0 -0.15 180 0 0</pose>
-    </include>
-    <joint name="LidarJoint" type="fixed">
-      <parent>base_link</parent>
-      <child>simple_lidar::lidar/base_link</child>
-    </joint>
-
     <!-- sensors -->
     <link name="imu_link">
       <inertial>
