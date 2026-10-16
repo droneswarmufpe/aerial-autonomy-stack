@@ -6,7 +6,7 @@
   air_subnet = ENV.fetch('AIR_SUBNET', '10.22')
   sim_id = ENV.fetch('SIM_ID', '100')
   ground_id = ENV.fetch('GROUND_ID', '101')
-  jetson = ENV.fetch('JETSON', 'true') == 'true'
+  jetson = ENV.fetch('JETSON', 'false') == 'true'
 
   drone_type = ENV.fetch('DRONE_TYPE', 'quad')
   drone_id = ENV.fetch('DRONE_ID', 1).to_i
