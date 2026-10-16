@@ -11,7 +11,7 @@
 
 - **ArduPilot multi-vehicle** simulation (**quadrotors and VTOLs**)
 - ROS2 action-based autopilot interface (*via* MAVROS)
-- **YOLOv8** (with ONNX GPU Runtimes) and **LiDAR** Odometry (with [KISS-ICP](https://github.com/PRBonn/kiss-icp))
+- **YOLOv8** (with ONNX GPU Runtimes) and simulated 3D **LiDAR**
 - 3D worlds for perception-based simulation
 - **Steppable** [Gymnasium environment](https://gymnasium.farama.org/index.html) and **faster-than-real-time**, **multi-instance** simulation
 - Gazebo's wind effects plugin
@@ -442,7 +442,7 @@ Distributed under the MIT License. See `LICENSE.txt` for more information. Copyr
 ## TODOs
 
 LiDAR-inertial Odometry and SLAM
-- LiDAR driver https://github.com/Livox-SDK/livox_ros_driver2 in aircraft-image (the LiDAR should publish on topic `/lidar_points` for KISS-ICP)
+- LiDAR driver https://github.com/Livox-SDK/livox_ros_driver2 in aircraft-image (the LiDAR should publish on topic `/lidar_points`)
 - Integrate [SPARK-FAST-LIO](https://github.com/MIT-SPARK/spark-fast-lio) or [SuperOdom](https://github.com/superxslam/SuperOdom) as additional baselines
 - Create a 3D world.sdf for LIO-based navigation and mapping
 - Create a 3D world.sdf WITHOUT GPS PLUGIN (and configure ArduPilot accordingly) for LIO-based navigation and mapping
