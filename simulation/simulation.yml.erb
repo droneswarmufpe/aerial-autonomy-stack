@@ -2,6 +2,9 @@
   autopilot = ENV.fetch('AUTOPILOT', 'ardupilot')
   headless = ENV.fetch('HEADLESS', 'false') == 'true'
   camera = ENV.fetch('CAMERA', 'true') == 'true'
+  thermal_camera = ENV.fetch('THERMAL_CAMERA', 'true') == 'true'
+  rgbd_camera = ENV.fetch('RGBD_CAMERA', 'true') == 'true'
+  vio_bridge = ENV.fetch('VIO_BRIDGE', 'false') == 'true'
   lidar = ENV.fetch('LIDAR', 'true') == 'true'
   camera_pitch = ENV.fetch('CAMERA_PITCH', '1.5707').to_f 
   
@@ -13,6 +16,7 @@
   world = ENV.fetch('WORLD', 'impalpable_greyness')
   x_offset = ENV.fetch('X_OFFSET', 0).to_i
   y_offset = ENV.fetch('Y_OFFSET', 0).to_i
+  jetson = ENV.fetch('JETSON', 'true') == 'true'
   
   gnd_container = ENV.fetch('GND_CONTAINER', 'true') == 'true'
   centralized = ENV.fetch('CENTRALIZED', 'false') == 'true'
@@ -55,6 +59,8 @@ windows:
         - >
           <% unless camera %>
           sed -i '/<sensor/,/<\/sensor>/d' /aas/simulation_resources/aircraft_models/sensor_camera/model.sdf &&
+          <% end %>
+          <% unless thermal_camera %>
           sed -i '/<sensor/,/<\/sensor>/d' /aas/simulation_resources/aircraft_models/sensor_thermal_camera/model.sdf &&
           <% end %>
           <% unless lidar %>
@@ -89,16 +95,25 @@ windows:
       sensor_path = is_quad ? 'model/iris/' : ''
     end
 
-    rgb_camera_topic = "/world/#{world}/model/#{model_name}/#{sensor_path}model/simple_camera/link/mono_cam/base_link/sensor/imager/image"
+    rgb_camera_topic = "/world/#{world}/model/#{model_name}/#{sensor_path}model/d435/link/base_footprint/sensor/d435_color/image"
+    infrared_1_camera_topic = "/world/#{world}/model/#{model_name}/#{sensor_path}model/d435/link/base_footprint/sensor/d435_ired1/image"
+    infrared_2_camera_topic = "/world/#{world}/model/#{model_name}/#{sensor_path}model/d435/link/base_footprint/sensor/d435_ired2/image"
+    depth_camera_topic = "/world/#{world}/model/#{model_name}/#{sensor_path}model/d435/link/base_footprint/sensor/d435_depth/image"
     thermal_camera_topic = "/world/#{world}/model/#{model_name}/#{sensor_path}model/simple_thermal_camera/link/thermal_cam/base_link/sensor/thermal_imager/image"
 
     if centralized
       camera_target_ip = "#{sim_subnet}.90.#{ground_id}"
       rgb_camera_port = 5600 + sitl_instance
+      infrared_1_camera_port = 5700 + sitl_instance
+      infrared_2_camera_port = 5710 + sitl_instance
+      depth_camera_port = 5720 + sitl_instance
       thermal_camera_port = 5800 + sitl_instance
     else
       camera_target_ip = "#{sim_subnet}.90.#{drone_id}"
       rgb_camera_port = 5600
+      infrared_1_camera_port = 5700
+      infrared_2_camera_port = 5710
+      depth_camera_port = 5720
       thermal_camera_port = 5800
     end
   %>
@@ -135,16 +150,71 @@ windows:
           <% else %>
           --out=udp:127.0.0.1:<%= 14550 + sitl_instance %>
           <% end %>
+          <% if jetson %>
+          --out=udp:<%= "192.168.55.1" %>:14550
+          <% end %>
   <% end %>
-        <% if camera %>
+        <% if camera && rgbd_camera %>
         - >
           /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
           <%= rgb_camera_topic %>
           <%= camera_target_ip %> <%= rgb_camera_port %> 8
+        <% unless vio_bridge %>
+        - >
+          /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
+          <%= infrared_1_camera_topic %>
+          <%= camera_target_ip %> <%= infrared_1_camera_port %> 8
+        - >
+          /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
+          <%= infrared_2_camera_topic %>
+          <%= camera_target_ip %> <%= infrared_2_camera_port %> 8
+        <% end %>
+        - >
+          /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
+          <%= depth_camera_topic %>
+          <%= camera_target_ip %> <%= depth_camera_port %> 8
+        <% if jetson %>
+        - >
+          /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
+          <%= rgb_camera_topic %>
+          192.168.55.1 <%= rgb_camera_port %> 8
+        - >
+          /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
+          <%= infrared_1_camera_topic %>
+          192.168.55.1 <%= infrared_1_camera_port %> 8
+        - >
+          /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
+          <%= infrared_2_camera_topic %>
+          192.168.55.1 <%= infrared_2_camera_port %> 8
+        - >
+          /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
+          <%= depth_camera_topic %>
+          192.168.55.1 <%= depth_camera_port %> 8
+        <% end %>
+        <% end %>
+        <% if vio_bridge %>
+        - >
+          ROS_DOMAIN_ID=<%= drone_id %> ros2 run vio_bridge stereo_bridge --ros-args
+          -p use_sim_time:=true
+          -p gz_topic0:=<%= infrared_1_camera_topic %>
+          -p gz_topic1:=<%= infrared_2_camera_topic %>
+        - >
+          ROS_DOMAIN_ID=<%= drone_id %> ros2 run ros_gz_bridge parameter_bridge
+          /world/<%= world %>/model/<%= model_name %>/model/iris/link/imu_link/sensor/imu_sensor/imu@sensor_msgs/msg/Imu[gz.msgs.IMU
+          --ros-args -p use_sim_time:=true
+          -r /world/<%= world %>/model/<%= model_name %>/model/iris/link/imu_link/sensor/imu_sensor/imu:=/vio/imu
+        <% end %>
+        <% if camera && thermal_camera %>
         - >
           /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
           <%= thermal_camera_topic %>
           <%= camera_target_ip %> <%= thermal_camera_port %> 8
+        <% if jetson %>
+        - >
+          /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
+          <%= thermal_camera_topic %>
+          192.168.55.1 <%= thermal_camera_port %> 8
+        <% end %>
         <% end %>
         <% if lidar %>
         - >

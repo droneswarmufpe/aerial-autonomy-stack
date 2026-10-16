@@ -22,21 +22,51 @@
     },
     {
       "id": 2,
-      "local_position": {
-        "x": 5.0,
-        "y": 0.0,
-        "z": 1.0
+      "global_position": {
+        "lat": 48.81045990,
+        "lon": 7.85147490,
+        "alt": -1.5
       },
       "attitude": {
         "roll": 0,
-        "pitch": 90,
+        "pitch": 0,
         "yaw": 0
       },
-      "model": "human_dummy",
-      "static": false
+      "model": "rescue_randy",
+      "static": true
     },
     {
       "id": 3,
+      "global_position": {
+        "lat": 48.81056410,
+        "lon": 7.85164650,
+        "alt": -1.5
+      },
+      "attitude": {
+        "roll": 0,
+        "pitch": 0,
+        "yaw": 0
+      },
+      "model": "rescue_randy",
+      "static": true
+    },
+    {
+      "id": 4,
+      "global_position": {
+        "lat": 48.81055880,
+        "lon": 7.85174850,
+        "alt": -1.5
+      },
+      "attitude": {
+        "roll": 0,
+        "pitch": 0,
+        "yaw": 90
+      },
+      "model": "rescue_randy",
+      "static": true
+    },
+    {
+      "id": 5,
       "local_position": {
         "x": -5.0,
         "y": 0.0,
@@ -51,12 +81,13 @@
       "static": false
     },
     {
-      "id": 4,
-      "local_position": {
-        "x": -131,
-        "y": 452,
-        "z": 4
+      "id": 6,
+      "global_position": {
+        "lat": 48.80650310,
+        "lon": 7.85218030,
+        "alt": 2
       },
+
       "model": "aruco_5x5_0"
     }
   ]

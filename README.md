@@ -221,6 +221,91 @@ cd aerial-autonomy-stack/scripts
 AUTOPILOT=ardupilot NUM_QUADS=1 NUM_VTOLS=1 WORLD=esefex_fbx CENTRALIZED=true RTF=3.0 ./sim_run.sh
 ```
 
+### Camera switches
+
+`CAMERA` is the master camera switch in `sim_run.sh`; setting `CAMERA=false` prevents both RGB-D and thermal sensors from spawning, regardless of the individual switches. With `CAMERA=true` (the default), `RGBD_CAMERA` controls the D435 color, infrared, and depth streams, while `THERMAL_CAMERA` controls the thermal sensor and stream. Both individual switches default to `true`.
+
+```sh
+CAMERA=true RGBD_CAMERA=false THERMAL_CAMERA=true ./sim_run.sh    # Thermal only
+CAMERA=true RGBD_CAMERA=true THERMAL_CAMERA=false ./sim_run.sh    # D435 RGB-D only
+CAMERA=false ./sim_run.sh                                         # Disable all cameras
+```
+
+Gazebo derives the D435 infrared and depth image topics from each model's
+world/model path, so all four RGB-D streams are distinct for every drone.
+Infrared and depth run at 30 Hz.
+
+### Stereo VIO (ArduPilot Iris)
+
+Build the simulation and RC aircraft images after changing the VIO bridge or
+startup templates, then enable the opt-in path:
+
+```sh
+cd scripts
+CONTAINER=simulation ./sim_build.sh
+CONTAINER=rc_aircraft ./sim_build.sh
+VIO_BRIDGE=true WORLD=calibration_vio RTF=1 ./sim_run.sh
+```
+
+`VIO_BRIDGE=true` requires ArduPilot Iris SITL, `RCPILOT=true`, `CAMERA=true`,
+`RGBD_CAMERA=true`, `NUM_VTOLS=0`, and `JETSON=false`. It starts OpenVINS in each
+aircraft container and sends that aircraft's sensor topics in its ROS domain
+(`ROS_DOMAIN_ID=DRONE_ID`). VIO stays in the aircraft container even when
+`CENTRALIZED=true`. `VIO_BRIDGE=false` retains the existing video-stream path.
+
+| Topic in each aircraft's ROS domain | Data |
+| --- | --- |
+| `/camera/infra1/image_raw` | Left `mono8`, 1280×720, 30 Hz simulation time |
+| `/camera/infra2/image_raw` | Right `mono8`, 1280×720, 30 Hz simulation time |
+| `/vio/imu` | Original Gazebo IMU feeding the ArduPilot plugin |
+| `/clock` | Gazebo simulation time |
+
+The [D435 stereo baseline](https://dev.realsenseai.com/docs/high-speed-capture-mode-of-intel-realsense-depth-camera-d435/)
+is 50 mm, with infra1 on the left. The renderer uses
+`RGB_INT8` to avoid the expensive Ogre2 L8 readback path; `vio_bridge` converts to
+grayscale before ROS publication. IR H.264 streams are disabled in VIO mode.
+The bridge publishes only pairs whose original Gazebo capture stamps match
+exactly; mismatched frames are dropped from a bounded cache, never retimestamped
+to manufacture a pair. ROS delivery is not atomic, so consumers still synchronize
+using those stamps. This models ideal instantaneous global-shutter stereo with
+Gaussian image noise. It does not model near-IR material response, exposure blur,
+the dot projector, or physical RealSense image processing.
+
+OpenVINS calibration is generated at aircraft startup in `/tmp/aas_vio/` from
+the same host-mounted D435 and Iris SDFs used by the simulation. It includes the
+camera mount, `CAMERA_PITCH`, sensor offsets, optical-axis rotation, and the
+plugin IMU's 180-degree roll (FRD frame). Intrinsics come from resolution and
+horizontal FOV (`fx=fy≈695.995`, `cx=640`, `cy=360`), distortion and camera/IMU
+time offset are zero. Calibration estimation is disabled for this known geometry.
+Gravity magnitude is 9.8 m/s², matching the current AAS worlds; update the
+generator if using a custom world with different gravity.
+The old external checkout's `gazebo_ros2` calibration is not used; its estimator
+settings serve as a template. Current support is limited to the rigid Iris SDF
+hierarchy, not arbitrary SDF `relative_to` frame graphs.
+
+The direct IMU path preserves acquisition timestamps in the same clock as the
+cameras. It uses the **same sensor that feeds SITL**, without adding another IMU
+or changing ArduPilot's sensor settings. Its 1000 Hz requested update rate is
+limited to approximately 500 Hz by the generated world's 2 ms physics step.
+There is no 200 Hz decimation. This IMU has no injected noise; the small nonzero
+noise values in the generated estimator config are filter tuning values.
+
+200 Hz `HIGHRES_IMU` traffic between containers is inexpensive, but Copter 4.6.2
+constructs its timestamp from `AP_HAL::micros64()` when sending the current
+filtered IMU values. It does not carry the original Gazebo sample timestamp.
+Using that path requires validating clock alignment and filter/sample latency;
+this VIO mode therefore bypasses MAVLink for IMU delivery. Do not also publish a
+MAVLink IMU on `/vio/imu`.
+
+Start with `RTF=1` when evaluating estimator performance. At accelerated RTF,
+sensor rates scale in wall time and OpenVINS must keep up. Restart OpenVINS after
+a simulation time reset. This mode starts the estimator only; it does not feed
+its odometry back into the flight controller.
+
+The default spawn offset is the world's local origin (`X_OFFSET=0`,
+`Y_OFFSET=0`). Set `X_OFFSET` and `Y_OFFSET` explicitly when a different
+start position is required.
+
 Centralized mode streams all aircraft data (including MAVLink) to the ground container, so the stack runs as external processing rather than onboard. Set `CENTRALIZED=false` to keep streams local to each aircraft container.
 
 In the `Ground` Xterm terminal:

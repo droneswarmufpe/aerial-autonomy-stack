@@ -49,6 +49,7 @@ LIB_REPOS=( # Format: "URL;BRANCH;LOCAL_DIR_NAME"
   # Aircraft image
   # "https://github.com/microsoft/onnxruntime.git;v1.22.1;onnxruntime" # Only for the deployment build
   "https://github.com/PRBonn/kiss-icp.git;main;kiss-icp"
+  "https://github.com/jpeixe07/open_vins_ardupilot.git;feat/ros2;open_vins_ardupilot"
 )
 
 pgrep ssh-agent > /dev/null || eval "$(ssh-agent -s)"

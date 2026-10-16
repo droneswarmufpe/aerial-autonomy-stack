@@ -38,7 +38,9 @@ RUN apt update \
     && apt install -y --no-install-recommends \
         ros-humble-desktop ros-dev-tools \
         ros-humble-bondcpp ros-humble-ament-cmake-clang-format \
+        ros-humble-image-transport-plugins \
         ros-humble-vision-msgs \
+        ros-humble-ros2bag 'ros-humble-rosbag2*' \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
 RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
@@ -141,6 +143,7 @@ RUN pip install --no-cache-dir pycuda
 RUN apt update \
     && apt install -y --no-install-recommends \
         ros-humble-geographic-msgs clang libgmock-dev \
+        libeigen3-dev libboost-all-dev libceres-dev \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -154,9 +157,15 @@ RUN git config --global --add safe.directory /workspaces/rcpilot && \
     git submodule sync && \
     git submodule update --init --recursive
 
-# Build rcpilot SDK and workspace
-RUN ./install-sdk.bash cpp python && \
-    bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install --packages-skip localization"
+# Install grpc-tools for protobuf code generation
+RUN pip3 install --no-cache-dir grpcio-tools
+# Keep setuptools compatible with colcon-core
+RUN pip3 install --no-cache-dir "setuptools<80"
+
+# Build rcpilot dependencies, SDK, and workspace using the rcpilot orchestrator
+RUN ./rcpilot install deps -y && \
+    ./rcpilot install sdk -y && \
+    bash -c "source /opt/ros/humble/setup.bash && ./rcpilot build -y"
 
 ################################################################################
 # Stage 7 - ?GB ################################################################
@@ -167,12 +176,14 @@ COPY /github_clones/c_library_v2 /usr/local/include/mavlink/
 
 # Build the ROS 2 workspace (NOTE: also includes ground_system_msgs from the ground_ws)
 COPY ground/ground_ws/src/ground_system_msgs /aas/aircraft_ws/src/ground_system_msgs
+COPY github_clones/open_vins_ardupilot /aas/aircraft_ws/src/open_vins_ardupilot
 COPY aircraft/aircraft_ws/src /aas/aircraft_ws/src
 WORKDIR /aas/aircraft_ws
 RUN rosdep update
-RUN rosdep install --from-paths src/ --ignore-src --rosdistro humble -y
+RUN rosdep install --from-paths src/ --ignore-src --rosdistro humble --skip-keys "Eigen3" -y
 # Explicitly use bash, not sh, to source and build the workspace
-RUN bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release"
+# OpenVINS ROS2 build flow (official guide) + custom ov_repub package
+RUN bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install --event-handlers console_cohesion+ --packages-select ov_core ov_init ov_msckf ov_eval ov_repub --cmake-args -DCMAKE_BUILD_TYPE=Release"
 
 # Copy resources and configuration files from this repository
 COPY aircraft/aircraft_resources/ /aas/aircraft_resources

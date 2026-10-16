@@ -7,6 +7,9 @@ set -e
 AUTOPILOT="${AUTOPILOT:-ardupilot}" # Options: ardupilot, px4 (removed support)
 HEADLESS="${HEADLESS:-false}" # Options: true, false (default)
 CAMERA="${CAMERA:-true}" # Options: true (default), false
+THERMAL_CAMERA="${THERMAL_CAMERA:-false}" # Options: true (default), false
+RGBD_CAMERA="${RGBD_CAMERA:-true}" # Options: true (default), false
+VIO_BRIDGE="${VIO_BRIDGE:-false}" # ROS stereo + Gazebo IMU and OpenVINS (ArduPilot Iris)
 LIDAR="${LIDAR:-false}" # Options: true (default), false 
 CAMERA_PITCH="${CAMERA_PITCH:-1.5707}" # Camera pitch in radians (default = 1.5707, 90 deg down)
 #
@@ -19,12 +22,13 @@ NUM_QUADS="${NUM_QUADS:-2}" # Number of quadcopters (default = 1)
 NUM_VTOLS="${NUM_VTOLS:-0}" # Number of VTOLs (default = 0)
 WORLD="${WORLD:-esefex_fbx}" # Options: impalpable_greyness (default), apple_orchard, shibuya_crossing, swiss_town
 CENTRALIZED="${CENTRALIZED:-false}" # Options: true, false (default) - If true, all cameras will stream to the ground container. If false, each camera will stream to its own IP (useful for testing network conditions and scalability)
-X_OFFSET="${X_OFFSET:-5}" # X offset for drone placement in the world (default = 0)
-Y_OFFSET="${Y_OFFSET:--110}" # Y offset for drone placement in the world (default = 0)
+X_OFFSET="${X_OFFSET:-0}" # X offset for drone placement in the world (default = 0)
+Y_OFFSET="${Y_OFFSET:-0}" # Y offset for drone placement in the world (default = 0)
 #
-RCPILOT="${RCPILOT:-false}" # Options: true, false (default) - If true, the rcpilot repo will be cloned and built. This is useful for testing the rcpilot SDK and its integration with the AAS.
-DEV="${DEV:false}" # Options: true, false (default)
+RCPILOT="${RCPILOT:-true}" # Options: true, false (default) - If true, the rcpilot repo will be cloned and built. This is useful for testing the rcpilot SDK and its integration with the AAS.
+DEV="${DEV:-false}" # Options: true, false (default)
 HITL="${HITL:-false}" # Options: true, false (default)
+JETSON="${JETSON:-false}" # Options: true, false (default)
 GND_CONTAINER="${GND_CONTAINER:-true}" # Options: true (default), false
 RTF="${RTF:-1.0}" # Real-time factor (default = 1.0), set to <=0.0 for as fast as possible execution
 START_AS_PAUSED="${START_AS_PAUSED:-false}" # Options: true, false (default)
@@ -41,6 +45,17 @@ AIR_NET_NAME="aas-air-network-inst${INSTANCE}"
 SIM_CONT_NAME="simulation-container-inst${INSTANCE}"
 GND_CONT_NAME="ground-container-inst${INSTANCE}"
 CUSTOM_OBJECTS="${CUSTOM_OBJECTS:-false}"
+
+if [[ "$VIO_BRIDGE" != "true" && "$VIO_BRIDGE" != "false" ]]; then
+  echo "VIO_BRIDGE must be true or false" >&2
+  exit 1
+fi
+if [[ "$VIO_BRIDGE" == "true" ]]; then
+  if [[ "$AUTOPILOT" != "ardupilot" || "$NUM_VTOLS" != "0" || "$CAMERA" != "true" || "$RGBD_CAMERA" != "true" || "$HITL" == "true" || "$JETSON" == "true" || "$RCPILOT" != "true" ]]; then
+    echo "VIO_BRIDGE requires ArduPilot Iris SITL, RCPILOT=true, CAMERA=true, RGBD_CAMERA=true, NUM_VTOLS=0, JETSON=false" >&2
+    exit 1
+  fi
+fi
 
 # Detect the environment (Ubuntu/GNOME, WSL, etc.)
 if command -v gnome-terminal >/dev/null 2>&1 && [ -n "$XDG_CURRENT_DESKTOP" ]; then
@@ -75,6 +90,8 @@ if [[ "$DEV" == "true" ]]; then
   DEV_AIR_OPTS+=" -v ${SCRIPT_DIR}/../aircraft/aircraft_resources/:/aas/aircraft_resources:cached"
   DEV_AIR_OPTS+=" -v ${SCRIPT_DIR}/../aircraft/aircraft_ws/src:/aas/aircraft_ws/src:cached"
   DEV_AIR_OPTS+=" -v ${SCRIPT_DIR}/../ground/ground_ws/src/ground_system_msgs:/aas/aircraft_ws/src/ground_system_msgs:cached"
+  RCPILOT_WORKSPACE_OPTS=" --volume ${SCRIPT_DIR}/../github_clones/rcpilot/build:/workspaces/rcpilot/build:cached"
+  RCPILOT_WORKSPACE_OPTS+=" --volume ${SCRIPT_DIR}/../github_clones/rcpilot/install:/workspaces/rcpilot/install:cached"
 fi
 
 # Create docker networks for SITL
@@ -146,15 +163,24 @@ launch_terminal() {
 }
 
 PARENT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+VIO_SIM_OPTS=""
+VIO_AIR_OPTS=""
+if [[ "$VIO_BRIDGE" == "true" ]]; then
+  # Use identical source geometry for Gazebo and calibration, even with older images.
+  VIO_SIM_OPTS="--volume ${PARENT_DIR}/simulation/simulation_resources/aircraft_models/d435:/aas/simulation_resources/aircraft_models/d435:ro --volume ${PARENT_DIR}/simulation/simulation_resources/aircraft_models/iris_with_ardupilot:/aas/simulation_resources/aircraft_models/iris_with_ardupilot:ro"
+  VIO_AIR_OPTS="--volume ${PARENT_DIR}/simulation/simulation_resources/aircraft_models:/aas/vio_models:ro"
+fi
 
 # Launch the simulation container
 DOCKER_CMD="docker run -it --rm \
   --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
   --volume ${PARENT_DIR}/simulation/simulation_resources/custom_objects:/aas/simulation_resources/custom_objects \
   --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
-  --env AUTOPILOT=$AUTOPILOT --env HEADLESS=$HEADLESS --env CAMERA=$CAMERA --env LIDAR=$LIDAR --env CAMERA_PITCH=$CAMERA_PITCH \
+  --env AUTOPILOT=$AUTOPILOT --env HEADLESS=$HEADLESS --env CAMERA=$CAMERA --env THERMAL_CAMERA=$THERMAL_CAMERA --env RGBD_CAMERA=$RGBD_CAMERA --env LIDAR=$LIDAR --env CAMERA_PITCH=$CAMERA_PITCH \
   --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS --env WORLD=$WORLD \
+  --env VIO_BRIDGE=$VIO_BRIDGE $VIO_SIM_OPTS \
   --env SIMULATED_TIME=true --env RTF=$RTF --env START_AS_PAUSED=$START_AS_PAUSED \
+  --env JETSON=$JETSON \
   --env SIM_SUBNET=$SIM_SUBNET --env GROUND_ID=$GROUND_ID \
   --env GND_CONTAINER=$GND_CONTAINER --env CENTRALIZED=$CENTRALIZED \
   --env X_OFFSET=$X_OFFSET --env Y_OFFSET=$Y_OFFSET --env CUSTOM_OBJECTS=$CUSTOM_OBJECTS \
@@ -184,6 +210,10 @@ if [[ "$HITL" == "false" ]]; then
       --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
       --volume ${PARENT_DIR}/simulation/simulation_resources/custom_objects:/aas/custom_objects \
       --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
+      --volume ${PARENT_DIR}/github_clones/rcpilot/src:/workspaces/rcpilot/src:cached \
+      ${RCPILOT_WORKSPACE_OPTS} \
+      --volume ${PARENT_DIR}/github_clones/rcpilot/log:/workspaces/rcpilot/log:cached \
+      --volume ${PARENT_DIR}/github_clones/rcpilot/sdk:/workspaces/rcpilot/sdk:cached \
       --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
       --env HEADLESS=$HEADLESS --env RCPILOT=$RCPILOT \
       --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS \
@@ -218,12 +248,18 @@ if [[ "$HITL" == "false" ]]; then
       DOCKER_CMD="docker run -it --rm \
         --ipc=host \
         --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
+        --volume ${PARENT_DIR}/github_clones/rcpilot/src:/workspaces/rcpilot/src:cached \
+        --volume ${PARENT_DIR}/github_clones/rcpilot/sdk:/workspaces/rcpilot/sdk:cached \
+        ${RCPILOT_WORKSPACE_OPTS} \
+        --volume ${PARENT_DIR}/github_clones/rcpilot/log:/workspaces/rcpilot/log:cached \
         --volume ${PARENT_DIR}/simulation/simulation_resources/custom_objects:/aas/custom_objects \
         --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
         --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
         --env AUTOPILOT=$AUTOPILOT --env HEADLESS=$HEADLESS --env CAMERA=$CAMERA --env LIDAR=$LIDAR \
         --env DRONE_TYPE=$drone_type --env DRONE_ID=$DRONE_ID \
+        --env VIO_BRIDGE=$VIO_BRIDGE --env CAMERA_PITCH=$CAMERA_PITCH $VIO_AIR_OPTS \
         --env SIMULATED_TIME=true --env CENTRALIZED=$CENTRALIZED \
+        --env JETSON=$JETSON \
         --env SIM_SUBNET=$SIM_SUBNET --env AIR_SUBNET=$AIR_SUBNET --env SIM_ID=$SIM_ID --env GROUND_ID=$GROUND_ID \
         --env GND_CONTAINER=$GND_CONTAINER --env RCPILOT=$RCPILOT \
         --env ROS_DOMAIN_ID=$DRONE_ID \
