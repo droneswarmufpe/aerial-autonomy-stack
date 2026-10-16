@@ -41,6 +41,19 @@ AIR_NET_NAME="aas-air-network-inst${INSTANCE}"
 SIM_CONT_NAME="simulation-container-inst${INSTANCE}"
 GND_CONT_NAME="ground-container-inst${INSTANCE}"
 CUSTOM_OBJECTS="${CUSTOM_OBJECTS:-false}"
+PERCEPTION="${PERCEPTION:-false}"
+PERCEPTION_MODEL="${PERCEPTION_MODEL:-yolov11-ime-target}"
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+PARENT_DIR=$(cd "${SCRIPT_DIR}/.." && pwd)
+
+if [[ "$PERCEPTION" != "true" && "$PERCEPTION" != "false" ]]; then
+  echo "PERCEPTION must be true or false (got: $PERCEPTION)." >&2
+  exit 1
+fi
+if [[ ! "$PERCEPTION_MODEL" =~ ^[A-Za-z0-9_-]+$ ]]; then
+  echo "PERCEPTION_MODEL must contain only letters, digits, '_' or '-'." >&2
+  exit 1
+fi
 
 # Detect the environment (Ubuntu/GNOME, WSL, etc.)
 if command -v gnome-terminal >/dev/null 2>&1 && [ -n "$XDG_CURRENT_DESKTOP" ]; then
@@ -59,6 +72,26 @@ if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1 \
   GPU_AVAILABLE=true
 else
   echo "Docker NVIDIA runtime not detected; launching containers without GPU flags."
+fi
+
+if [[ "$PERCEPTION" == "true" ]]; then
+  if [[ "$GPU_AVAILABLE" != "true" ]]; then
+    echo "PERCEPTION=true requires a working NVIDIA driver and Docker NVIDIA runtime." >&2
+    exit 1
+  fi
+  if [[ "$CAMERA" != "true" || "$CENTRALIZED" == "true" || "$HITL" == "true" ]]; then
+    echo "PERCEPTION=true requires CAMERA=true, CENTRALIZED=false, and HITL=false." >&2
+    exit 1
+  fi
+  if [[ -z "$DISPLAY" ]]; then
+    echo "PERCEPTION=true needs DISPLAY set to show the detector window." >&2
+    exit 1
+  fi
+  if [[ ! -f "${PARENT_DIR}/github_clones/evaat_embedded_py/assets/models/${PERCEPTION_MODEL}.pt" ]]; then
+    echo "TensorRT checkpoint not found: ${PARENT_DIR}/github_clones/evaat_embedded_py/assets/models/${PERCEPTION_MODEL}.pt" >&2
+    exit 1
+  fi
+  echo "Onboard TensorRT detection enabled with model: ${PERCEPTION_MODEL}"
 fi
 
 GPU_FLAGS=""
@@ -138,8 +171,6 @@ XTERM_CONFIG_ARGS=(
     Ctrl Shift <Key>C: copy-selection(CLIPBOARD) \n\
     Ctrl Shift <Key>V: insert-selection(CLIPBOARD)'
 )
-
-PARENT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 
 # Launch the simulation container
 DOCKER_CMD="docker run -it --rm \
@@ -241,6 +272,7 @@ if [[ "$HITL" == "false" ]]; then
         --env SIMULATED_TIME=true --env CENTRALIZED=$CENTRALIZED \
         --env SIM_SUBNET=$SIM_SUBNET --env AIR_SUBNET=$AIR_SUBNET --env SIM_ID=$SIM_ID --env GROUND_ID=$GROUND_ID \
         --env GND_CONTAINER=$GND_CONTAINER --env RCPILOT=$RCPILOT \
+        --env PERCEPTION=$PERCEPTION --env PERCEPTION_MODEL=$PERCEPTION_MODEL \
         --env ROS_DOMAIN_ID=$DRONE_ID \
         --net=$SIM_NET_NAME --ip=${SIM_SUBNET}.90.$DRONE_ID \
         --privileged \

@@ -157,6 +157,9 @@ RUN pip3 install --upgrade pip \
     && pip3 install --resume-retries 5 torch==2.10.0+cu128 torchvision==0.25.0+cu128 --index-url https://download.pytorch.org/whl/cu128 \
     && pip3 install --resume-retries 5 matplotlib pillow pyyaml requests scipy tqdm psutil
 
+RUN pip3 install --resume-retries 5 --extra-index-url https://pypi.nvidia.com \
+    tensorrt-cu12==10.8.0.43 onnx onnxslim
+
 ################################################################################
 # Stage 5 - ?GB ################################################################
 ################################################################################
@@ -194,6 +197,14 @@ RUN pip install -i https://test.pypi.org/simple/ rcpilot.mavsys
 # Install dependencies
 RUN pip install numpy==1.26.4 transitions libtmux dearpygui zmq pymap3d utm cartopy pyyaml
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        cuda-nvcc-12-8 cuda-cudart-dev-12-8 cuda-driver-dev-12-8 cuda-profiler-api-12-8 libcurand-dev-12-8 libboost-python-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install mako pytools platformdirs appdirs \
+    && pip install --no-build-isolation pycuda
+
 # Add MAVLink 2 C library
 COPY /github_clones/c_library_v2 /usr/local/include/mavlink/
 
@@ -216,4 +227,5 @@ RUN echo "source /aas/aircraft_ws/install/setup.bash" >> /root/.bashrc
 # Final config
 WORKDIR /aas
 COPY aircraft/aircraft.yml.erb /aas/aircraft.yml.erb
+ENV PYTHONPATH=/usr/lib/python3/dist-packages
 ENTRYPOINT ["tmuxinator", "start", "-p", "/aas/aircraft.yml.erb"]

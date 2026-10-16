@@ -16,6 +16,8 @@
   gnd_container = ENV.fetch('GND_CONTAINER', 'true') == 'true'
   centralized = ENV.fetch('CENTRALIZED', 'false') == 'true'
   rcpilot = ENV.fetch('RCPILOT', 'true') == 'true'
+  perception = ENV.fetch('PERCEPTION', 'false') == 'true'
+  perception_model = ENV.fetch('PERCEPTION_MODEL', 'yolov11-ime-target')
 
   simulated_time = ENV.fetch('SIMULATED_TIME', 'false') == 'true'
 
@@ -34,7 +36,15 @@ windows:
       layout: even-horizontal
       panes:
         - clear && echo "So nice to have you with us, this is the aircraft <%= drone_id %> container."
-        - cd /aas/evaat_embedded_py && ./evaatctl run drone config/sitl/drone<%= drone_id %>.yml -y
+        - >
+          cd /aas/evaat_embedded_py &&
+          if [ "<%= perception %>" = "true" ]; then
+            python3 tools/prepare_sitl_perception.py --source config/sitl/drone<%= drone_id %>.yml --output /tmp/evaat-sitl-drone<%= drone_id %>-perception.yml --model-name <%= perception_model %> &&
+            python3 tools/prepare_tensorrt_engine.py --checkpoint assets/models/<%= perception_model %>.pt &&
+            ./evaatctl run drone /tmp/evaat-sitl-drone<%= drone_id %>-perception.yml -y;
+          else
+            ./evaatctl run drone config/sitl/drone<%= drone_id %>.yml -y;
+          fi
 
         # - cd /aas/Projeto-Enxame-Drones/ && python3 pubsub_broker.py
         # - cd /aas/Projeto-Enxame-Drones/ && python3 gateway.py -id <%= "#{drone_id}" %> -config config/drone.yml

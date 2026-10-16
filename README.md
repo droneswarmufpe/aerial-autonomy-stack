@@ -211,6 +211,23 @@ cd aerial-autonomy-stack/scripts
 AUTOPILOT=px4 NUM_QUADS=1 NUM_VTOLS=1 WORLD=swiss_town RTF=3.0 ./sim_run.sh                   # Start a simulation, check the script for more options (note: ArduPilot SITL checks take ~40s before being ready to arm)
 ```
 
+To run onboard TensorRT detection on the Gazebo camera, rebuild the aircraft image
+after changing its Dockerfile, then start a non-centralized SITL run with NVIDIA
+Docker support:
+
+```sh
+./sim_build.sh
+PERCEPTION=true NUM_QUADS=1 ./sim_run.sh
+```
+
+This enables the YOLO pipeline in a temporary SITL config and shows its annotated
+camera window in the aircraft terminal. On first launch, the aircraft exports
+`github_clones/evaat_embedded_py/assets/models/yolov11-ime-target.pt` to a TensorRT
+engine for the current GPU; later launches reuse it. The host needs an NVIDIA driver,
+the Docker NVIDIA runtime, and an accessible X display. `CAMERA=false`,
+`CENTRALIZED=true`, and HITL are not supported in this mode. Set
+`PERCEPTION_MODEL=<checkpoint-stem>` to use another `.pt` file in `assets/models`.
+
 In any of the `QUAD` or `VTOL` Xterm terminals:
 ```sh
 # 2. Fly
