@@ -38,7 +38,6 @@
   else
     speedup = rtf.ceil # Positive RTF: round up to the nearest integer
   end
-  rtf_string = "<real_time_factor>%g</real_time_factor>" % speedup
 
   # Compute step size for gymnasium based on physics frequency in the world SDF files (ArduPilot worlds use 2ms)
   physics_freq_hz = 500
@@ -66,9 +65,8 @@ windows:
           <% unless lidar %>
           sed -i '/<sensor/,/<\/sensor>/d'  /aas/simulation_resources/aircraft_models/sensor_lidar/model.sdf &&
           <% end %>
-          sed -i 's|<real_time_factor>1.0</real_time_factor>|<%= rtf_string %>|' /aas/simulation_resources/simulation_worlds/<%= world %>.sdf &&
           /aas/simulation_resources/aircraft_models/_create_ardupilot_models.sh <%= num_quads %> <%= num_vtols %> <%= camera_pitch %> &&
-          /aas/simulation_resources/simulation_worlds/_create_ardupilot_world.sh <%= num_quads %> <%= num_vtols %> <%= world %>.sdf <%= x_offset %> <%= y_offset %> &&
+          REAL_TIME_FACTOR=<%= speedup %> /aas/simulation_resources/simulation_worlds/_create_ardupilot_world.sh <%= num_quads %> <%= num_vtols %> <%= world %>.sdf <%= x_offset %> <%= y_offset %> &&
           <% if ENV['CUSTOM_OBJECTS'] == 'true' %>
           /aas/simulation_resources/simulation_worlds/_create_custom_objects_world.sh /aas/simulation_resources/simulation_worlds/populated_ardupilot.sdf &&
           <% end %>

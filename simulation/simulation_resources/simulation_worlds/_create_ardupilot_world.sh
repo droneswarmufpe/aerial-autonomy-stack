@@ -34,9 +34,9 @@ BASE_WORLD_DIR=$(dirname "$BASE_WORLD_WITH_PATH")
 OUTPUT_FILE="${BASE_WORLD_DIR}/populated_ardupilot.sdf"
 cp "$BASE_WORLD_WITH_PATH" "$OUTPUT_FILE"
 
-# Capture the current real_time_factor value, default to 1.0 if not found
+# Use the REAL_TIME_FACTOR environment variable if set, otherwise keep the world's own value (default 1.0)
 RTF_VALUE=$(sed -n '/<physics/,/<\/physics>/ s/.*<real_time_factor>\([^<]*\)<\/real_time_factor>.*/\1/p' "$OUTPUT_FILE")
-RTF_VALUE=${RTF_VALUE:-1.0}
+RTF_VALUE=${REAL_TIME_FACTOR:-${RTF_VALUE:-1.0}}
 
 # IMPORTANT: this replaces the whole <physics> block with Ardupilot's SITL settings
 #
