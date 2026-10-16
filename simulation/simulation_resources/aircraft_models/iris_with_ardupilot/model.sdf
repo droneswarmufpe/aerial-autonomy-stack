@@ -793,9 +793,11 @@
       </control>
 
       <!-- Servo channel for payload drop -->
+      <!-- A COMMAND channel only relays the servo value to cmd_topic, but the plugin still requires an existing joint:
+           use the payload's own joint, which (unlike CameraJoint) is present whatever cameras are enabled -->
       <control channel="8">
         <type>COMMAND</type>
-        <jointName>iris::CameraJoint</jointName>
+        <jointName>iris::fog_joint</jointName>
         <cmd_topic>/iris_with_ardupilot/gripper/cmd</cmd_topic>
         <multiplier>2000</multiplier>
         <servo_min>1000</servo_min>

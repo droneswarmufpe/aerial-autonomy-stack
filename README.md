@@ -145,7 +145,8 @@ aerial-autonomy-stack
     │   ├── aircraft_models
     │   │   ├── alti_transition_quad                # ArduPilot VTOL model
     │   │   ├── iris_with_ardupilot                 # ArduPilot quad model
-    │   │   └── sensor_camera                       # Camera model
+    │   │   ├── d435                                # Intel RealSense D435 RGB-D camera model
+    │   │   └── sensor_thermal_camera               # Thermal camera model
     │   └── simulation_worlds
     │       ├── apple_orchard.sdf
     │       ├── impalpable_greyness.sdf
