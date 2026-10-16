@@ -24,7 +24,8 @@ Starts the simulation, ground, and aircraft containers (SITL by default, Jetson-
 | `X_OFFSET` | `5` | X offset used to place drones. |
 | `Y_OFFSET` | `-110` | Y offset used to place drones. |
 | `DEV` | `false` | Mount workspaces/resources from host and use `/bin/bash` as entrypoint. |
-| `JETSON` | `false` | Jetson-in-the-loop: publish SITL and camera streams to an external device that runs the embedded software. |
+| `JETSON` | `false` | Jetson-in-the-loop: the simulation container uses host networking and streams each drone's SITL MAVLink (UDP `14550`) and cameras (UDP `5600`, `5700`, `5710`, `5720`, `5800`) to its own Jetson in `JETSON_IPS`. Aircraft containers are not started. Not compatible with `CENTRALIZED=true` or `VIO_BRIDGE=true`. |
+| `JETSON_IPS` | `192.168.55.1` | Comma-separated Jetson IPs on the same LAN as the PC, one per drone in drone ID order (quads first, then VTOLs), e.g. `192.168.1.50,192.168.1.51`. Used when `JETSON=true`. |
 | `GND_CONTAINER` | `true` | Start the ground container when `true`. |
 | `RTF` | `5.0` | Real-time factor (`<= 0.0` runs as fast as possible). |
 | `START_AS_PAUSED` | `false` | Start simulation paused when `true`. |

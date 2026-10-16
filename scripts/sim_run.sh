@@ -27,7 +27,8 @@ Y_OFFSET="${Y_OFFSET:-0}" # Y offset for drone placement in the world (default =
 #
 RCPILOT="${RCPILOT:-true}" # Options: true, false (default) - If true, the rcpilot repo will be cloned and built. This is useful for testing the rcpilot SDK and its integration with the AAS.
 DEV="${DEV:-false}" # Options: true, false (default)
-JETSON="${JETSON:-false}" # Options: true, false (default)
+JETSON="${JETSON:-false}" # Options: true, false (default) - If true, SITL and cameras are streamed to an external Jetson (on the same LAN as this PC) instead of aircraft containers
+JETSON_IPS="${JETSON_IPS:-192.168.55.1}" # Comma-separated Jetson IPs, one per drone in drone ID order, used when JETSON=true (default = 192.168.55.1)
 GND_CONTAINER="${GND_CONTAINER:-true}" # Options: true (default), false
 RTF="${RTF:-1.0}" # Real-time factor (default = 1.0), set to <=0.0 for as fast as possible execution
 START_AS_PAUSED="${START_AS_PAUSED:-false}" # Options: true, false (default)
@@ -48,6 +49,17 @@ CUSTOM_OBJECTS="${CUSTOM_OBJECTS:-false}"
 if [[ "$VIO_BRIDGE" != "true" && "$VIO_BRIDGE" != "false" ]]; then
   echo "VIO_BRIDGE must be true or false" >&2
   exit 1
+fi
+if [[ "$JETSON" == "true" && "$CENTRALIZED" == "true" ]]; then
+  echo "JETSON=true and CENTRALIZED=true are mutually exclusive (streams go either to the Jetson or to the ground container)" >&2
+  exit 1
+fi
+if [[ "$JETSON" == "true" ]]; then
+  IFS=',' read -ra JETSON_IP_LIST <<< "$JETSON_IPS"
+  if [[ ${#JETSON_IP_LIST[@]} -ne $((NUM_QUADS + NUM_VTOLS)) ]]; then
+    echo "JETSON_IPS must list one IP per drone: got ${#JETSON_IP_LIST[@]} IP(s) for $((NUM_QUADS + NUM_VTOLS)) drone(s)" >&2
+    exit 1
+  fi
 fi
 if [[ "$VIO_BRIDGE" == "true" ]]; then
   if [[ "$AUTOPILOT" != "ardupilot" || "$NUM_VTOLS" != "0" || "$CAMERA" != "true" || "$RGBD_CAMERA" != "true" || "$JETSON" == "true" || "$RCPILOT" != "true" ]]; then
@@ -176,14 +188,19 @@ DOCKER_CMD="docker run -it --rm \
   --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS --env WORLD=$WORLD \
   --env VIO_BRIDGE=$VIO_BRIDGE $VIO_SIM_OPTS \
   --env SIMULATED_TIME=true --env RTF=$RTF --env START_AS_PAUSED=$START_AS_PAUSED \
-  --env JETSON=$JETSON \
+  --env JETSON=$JETSON --env JETSON_IPS=$JETSON_IPS \
   --env SIM_SUBNET=$SIM_SUBNET --env GROUND_ID=$GROUND_ID \
   --env GND_CONTAINER=$GND_CONTAINER --env CENTRALIZED=$CENTRALIZED \
   --env X_OFFSET=$X_OFFSET --env Y_OFFSET=$Y_OFFSET --env CUSTOM_OBJECTS=$CUSTOM_OBJECTS \
   --env ROS_DOMAIN_ID=$SIM_ID \
   --privileged \
   --name $SIM_CONT_NAME"
-DOCKER_CMD="$DOCKER_CMD --net=$SIM_NET_NAME --ip=${SIM_SUBNET}.90.${SIM_ID}"
+# With JETSON=true, use host networking so the simulation can reach the Jetson on the LAN (and vice versa)
+if [[ "$JETSON" == "true" ]]; then
+  DOCKER_CMD="$DOCKER_CMD --net=host"
+else
+  DOCKER_CMD="$DOCKER_CMD --net=$SIM_NET_NAME --ip=${SIM_SUBNET}.90.${SIM_ID}"
+fi
 # Add WSL-specific options and complete the command
 if [[ "$DESK_ENV" == "wsl" ]]; then
   DOCKER_CMD="$DOCKER_CMD $WSL_OPTS"
@@ -268,17 +285,22 @@ launch_aircraft_containers() {
     DRONE_ID=$((DRONE_ID + 1))
   done
 }
-# Launch the Quad containers
-launch_aircraft_containers "quad" $NUM_QUADS
-# Launch the VTOL containers
-launch_aircraft_containers "vtol" $NUM_VTOLS  
+# With JETSON=true, the aircraft software runs on the Jetson instead of in aircraft containers
+if [[ "$JETSON" == "false" ]]; then
+  # Launch the Quad containers
+  launch_aircraft_containers "quad" $NUM_QUADS
+  # Launch the VTOL containers
+  launch_aircraft_containers "vtol" $NUM_VTOLS
+fi  
 
 if [[ "$GND_CONTAINER" == "true" ]]; then
   sleep 2.0 # Once all containers are up, connect ground and aircraft containers to the air network
   docker network connect --ip=${AIR_SUBNET}.90.$GROUND_ID $AIR_NET_NAME $GND_CONT_NAME
-  for i in $(seq 1 $((NUM_QUADS + NUM_VTOLS))); do
-    docker network connect --ip=${AIR_SUBNET}.90.$i $AIR_NET_NAME "aircraft-container-inst${INSTANCE}_${i}"
-  done
+  if [[ "$JETSON" == "false" ]]; then
+    for i in $(seq 1 $((NUM_QUADS + NUM_VTOLS))); do
+      docker network connect --ip=${AIR_SUBNET}.90.$i $AIR_NET_NAME "aircraft-container-inst${INSTANCE}_${i}"
+    done
+  fi
 fi
 
 echo "Fly, my pretties, fly!"

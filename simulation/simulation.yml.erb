@@ -16,7 +16,8 @@
   world = ENV.fetch('WORLD', 'impalpable_greyness')
   x_offset = ENV.fetch('X_OFFSET', 0).to_i
   y_offset = ENV.fetch('Y_OFFSET', 0).to_i
-  jetson = ENV.fetch('JETSON', 'true') == 'true'
+  jetson = ENV.fetch('JETSON', 'false') == 'true'
+  jetson_ips = ENV.fetch('JETSON_IPS', '192.168.55.1').split(',').map(&:strip) # One Jetson per drone, in drone ID order
   
   gnd_container = ENV.fetch('GND_CONTAINER', 'true') == 'true'
   centralized = ENV.fetch('CENTRALIZED', 'false') == 'true'
@@ -101,7 +102,15 @@ windows:
     depth_camera_topic = "/world/#{world}/model/#{model_name}/#{sensor_path}model/d435/link/base_footprint/sensor/d435_depth/image"
     thermal_camera_topic = "/world/#{world}/model/#{model_name}/#{sensor_path}model/simple_thermal_camera/link/thermal_cam/base_link/sensor/thermal_imager/image"
 
-    if centralized
+    jetson_ip = jetson_ips[sitl_instance]
+    if jetson # Each drone streams to its own Jetson
+      camera_target_ip = jetson_ip
+      rgb_camera_port = 5600
+      infrared_1_camera_port = 5700
+      infrared_2_camera_port = 5710
+      depth_camera_port = 5720
+      thermal_camera_port = 5800
+    elsif centralized
       camera_target_ip = "#{sim_subnet}.90.#{ground_id}"
       rgb_camera_port = 5600 + sitl_instance
       infrared_1_camera_port = 5700 + sitl_instance
@@ -140,7 +149,9 @@ windows:
           --speedup <%= speedup %>
           --add-param-file=/aas/simulation_resources/aircraft_models/<%= model_name %>/ardupilot-4.6.params
           -l $(python3 /aas/simulation_resources/patches/extract_spherical_coords.py /aas/simulation_resources/simulation_worlds/<%= world %>.sdf)
-          <% if centralized %>
+          <% if jetson %>
+          --out=udp:<%= jetson_ip %>:14550
+          <% elsif centralized %>
           --out=udp:<%= "#{sim_subnet}.90.#{ground_id}" %>:<%= 14570 + drone_id %>
           <% else %>
           --out=udp:<%= "#{sim_subnet}.90.#{drone_id}" %>:14570 
@@ -149,9 +160,6 @@ windows:
           --out=udp:<%= "#{sim_subnet}.90.#{ground_id}" %>:<%= 14550 + drone_id%>
           <% else %>
           --out=udp:127.0.0.1:<%= 14550 + sitl_instance %>
-          <% end %>
-          <% if jetson %>
-          --out=udp:<%= "192.168.55.1" %>:14550
           <% end %>
   <% end %>
         <% if camera && rgbd_camera %>
@@ -173,24 +181,6 @@ windows:
           /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
           <%= depth_camera_topic %>
           <%= camera_target_ip %> <%= depth_camera_port %> 8
-        <% if jetson %>
-        - >
-          /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
-          <%= rgb_camera_topic %>
-          192.168.55.1 <%= rgb_camera_port %> 8
-        - >
-          /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
-          <%= infrared_1_camera_topic %>
-          192.168.55.1 <%= infrared_1_camera_port %> 8
-        - >
-          /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
-          <%= infrared_2_camera_topic %>
-          192.168.55.1 <%= infrared_2_camera_port %> 8
-        - >
-          /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
-          <%= depth_camera_topic %>
-          192.168.55.1 <%= depth_camera_port %> 8
-        <% end %>
         <% end %>
         <% if vio_bridge %>
         - >
@@ -209,12 +199,6 @@ windows:
           /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
           <%= thermal_camera_topic %>
           <%= camera_target_ip %> <%= thermal_camera_port %> 8
-        <% if jetson %>
-        - >
-          /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
-          <%= thermal_camera_topic %>
-          192.168.55.1 <%= thermal_camera_port %> 8
-        <% end %>
         <% end %>
         <% if lidar %>
         - >
