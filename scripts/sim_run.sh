@@ -85,7 +85,7 @@ else
 fi
 echo "Terminal: $TERMINAL"
 
-# In dev mode, resources and workspaces are mounted from the host
+# In dev mode, resources are mounted from the host
 if [[ "$DEV" == "true" ]]; then
   SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
   #
@@ -94,11 +94,9 @@ if [[ "$DEV" == "true" ]]; then
   #
   DEV_GND_OPTS="--entrypoint /bin/bash"
   DEV_GND_OPTS+=" -v ${SCRIPT_DIR}/../ground/ground_resources/:/aas/ground_resources:cached"
-  DEV_GND_OPTS+=" -v ${SCRIPT_DIR}/../ground/ground_ws/src:/aas/ground_ws/src:cached"
   #
   DEV_AIR_OPTS="--entrypoint /bin/bash"
   DEV_AIR_OPTS+=" -v ${SCRIPT_DIR}/../aircraft/aircraft_resources/:/aas/aircraft_resources:cached"
-  DEV_AIR_OPTS+=" -v ${SCRIPT_DIR}/../ground/ground_ws/src/ground_system_msgs:/aas/aircraft_ws/src/ground_system_msgs:cached"
   RCPILOT_WORKSPACE_OPTS=" --volume ${SCRIPT_DIR}/../github_clones/rcpilot/build:/workspaces/rcpilot/build:cached"
   RCPILOT_WORKSPACE_OPTS+=" --volume ${SCRIPT_DIR}/../github_clones/rcpilot/install:/workspaces/rcpilot/install:cached"
 fi

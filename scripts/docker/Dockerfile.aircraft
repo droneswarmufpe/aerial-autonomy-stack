@@ -141,19 +141,8 @@ RUN pip install numpy==1.26.4 transitions libtmux dearpygui zmq pymap3d utm cart
 # Add MAVLink 2 C library
 COPY /github_clones/c_library_v2 /usr/local/include/mavlink/
 
-# Build the ROS 2 workspace (NOTE: also includes ground_system_msgs from the ground_ws)
-COPY ground/ground_ws/src/ground_system_msgs /aas/aircraft_ws/src/ground_system_msgs
-WORKDIR /aas/aircraft_ws
-RUN rosdep update
-RUN rosdep install --from-paths src/ --ignore-src --rosdistro humble -y
-# Explicitly use bash, not sh, to source and build the workspace
-RUN bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release"
-
 # Copy resources and configuration files from this repository
 COPY aircraft/aircraft_resources/ /aas/aircraft_resources
-
-# Source the workspaces
-RUN echo "source /aas/aircraft_ws/install/setup.bash" >> /root/.bashrc
 
 # Final config
 WORKDIR /aas

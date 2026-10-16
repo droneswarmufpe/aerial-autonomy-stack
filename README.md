@@ -130,11 +130,6 @@ aerial-autonomy-stack
 │
 ├── ground
 │   ├── ground_resources                            # Ground scripts and patches
-│   ├── ground_ws
-│   │   └── src
-│   │       ├── ground_system                       # Publisher of topic `/tracks`
-│   │       └── ground_system_msgs                  # Custom messages (also built in the aircraft workspace)
-│   │
 │   └── ground.yml.erb                              # Ground docker tmux entrypoint
 │
 ├── scripts
@@ -339,18 +334,11 @@ python3 /aas/simulation_resources/scripts/gz_wind.py --stop_wind
 > <details>
 > <summary>Tip 2: <b>develop within running containers</b> <i>(click to expand)</i></summary>
 > 
-> Launching the `sim_run.sh` script with `DEV=true`, does **not** start the simulation and mounts folders `[aircraft|ground|simulation]_resources`, `ground_ws/src` (and `ground_system_msgs` into the aircraft workspace) as volumes to more easily track, commit, push changes while building and testing them within the containers:
+> Launching the `sim_run.sh` script with `DEV=true`, does **not** start the simulation and mounts folders `[aircraft|ground|simulation]_resources` as volumes to more easily track, commit, push changes while building and testing them within the containers:
 > 
 > ```sh
 > cd aerial-autonomy-stack/scripts/
-> DEV=true ./sim_run.sh                                                                       # Starts one simulation-image, one ground-image, and one aircraft-image where the *_resources/ and ground_ws/src/ folders are mounted from the host
-> ```
-> 
-> To build changes—**made on the host**—in the `Ground` or `QUAD` Xterm terminal:
-> 
-> ```sh
-> cd /aas/aircraft_ws/                                                                        # Or cd /aas/ground_ws/
-> colcon build --symlink-install
+> DEV=true ./sim_run.sh                                                                       # Starts one simulation-image, one ground-image, and one aircraft-image where the *_resources/ folders are mounted from the host
 > ```
 > 
 > To start the simulation, in the `QUAD` Xterm terminal:

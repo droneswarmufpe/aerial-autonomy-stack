@@ -1,4 +1,3 @@
-/aircraft/aircraft_ws/src/ground_system_msgs/
 /aircraft/aircraft_resources/missions/cat*.yaml
 /aircraft/aircraft_resources/missions/mouse.yaml
 /aas-gym/ppo_agent.zip
