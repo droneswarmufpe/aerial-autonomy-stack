@@ -1,5 +1,4 @@
 <% 
-  autopilot = ENV.fetch('AUTOPILOT', 'ardupilot')
   headless = ENV.fetch('HEADLESS', 'false') == 'true'
   camera = ENV.fetch('CAMERA', 'true') == 'true'
   thermal_camera = ENV.fetch('THERMAL_CAMERA', 'true') == 'true'
@@ -35,15 +34,15 @@
   num_vtols.times { |i| drones << { type: 'vtol', index: i } }
 
   if rtf <= 0.0
-    speedup = 10 # 0.0 or negative RTF: limit to 10 speedup for PX4/ArduPilot SITL stability
+    speedup = 10 # 0.0 or negative RTF: limit to 10 speedup for ArduPilot SITL stability
   else
     speedup = rtf.ceil # Positive RTF: round up to the nearest integer
   end
   rtf_string = "<real_time_factor>%g</real_time_factor>" % speedup
 
-  # Compute step size for gymnasium based on physics frequency in the world SDF files
-  physics_freq_hz = (autopilot == 'px4') ? 250 : 500
-  physics_dt = (autopilot == 'px4') ? 0.004 : 0.002
+  # Compute step size for gymnasium based on physics frequency in the world SDF files (ArduPilot worlds use 2ms)
+  physics_freq_hz = 500
+  physics_dt = 0.002
   gym_step_size = (physics_freq_hz / gym_freq_hz).to_i
   gym_step_size = 1 if gym_step_size < 1
 %>
@@ -68,33 +67,23 @@ windows:
           sed -i '/<sensor/,/<\/sensor>/d'  /aas/simulation_resources/aircraft_models/sensor_lidar/model.sdf &&
           <% end %>
           sed -i 's|<real_time_factor>1.0</real_time_factor>|<%= rtf_string %>|' /aas/simulation_resources/simulation_worlds/<%= world %>.sdf &&
-          <% if autopilot == 'ardupilot' %>
           /aas/simulation_resources/aircraft_models/_create_ardupilot_models.sh <%= num_quads %> <%= num_vtols %> <%= camera_pitch %> &&
           /aas/simulation_resources/simulation_worlds/_create_ardupilot_world.sh <%= num_quads %> <%= num_vtols %> <%= world %>.sdf <%= x_offset %> <%= y_offset %> &&
           <% if ENV['CUSTOM_OBJECTS'] == 'true' %>
           /aas/simulation_resources/simulation_worlds/_create_custom_objects_world.sh /aas/simulation_resources/simulation_worlds/populated_ardupilot.sdf &&
           <% end %>
           GZ_SIM_SYSTEM_PLUGIN_PATH=/aas/github_apps/ardupilot_gazebo/build:$GZ_SIM_SYSTEM_PLUGIN_PATH 
-          <% end %>
           GZ_SIM_RESOURCE_PATH=$GZ_SIM_RESOURCE_PATH:/aas/simulation_resources/aircraft_models:/aas/simulation_resources/simulation_worlds 
           GZ_SIM_PHYSICS_ENGINE_PATH=$GZ_SIM_PHYSICS_ENGINE_PATH:/usr/lib/x86_64-linux-gnu/gz-physics-7/engine-plugins/
-          gz sim -v2 <%= start_as_paused ? '' : '-r' %> <%= headless ? '-s' : '' %> <%= autopilot == 'px4' ? "#{world}.sdf" : "populated_ardupilot.sdf" %>   
+          gz sim -v2 <%= start_as_paused ? '' : '-r' %> <%= headless ? '-s' : '' %> populated_ardupilot.sdf   
 
   <% drones.each_with_index do |drone, sitl_instance| %>
   <% 
     drone_id = sitl_instance + 1
     is_quad = drone[:type] == 'quad'
-    if autopilot == 'px4'
-      autostart = is_quad ? 5140 : 5141
-      model_name = is_quad ? "x500_#{sitl_instance}" : "standard_vtol_#{sitl_instance}"
-      x_offset = drone[:index] * 2
-      y_offset = is_quad ? x_offset : x_offset + 2
-      sensor_path = ''
-    elsif autopilot == 'ardupilot'
-      vehicle_config = is_quad ? '-v ArduCopter -f gazebo-iris' : '-v ArduPlane'
-      model_name = is_quad ? "iris_with_ardupilot_#{drone_id}" : "alti_transition_quad_#{drone_id}"
-      sensor_path = is_quad ? 'model/iris/' : ''
-    end
+    vehicle_config = is_quad ? '-v ArduCopter -f gazebo-iris' : '-v ArduPlane'
+    model_name = is_quad ? "iris_with_ardupilot_#{drone_id}" : "alti_transition_quad_#{drone_id}"
+    sensor_path = is_quad ? 'model/iris/' : ''
 
     rgb_camera_topic = "/world/#{world}/model/#{model_name}/#{sensor_path}model/d435/link/base_footprint/sensor/d435_color/image"
     infrared_1_camera_topic = "/world/#{world}/model/#{model_name}/#{sensor_path}model/d435/link/base_footprint/sensor/d435_ired1/image"
@@ -126,17 +115,6 @@ windows:
       thermal_camera_port = 5800
     end
   %>
-  <% if autopilot == 'px4' %>
-  - px4_sitl_<%= drone_id %>:
-      layout: main-horizontal
-      panes:
-        - >
-          sleep <%= sitl_instance * 1.5 %> &&
-          PX4_GZ_MODEL_POSE=<%= "#{x_offset},#{y_offset},0.75,0,0,0" %>
-          PX4_SYS_AUTOSTART=<%= autostart %> ROS_DOMAIN_ID=<%= drone_id %> <%= gnd_container ? "AAS_GROUND_IP=#{sim_subnet}.90.#{ground_id}" : "" %>
-          PX4_UXRCE_DDS_NS="Drone<%= drone_id %>" PX4_UXRCE_DDS_AG_IP=<%= "#{sim_subnet}.90.#{drone_id}" %> PX4_UXRCE_DDS_PORT=8888
-          /aas/github_apps/PX4-Autopilot/build/px4_sitl_default/bin/px4 -i <%= sitl_instance %>
-  <% elsif autopilot == 'ardupilot' %>
   - ardu_sitl_<%= drone_id %>:
       layout: main-horizontal
       panes:
@@ -161,7 +139,6 @@ windows:
           <% else %>
           --out=udp:127.0.0.1:<%= 14550 + sitl_instance %>
           <% end %>
-  <% end %>
         <% if camera && rgbd_camera %>
         - >
           /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge

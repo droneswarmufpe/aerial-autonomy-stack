@@ -120,20 +120,7 @@ docker info | grep -i runtime       # Check `nvidia` runtime is available
 docker run --rm --runtime=nvidia nvcr.io/nvidia/l4t-base:r36.2.0 nvidia-smi    # Test nvidia-smi works in a container with Linux4Tegra
 ```
 
-## Build and Flash PX4 or ArduPilot Firmware
-
-Build the PX4 firmware in `simulation-image` for Pixhawk 6X
-
-```sh
-# Check available PX4 targets
-docker run -it --rm --entrypoint bash simulation-image -c "cd /aas/github_apps/PX4-Autopilot && make list_config_targets"
-```
-
-```sh
-# Build PX4 for Pixhawk 6X (saved in the ~/Downloads folder)
-docker run -it --rm --entrypoint bash -v ~/Downloads:/temp simulation-image -c \
-  "cd /aas/github_apps/PX4-Autopilot && make px4_fmu-v6x_default && cp build/px4_fmu-v6x_default/*.px4 /temp/"
-```
+## Build and Flash ArduPilot Firmware
 
 Build the ArduPilot firmware in `simulation-image` for Pixhawk 6X
 
@@ -154,65 +141,7 @@ docker run -it --rm --entrypoint bash -v ~/Downloads:/temp simulation-image -c \
   "cd /aas/github_apps/ardupilot && ./waf configure --board Pixhawk6X && ./waf plane && cp build/Pixhawk6X/bin/*.apj /temp/"
 ```
 
-To flash the newly created `.px4` or `.apj` file to your autopilot board, follow [QGC's User Guide](https://docs.qgroundcontrol.com/Stable_V5.0/en/qgc-user-guide/setup_view/firmware.html) 
-
-## PX4: Configure 6x's Network and DDS Client
-
-On the Jetson Baseboard's Orin NX, under "Settings" -> "Network", configure the "PCI Ethernet" connection to "Manual" with IPv4 with address 10.10.1.44 and netmask 255.255.255.0
-
-Connect the Pixhawk 6X to the ground station with the USB-C port next to the RJ-45 port
-
-- Access QGroundControl -> "Analyze Tools" -> "MAVLink console"
-- Copy-and-paste the following commands (these will assign an IP to the PX4 autopilot (e.g., 10.10.1.33) and let the `uxrce_dds_client` connect to the Orin NX (e.g., on IP 10.10.1.44) using namespace `Drone1`)
-- Re-start the autopilot 
-
-```sh
-# Configure DDS Client connection to the NX
-mkdir /fs/microsd/etc
-cd /fs/microsd/etc
-echo "uxrce_dds_client stop" > extras.txt
-echo "sleep 3" >> extras.txt
-echo -n "uxrce_dds_client start -p 8888" >> extras.txt
-echo " -h 10.10.1.44 -n Drone1" >> extras.txt
-
-# Check the content of the file (remember to set the proper "DroneX" namespace)
-cat /fs/microsd/etc/extras.txt
-
-# Configure Autopilot network settings
-echo DEVICE=eth0 > /fs/microsd/net.cfg
-echo BOOTPROTO=static >> /fs/microsd/net.cfg
-echo IPADDR=10.10.1.33 >> /fs/microsd/net.cfg
-echo NETMASK=255.255.255.0 >> /fs/microsd/net.cfg
-echo ROUTER=10.10.1.254 >> /fs/microsd/net.cfg
-echo DNS=10.10.1.254 >> /fs/microsd/net.cfg
-
-# Check the content of the file
-cat /fs/microsd/net.cfg
-# Check the current network configuration
-ifconfig
-
-# Apply the new configuration
-netman update
-# Reboot and check new network configuration
-ifconfig
-
-# Set vehicle/MAV_SYS_ID (for multiple QGC connections) and UXRCE_DDS_DOM_ID/ROS_DOMAIN_ID
-param set MAV_SYS_ID 1
-param set UXRCE_DDS_DOM_ID 1
-
-# Optionally
-param set MAV_2_CONFIG 0        # Disable MAVLINK on Ethernet (so Ethernet is used for XRCE-DDS only), if needed, also check params MAV_0_CONFIG, MAV_1_CONFIG
-param set UXRCE_DDS_CFG 1000    # Use DDS over Ethernet
-```
-
-> [!CAUTION]
-> Match `MAV_SYS_ID`, `UXRCE_DDS_DOM_ID`, and `uxrce_dds_client`'s namespace `-n Drone1`, with the `DRONE_ID` used to launch `./deploy_run.sh`: this is the `ROS_DOMAIN_ID` of the aircraft container
-
-One should be able to `ping 10.10.1.44` (the Orin NX) from MAVLink Console on QGC; and `ping 10.10.1.33` (the autopilot) from a terminal on the Orin NX
-
-<!-- 
-- [PX4 documentation](https://github.com/PX4/PX4-Autopilot/blob/main/docs/en/companion_computer/holybro_pixhawk_jetson_baseboard.md#ethernet-setup-using-netplan)
--->
+To flash the newly created `.apj` file to your autopilot board, follow [QGC's User Guide](https://docs.qgroundcontrol.com/Stable_V5.0/en/qgc-user-guide/setup_view/firmware.html) 
 
 ## ArduPilot: Configure 6X's Serial for MAVROS
 

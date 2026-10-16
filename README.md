@@ -2,15 +2,15 @@
 
 *Aerial autonomy stack* (AAS) is an all-in-one software stack to:
 
-1. **Develop** multi-drone autonomy—with ROS2, PX4, and ArduPilot
+1. **Develop** multi-drone autonomy—with ROS2 and ArduPilot
 2. **Simulate** faster-than-real-time perception and control—with YOLOv8 and 3D LiDAR 
 3. **Deploy** in real drones—with JetPack and NVIDIA Orin
 
 <details>
 <summary><b>Feature list</b> <i>(click to expand)</i></summary>
 
-- **PX4 and ArduPilot multi-vehicle** simulation (**quadrotors and VTOLs**)
-- ROS2 action-based autopilot interface (*via* XRCE-DDS or MAVROS)
+- **ArduPilot multi-vehicle** simulation (**quadrotors and VTOLs**)
+- ROS2 action-based autopilot interface (*via* MAVROS)
 - **YOLOv8** (with ONNX GPU Runtimes) and **LiDAR** Odometry (with [KISS-ICP](https://github.com/PRBonn/kiss-icp))
 - 3D worlds for perception-based simulation
 - **Steppable** [Gymnasium environment](https://gymnasium.farama.org/index.html) and **faster-than-real-time**, **multi-instance** simulation
@@ -20,9 +20,8 @@
 - **Windows 11** compatibility *via* WSLg
 - Multi-**Jetson-in-the-loop simulation** (`JETSON=true`) to test NVIDIA- and ARM-based on-board compute
 - Dual network to separate simulated sensors (`SIM_SUBNET`) and inter-vehicle comms (`AIR_SUBNET`)
-- [PX4 Offboard](https://docs.px4.io/main/en/flight_modes/offboard.html) interface (e.g. CTBR/`VehicleRatesSetpoint` for agile, GNSS-denied flight) 
 - [ArduPilot Guided](https://ardupilot.org/copter/docs/ac2_guidedmode.html) interface (i.e. `setpoint_velocity`, `setpoint_accel` references)
-- Logs analysis with [`flight_review`](https://github.com/PX4/flight_review) (`.ulg`), MAVExplorer (`.bin`), and [PlotJuggler](https://github.com/facontidavide/PlotJuggler) (`rosbag`)
+- Logs analysis with MAVExplorer (`.bin`) and [PlotJuggler](https://github.com/facontidavide/PlotJuggler) (`rosbag`)
 
 </details>
 
@@ -37,7 +36,7 @@ flowchart LR
     subgraph sim ["#nbsp;simulation#nbsp;container#nbsp;(amd64)"]
         direction TB
         gz(Gazebo Sim):::resource
-        sitl("[N x] PX4 / ArduPilot SITL"):::resource
+        sitl("[N x] ArduPilot SITL"):::resource
         gz <--> |"gz_bridge"| sitl
     end
 
@@ -78,7 +77,7 @@ flowchart LR
     subgraph sim ["simulation container (amd64) [SIM_SUBNET]"]
         direction TB
         gz(Gazebo Sim):::resource
-        sitl("[N x] PX4 / ArduPilot SITL"):::resource
+        sitl("[N x] ArduPilot SITL"):::resource
         gz <--> |"gz_bridge"| sitl
     end
 
@@ -161,9 +160,7 @@ aerial-autonomy-stack
     │   │   ├── alti_transition_quad                # ArduPilot VTOL model
     │   │   ├── iris_with_ardupilot                 # ArduPilot quad model
     │   │   ├── sensor_camera                       # Camera model
-    │   │   ├── sensor_lidar                        # LiDAR model
-    │   │   ├── standard_vtol                       # PX4 VTOL model
-    │   │   └── x500                                # PX4 quad model
+    │   │   └── sensor_lidar                        # LiDAR model
     │   └── simulation_worlds
     │       ├── apple_orchard.sdf
     │       ├── impalpable_greyness.sdf
@@ -209,12 +206,12 @@ cd aerial-autonomy-stack/scripts/
 
 ![workspace](https://github.com/user-attachments/assets/ad909fcc-69de-44ac-84b3-c5bc7a1c896f)
 
-> On a low-mid range laptop—i7-11 with 16GB RAM and RTX 3060—AAS can simulate a PX4 quad with YOLO and LiDAR at **10x real-time-factor** with flag `RTF=0.0`. Run multiple `sim_run.sh` in parallel adding flag `INSTANCE=1`, `INSTANCE=2`, etc. for even higher throughput. Make sure you run `sudo prime-select nvidia` and rebooted to leverage GPU rendering and compute.
+> On a low-mid range laptop—i7-11 with 16GB RAM and RTX 3060—AAS can simulate faster than real time with flag `RTF=0.0` (ArduPilot SITL speedup is capped at **10x**). Run multiple `sim_run.sh` in parallel adding flag `INSTANCE=1`, `INSTANCE=2`, etc. for even higher throughput. Make sure you run `sudo prime-select nvidia` and rebooted to leverage GPU rendering and compute.
 
 ```sh
 # 1. Start AAS (centralized mode)
 cd aerial-autonomy-stack/scripts
-AUTOPILOT=ardupilot NUM_QUADS=1 NUM_VTOLS=1 WORLD=esefex_fbx CENTRALIZED=true RTF=3.0 ./sim_run.sh
+NUM_QUADS=1 NUM_VTOLS=1 WORLD=esefex_fbx CENTRALIZED=true RTF=3.0 ./sim_run.sh
 ```
 
 ### Camera switches
@@ -439,11 +436,8 @@ Distributed under the MIT License. See `LICENSE.txt` for more information. Copyr
 - ArduPilot SITL for Iris uses option -f that also sets "external": True, this is not the case for the Alti Transition from ArduPilot/SITL_Models
 - QGC is started with a virtual joystick (with low throttle if using only VTOLs and centered throttle if there are quads), this is reflective of real-life but note that this counts as "RC loss" when switching focus from one autopilot instance to another
 - On non-configured real-life AP, missing topics: ros2 topic echo /mavros/local_position/odom ros2 topic echo /mavros/home_position/home
-- Gazebo WindEffects plugin is disabled/not working for PX4 standard_vtol
 - Command 178 MAV_CMD_DO_CHANGE_SPEED is accepted but not effective in changing speed for ArduPilot VTOL
 - In ArdupilotInterface's action callbacks, std::shared_lock<std::shared_mutex> lock(node_data_mutex_); could be used on the reads of lat_, lon_, alt_
-- QGC does not save roll and pitch in the telemetry bar for PX4 VTOLs (MAV_TYPE 22)
-- PX4 quad max tilt is limited by the anti-windup gain (zero it to deactivate it): const float arw_gain = 2.f / _gain_vel_p(0);
 
 ## TODOs
 
@@ -451,9 +445,9 @@ LiDAR-inertial Odometry and SLAM
 - LiDAR driver https://github.com/Livox-SDK/livox_ros_driver2 in aircraft-image (the LiDAR should publish on topic `/lidar_points` for KISS-ICP)
 - Integrate [SPARK-FAST-LIO](https://github.com/MIT-SPARK/spark-fast-lio) or [SuperOdom](https://github.com/superxslam/SuperOdom) as additional baselines
 - Create a 3D world.sdf for LIO-based navigation and mapping
-- Create a 3D world.sdf WITHOUT GPS PLUGIN (and configure PX4/ArduPilot accordingly) for LIO-based navigation and mapping
+- Create a 3D world.sdf WITHOUT GPS PLUGIN (and configure ArduPilot accordingly) for LIO-based navigation and mapping
 - Add examples in the README.md showing exploration of these world with 3D mapping
 - Develop own/custom SLAM/collaborative SLAM approach
-- Study how to compare/use/fuse LIO with PX4/ArduPilot state estimation
+- Study how to compare/use/fuse LIO with ArduPilot state estimation
 
 -->

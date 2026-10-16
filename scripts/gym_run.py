@@ -23,7 +23,6 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", type=str, default="step", choices=["step", "speedup", "vectorenv-speedup", "learn"])
     parser.add_argument("--repetitions", type=int, default=1),
-    parser.add_argument("--autopilot", type=str, default="ardupilot", choices=["ardupilot"])
     parser.add_argument("--camera", action=argparse.BooleanOptionalAction, default=True, help="Enable/Disable Camera")
     parser.add_argument("--lidar", action=argparse.BooleanOptionalAction, default=True, help="Enable/Disable Lidar")
     parser.add_argument("--num_quads", type=int, default=1)
@@ -33,7 +32,6 @@ def main():
         env = gym.make(
             "AASEnv-v0",
             gym_freq_hz=1,
-            autopilot=args.autopilot,
             camera=args.camera,
             lidar=args.lidar,
             num_quads=args.num_quads,
@@ -63,7 +61,6 @@ def main():
             "AASEnv-v0",
             instance=1,
             gym_freq_hz=CTRL_FREQ_HZ,
-            autopilot=args.autopilot,
             camera=args.camera,
             lidar=args.lidar,
             num_quads=args.num_quads,
@@ -110,7 +107,6 @@ def main():
                     "AASEnv-v0",
                     instance=rank,
                     gym_freq_hz=freq_hz,
-                    autopilot=args.autopilot,
                     camera=args.camera,
                     lidar=args.lidar,
                     num_quads=args.num_quads,

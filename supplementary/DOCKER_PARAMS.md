@@ -8,7 +8,6 @@ Starts the simulation, ground, and aircraft containers (SITL by default, Jetson-
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `AUTOPILOT` | `ardupilot` | Autopilot stack (`px4` is removed). |
 | `HEADLESS` | `false` | Disable GUI when `true`. |
 | `CAMERA` | `true` | Enable camera sensors. |
 | `LIDAR` | `false` | Enable LiDAR sensors. |
@@ -46,7 +45,6 @@ Runs the aircraft container on deployment/HITL setups and can also start the gro
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `AUTOPILOT` | `ardupilot` | Autopilot stack (`px4` is removed). |
 | `HEADLESS` | `true` | Disable GUI when `true`. |
 | `CAMERA` | `true` | Enable camera sensors. |
 | `LIDAR` | `true` | Enable LiDAR sensors. |

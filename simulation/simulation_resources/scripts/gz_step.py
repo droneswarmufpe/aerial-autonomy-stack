@@ -15,15 +15,11 @@ def main():
     args = parser.parse_args()
     
     world_name = os.environ.get('WORLD', 'default')
-    autopilot = os.environ.get('AUTOPILOT', 'px4')
 
     gz_node = gz.transport13.Node()
     
     req = WorldControl()
-    # if autopilot == 'px4':
-    #     req.multi_step = int(args.step_sec * 250) # PX4 SDF worlds use 250 steps per simulation step (4ms)
-    if autopilot == 'ardupilot':
-        req.multi_step = int(args.step_sec * 500) # ArduPilot SDF worlds use 250 steps per simulation step (2ms)
+    req.multi_step = int(args.step_sec * 500) # ArduPilot SDF worlds use 500 steps per simulation second (2ms)
     req.pause = True # Stops the simulation after the step
 
     result, response = gz_node.request(

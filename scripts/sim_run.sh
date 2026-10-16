@@ -4,7 +4,6 @@
 set -e
 
 # Set up the simulation
-AUTOPILOT="${AUTOPILOT:-ardupilot}" # Options: ardupilot, px4 (removed support)
 HEADLESS="${HEADLESS:-false}" # Options: true, false (default)
 CAMERA="${CAMERA:-true}" # Options: true (default), false
 THERMAL_CAMERA="${THERMAL_CAMERA:-false}" # Options: true (default), false
@@ -25,7 +24,7 @@ CENTRALIZED="${CENTRALIZED:-false}" # Options: true, false (default) - If true, 
 X_OFFSET="${X_OFFSET:-0}" # X offset for drone placement in the world (default = 0)
 Y_OFFSET="${Y_OFFSET:-0}" # Y offset for drone placement in the world (default = 0)
 #
-RCPILOT="${RCPILOT:-true}" # Options: true, false (default) - If true, the rcpilot repo will be cloned and built. This is useful for testing the rcpilot SDK and its integration with the AAS.
+RCPILOT="${RCPILOT:-false}" # Options: true, false (default) - If true, the rcpilot repo will be cloned and built. This is useful for testing the rcpilot SDK and its integration with the AAS.
 DEV="${DEV:-false}" # Options: true, false (default)
 JETSON="${JETSON:-false}" # Options: true, false (default) - If true, SITL and cameras are streamed to an external Jetson (on the same LAN as this PC) instead of aircraft containers
 JETSON_IPS="${JETSON_IPS:-192.168.55.1}" # Comma-separated Jetson IPs, one per drone in drone ID order, used when JETSON=true (default = 192.168.55.1)
@@ -62,8 +61,8 @@ if [[ "$JETSON" == "true" ]]; then
   fi
 fi
 if [[ "$VIO_BRIDGE" == "true" ]]; then
-  if [[ "$AUTOPILOT" != "ardupilot" || "$NUM_VTOLS" != "0" || "$CAMERA" != "true" || "$RGBD_CAMERA" != "true" || "$JETSON" == "true" || "$RCPILOT" != "true" ]]; then
-    echo "VIO_BRIDGE requires ArduPilot Iris SITL, RCPILOT=true, CAMERA=true, RGBD_CAMERA=true, NUM_VTOLS=0, JETSON=false" >&2
+  if [[ "$NUM_VTOLS" != "0" || "$CAMERA" != "true" || "$RGBD_CAMERA" != "true" || "$JETSON" == "true" || "$RCPILOT" != "true" ]]; then
+    echo "VIO_BRIDGE requires RCPILOT=true, CAMERA=true, RGBD_CAMERA=true, NUM_VTOLS=0, JETSON=false" >&2
     exit 1
   fi
 fi
@@ -184,7 +183,7 @@ DOCKER_CMD="docker run -it --rm \
   --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
   --volume ${PARENT_DIR}/simulation/simulation_resources/custom_objects:/aas/simulation_resources/custom_objects \
   --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
-  --env AUTOPILOT=$AUTOPILOT --env HEADLESS=$HEADLESS --env CAMERA=$CAMERA --env THERMAL_CAMERA=$THERMAL_CAMERA --env RGBD_CAMERA=$RGBD_CAMERA --env LIDAR=$LIDAR --env CAMERA_PITCH=$CAMERA_PITCH \
+  --env HEADLESS=$HEADLESS --env CAMERA=$CAMERA --env THERMAL_CAMERA=$THERMAL_CAMERA --env RGBD_CAMERA=$RGBD_CAMERA --env LIDAR=$LIDAR --env CAMERA_PITCH=$CAMERA_PITCH \
   --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS --env WORLD=$WORLD \
   --env VIO_BRIDGE=$VIO_BRIDGE $VIO_SIM_OPTS \
   --env SIMULATED_TIME=true --env RTF=$RTF --env START_AS_PAUSED=$START_AS_PAUSED \
@@ -261,7 +260,7 @@ launch_aircraft_containers() {
       --volume ${PARENT_DIR}/simulation/simulation_resources/custom_objects:/aas/custom_objects \
       --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
       --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
-      --env AUTOPILOT=$AUTOPILOT --env HEADLESS=$HEADLESS --env CAMERA=$CAMERA --env LIDAR=$LIDAR \
+      --env HEADLESS=$HEADLESS --env CAMERA=$CAMERA --env LIDAR=$LIDAR \
       --env DRONE_TYPE=$drone_type --env DRONE_ID=$DRONE_ID \
       --env VIO_BRIDGE=$VIO_BRIDGE --env CAMERA_PITCH=$CAMERA_PITCH $VIO_AIR_OPTS \
       --env SIMULATED_TIME=true --env CENTRALIZED=$CENTRALIZED \

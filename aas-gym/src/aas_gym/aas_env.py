@@ -18,7 +18,6 @@ class AASEnv(gym.Env):
     def __init__(self,
             instance: int=0,
             gym_freq_hz: int=50,
-            autopilot: str="ardupilot",
             camera: bool=True,
             lidar: bool=True,
             num_quads: int=1,
@@ -54,7 +53,6 @@ class AASEnv(gym.Env):
 
         # AAS Setup
         self.HEADLESS = False if self.render_mode == "human" else True # Only display GUIs if render_mode is "human"
-        self.AUTOPILOT = autopilot
         self.CAMERA = camera
         self.LIDAR = lidar
         self.NUM_QUADS = num_quads
@@ -67,7 +65,7 @@ class AASEnv(gym.Env):
         # self.GROUND_ID = "101" # Unused
         #
         self.GND_CONTAINER = False # Do NOT use the ground-image (QGC runs in the simulation container)
-        self.RTF = 15.0 # Note: RTFs > 10 can destabilize PX4/ArduPilot SITL
+        self.RTF = 15.0 # Note: RTFs > 10 can destabilize ArduPilot SITL
         self.START_AS_PAUSED = True # Start the simulation paused and manually step with gz-sim WorldControl
         self.INSTANCE = instance
         #
@@ -172,7 +170,6 @@ class AASEnv(gym.Env):
                 "NVIDIA_DRIVER_CAPABILITIES": "all",
                 "XDG_RUNTIME_DIR": env_xdg,
                 "GST_DEBUG": "3",
-                "AUTOPILOT": self.AUTOPILOT,
                 "HEADLESS": str(self.HEADLESS).lower(),
                 "CAMERA": str(self.CAMERA).lower(),
                 "LIDAR": str(self.LIDAR).lower(),
@@ -226,7 +223,6 @@ class AASEnv(gym.Env):
                     "NVIDIA_DRIVER_CAPABILITIES": "all",
                     "XDG_RUNTIME_DIR": env_xdg,
                     "GST_DEBUG": "3",
-                    "AUTOPILOT": self.AUTOPILOT,
                     "HEADLESS": str(self.HEADLESS).lower(),
                     "CAMERA": str(self.CAMERA).lower(),
                     "LIDAR": str(self.LIDAR).lower(),

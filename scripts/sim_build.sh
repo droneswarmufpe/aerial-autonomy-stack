@@ -42,7 +42,6 @@ LIB_REPOS=( # Format: "URL;BRANCH;LOCAL_DIR_NAME"
   # Simulation image
   "https://github.com/ArduPilot/ardupilot.git;Copter-4.6.2;ardupilot"
   "https://github.com/ArduPilot/ardupilot_gazebo.git;main;ardupilot_gazebo"
-  "https://github.com/PX4/flight_review.git;main;flight_review"
   # Ground image
   "https://github.com/mavlink/c_library_v2;master;c_library_v2"
   "https://github.com/mavlink-router/mavlink-router;master;mavlink-router"
@@ -126,7 +125,7 @@ if [ "$BUILD_DOCKER" = "true" ]; then
   git lfs pull
 
   if [ "$CONTAINER" = "all" ]; then
-    # The first build takes ~15' and creates a 21GB image (8GB for ros-humble-desktop with nvidia runtime, 10GB for PX4 and ArduPilot SITL)
+    # The first build takes ~15' and creates a 21GB image (8GB for ros-humble-desktop with nvidia runtime, ArduPilot SITL)
     docker build -t simulation-image -f "${SCRIPT_DIR}/docker/Dockerfile.simulation" "${SCRIPT_DIR}/.."
 
     if [ "${RCPILOT:-false}" = "true" ]; then
@@ -140,7 +139,7 @@ if [ "$BUILD_DOCKER" = "true" ]; then
     fi
   else
     if should_build_container "simulation"; then
-      # The first build takes ~15' and creates a 21GB image (8GB for ros-humble-desktop with nvidia runtime, 10GB for PX4 and ArduPilot SITL)
+      # The first build takes ~15' and creates a 21GB image (8GB for ros-humble-desktop with nvidia runtime, ArduPilot SITL)
       docker build -t simulation-image -f "${SCRIPT_DIR}/docker/Dockerfile.simulation" "${SCRIPT_DIR}/.."
     fi
 
