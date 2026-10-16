@@ -19,7 +19,7 @@
 - Multi-**Jetson-in-the-loop simulation** (`JETSON=true`) to test NVIDIA- and ARM-based on-board compute
 - Dual network to separate simulated sensors (`SIM_SUBNET`) and inter-vehicle comms (`AIR_SUBNET`)
 - [ArduPilot Guided](https://ardupilot.org/copter/docs/ac2_guidedmode.html) interface (i.e. `setpoint_velocity`, `setpoint_accel` references)
-- Logs analysis with MAVExplorer (`.bin`) and [PlotJuggler](https://github.com/facontidavide/PlotJuggler) (`rosbag`)
+- Logs analysis with MAVExplorer (`.bin`)
 
 </details>
 

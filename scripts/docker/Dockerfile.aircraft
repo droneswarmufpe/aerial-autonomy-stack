@@ -112,13 +112,6 @@ RUN pip3 install --no-cache-dir --upgrade pip \
 ################################################################################
 FROM ros2-gst-mav-yolo-image AS aircraft-dev-image
 
-# Install PlotJuggler
-RUN apt-get update && \
-    apt-get install -y ros-humble-plotjuggler \
-    ros-humble-plotjuggler-ros \
-    && apt clean \
-    && rm -rf /var/lib/apt/lists/*
-
 ################################################################################
 # Stage 7 - ?GB ################################################################
 ################################################################################
