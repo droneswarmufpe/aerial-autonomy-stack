@@ -2,7 +2,8 @@
 #
 # Populates an SDF world file with custom objects described in
 # custom_objects_config.json, converting global (lat/lon/alt) positions to
-# local (x/y/z) using the world's origin, or using local positions directly.
+# local (x/y/z) using the world's <spherical_coordinates> origin, or using
+# local positions directly.
 #
 # Usage: ./_create_custom_targets_world.sh <full_path_to_world>
 
@@ -95,7 +96,7 @@ resolve_global_position() {
     fi
 
     if [[ -z "$ORIGIN_LAT" || -z "$ORIGIN_LON" ]]; then
-        log_warn "Object id $obj_label uses global_position but origin.lat/origin.lon are not set in $CUSTOM_OBJECTS_CONFIG_FILE. Skipping this object."
+        log_warn "Object id $obj_label uses global_position but neither the world nor $CUSTOM_OBJECTS_CONFIG_FILE defines an origin. Skipping this object."
         return 1
     fi
 
@@ -236,6 +237,30 @@ process_object() {
 # Setup
 # --------------------------------------------------------------------------
 
+# Set ORIGIN_LAT/ORIGIN_LON, used to convert global positions to local x/y.
+# The world's <spherical_coordinates> is the origin Gazebo and ArduPilot use,
+# so it takes precedence. The config's "origin" is only a fallback for worlds
+# without spherical coordinates, and a warning is printed if the two differ.
+resolve_origin() {
+    local config_lat config_lon world_coords
+    config_lat=$(jq -r '.origin.lat // empty' "$CUSTOM_OBJECTS_CONFIG_FILE")
+    config_lon=$(jq -r '.origin.lon // empty' "$CUSTOM_OBJECTS_CONFIG_FILE")
+
+    if world_coords=$(python3 "$EXTRACT_SPHERICAL_COORDS_SCRIPT" "$WORLD_FILE_PATH" 2>/dev/null); then
+        IFS=',' read -r ORIGIN_LAT ORIGIN_LON _ _ <<< "$world_coords"
+        if [[ -n "$config_lat" && -n "$config_lon" ]] && \
+           awk -v a="$config_lat" -v b="$ORIGIN_LAT" -v c="$config_lon" -v d="$ORIGIN_LON" \
+               'BEGIN { exit !((a - b) ^ 2 + (c - d) ^ 2 > 1e-14) }'; then
+            log_warn "The origin in $CUSTOM_OBJECTS_CONFIG_FILE ($config_lat, $config_lon) differs from the world's spherical coordinates ($ORIGIN_LAT, $ORIGIN_LON). Using the world's."
+        fi
+    else
+        log_warn "No <spherical_coordinates> found in $WORLD_FILE_PATH. Using the origin from $CUSTOM_OBJECTS_CONFIG_FILE, if any."
+        ORIGIN_LAT="$config_lat"
+        ORIGIN_LON="$config_lon"
+    fi
+    echo "Origin for global positions: $ORIGIN_LAT, $ORIGIN_LON"
+}
+
 parse_args() {
     if [[ "$#" -ne 1 ]]; then
         echo "Usage: $0 <full_path_to_world>"
@@ -263,6 +288,7 @@ main() {
 
     CUSTOM_OBJECTS_CONFIG_FILE="${SCRIPT_DIR}/../custom_objects/imav_hotspots_config.json"
     LATLON_TO_XY_SCRIPT="${SCRIPT_DIR}/../custom_objects/latlon_to_xy.py"
+    EXTRACT_SPHERICAL_COORDS_SCRIPT="${SCRIPT_DIR}/../patches/extract_spherical_coords.py"
     MODELS_DIR="$(dirname "$WORLD_FILE_PATH")"
 
     if [[ ! -f "$CUSTOM_OBJECTS_CONFIG_FILE" ]]; then
@@ -277,11 +303,7 @@ main() {
 
     echo "Adding custom objects from $CUSTOM_OBJECTS_CONFIG_FILE"
 
-    # World origin (lat/lon), used to convert global positions to local x/y.
-    # Only required if at least one object below uses global_position; if
-    # none do, the config doesn't need an "origin" field at all.
-    ORIGIN_LAT=$(jq -r '.origin.lat // empty' "$CUSTOM_OBJECTS_CONFIG_FILE")
-    ORIGIN_LON=$(jq -r '.origin.lon // empty' "$CUSTOM_OBJECTS_CONFIG_FILE")
+    resolve_origin
 
     local all_models_xml="" model_count=0 include_xml
 
