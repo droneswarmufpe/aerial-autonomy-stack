@@ -187,7 +187,8 @@ aerial-autonomy-stack
 > On Windows 11, read [`REQUIREMENTS_WSL.md`](/supplementary/REQUIREMENTS_WSL.md) to setup WSLg and the requirements
 
 ```sh
-sudo apt update && sudo apt install -y git git-lfs xterm xfonts-base && git lfs install
+sudo apt update && sudo apt install -y git git-lfs && git lfs install
+sudo apt install -y xterm xfonts-base # Only needed on WSL or with TERMINAL=xterm (GNOME Terminal is used by default on Ubuntu)
 
 git clone https://github.com/droneswarmufpe/aerial-autonomy-stack.git
 cd aerial-autonomy-stack/scripts/

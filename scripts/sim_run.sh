@@ -15,7 +15,7 @@ AIR_SUBNET="${AIR_SUBNET:-10.22}" # Inter-vehicle subnet (default = 10.22) Note:
 SIM_ID="${SIM_ID:-100}" # Last byte of the simulation container IP (default = 100)
 GROUND_ID="${GROUND_ID:-101}" # Last byte of the simulation container IP (default = 101)
 #
-NUM_QUADS="${NUM_QUADS:-1}" # Number of quadcopters (default = 1)
+NUM_QUADS="${NUM_QUADS:-2}" # Number of quadcopters (default = 1)
 NUM_VTOLS="${NUM_VTOLS:-0}" # Number of VTOLs (default = 0)
 WORLD="${WORLD:-esefex_fbx}" # Options: impalpable_greyness (default), apple_orchard, shibuya_crossing, swiss_town
 CENTRALIZED="${CENTRALIZED:-false}" # Options: true, false (default) - If true, all cameras will stream to the ground container. If false, each camera will stream to its own IP (useful for testing network conditions and scalability)
@@ -52,6 +52,13 @@ else
   exit 1
 fi
 echo "Desktop environment: $DESK_ENV"
+# Terminal emulator used to launch the containers
+if [[ "$DESK_ENV" == "gnome" ]]; then
+  TERMINAL="${TERMINAL:-gnome}" # Options: gnome (default on GNOME), xterm
+else
+  TERMINAL="${TERMINAL:-xterm}" # Options: xterm (default on WSL), gnome
+fi
+echo "Terminal: $TERMINAL"
 
 # In dev mode, resources and workspaces are mounted from the host
 if [[ "$DEV" == "true" ]]; then
@@ -102,22 +109,41 @@ fi
 
 # Function to calculate terminal position based on ID
 calculate_terminal_position() {
-  local xterm_id=$1
+  local term_id=$1
   SCREEN_SCALE=$((SCREEN_HEIGHT * 100 / 1080)) # Full HD = 100%
-  X_POS=$(( (50 + xterm_id * 50) * SCREEN_SCALE / 100 ))
-  Y_POS=$(( (xterm_id * 125) * SCREEN_SCALE / 100 ))
+  X_POS=$(( (50 + term_id * 50) * SCREEN_SCALE / 100 ))
+  Y_POS=$(( (term_id * 125) * SCREEN_SCALE / 100 ))
 }
 
-# Setup terminal dimensions and enable Shift+Ctrl+c, Shift+Ctrl+v copy-paste in Xterm
+# Setup terminal dimensions and enable Shift+Ctrl+c, Shift+Ctrl+v copy-paste in Xterm (built into GNOME Terminal)
 TERM_COLS=160
 TERM_ROWS=32
-FONT_SIZE=10
+FONT_SIZE=10 # Xterm only
+TERM_ZOOM=0.9 # GNOME Terminal only (uses the default profile)
 XTERM_CONFIG_ARGS=(
   -xrm 'XTerm*selectToClipboard: true'
   -xrm 'XTerm*VT100.Translations: #override \
     Ctrl Shift <Key>C: copy-selection(CLIPBOARD) \n\
     Ctrl Shift <Key>V: insert-selection(CLIPBOARD)'
 )
+
+# Function to run a command in a new terminal window: launch_terminal <title> <position_id> <command>
+launch_terminal() {
+  local title=$1
+  local term_id=$2
+  local cmd=$3
+  calculate_terminal_position $term_id
+  if [[ "$TERMINAL" == "gnome" ]]; then
+    # --wait keeps the client alive until the command exits, the final read emulates xterm's -hold
+    # Note: window positioning is ignored on Wayland, only the size is applied
+    gnome-terminal --wait --title="$title" --zoom=$TERM_ZOOM \
+      --geometry="${TERM_COLS}x${TERM_ROWS}+${X_POS}+${Y_POS}" \
+      -- bash -c "$cmd; echo; read -n 1 -s -p 'Process exited, press any key to close...'" &
+  else
+    xterm "${XTERM_CONFIG_ARGS[@]}" -title "$title" -fa Monospace -fs $FONT_SIZE -bg black -fg white \
+      -geometry "${TERM_COLS}x${TERM_ROWS}+${X_POS}+${Y_POS}" -hold -e bash -c "$cmd" &
+  fi
+}
 
 PARENT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 
@@ -146,9 +172,7 @@ if [[ "$DESK_ENV" == "wsl" ]]; then
   DOCKER_CMD="$DOCKER_CMD $WSL_OPTS"
 fi
 DOCKER_CMD="$DOCKER_CMD ${DEV_SIM_OPTS} simulation-image"
-calculate_terminal_position 0
-xterm "${XTERM_CONFIG_ARGS[@]}" -title "Simulation" -fa Monospace -fs $FONT_SIZE -bg black -fg white \
-  -geometry "${TERM_COLS}x${TERM_ROWS}+${X_POS}+${Y_POS}" -hold -e bash -c "$DOCKER_CMD" &
+launch_terminal "Simulation" 0 "$DOCKER_CMD"
 
 if [[ "$HITL" == "false" ]]; then
 
@@ -177,9 +201,7 @@ if [[ "$HITL" == "false" ]]; then
     else
       DOCKER_CMD="$DOCKER_CMD ${DEV_GND_OPTS} ground-image"
     fi
-    calculate_terminal_position 1
-    xterm "${XTERM_CONFIG_ARGS[@]}" -title "Ground" -fa Monospace -fs $FONT_SIZE -bg black -fg white \
-      -geometry "${TERM_COLS}x${TERM_ROWS}+${X_POS}+${Y_POS}" -hold -e bash -c "$DOCKER_CMD" &
+    launch_terminal "Ground" 1 "$DOCKER_CMD"
   fi
 
   # Initialize a counter for the drone IDs
@@ -217,9 +239,7 @@ if [[ "$HITL" == "false" ]]; then
       else
         DOCKER_CMD="$DOCKER_CMD ${DEV_AIR_OPTS} aircraft-image"
       fi
-      calculate_terminal_position $(($DRONE_ID + 1))
-      xterm "${XTERM_CONFIG_ARGS[@]}" -title "${drone_type^^} $DRONE_ID" -fa Monospace -fs $FONT_SIZE -bg black -fg white \
-        -geometry "${TERM_COLS}x${TERM_ROWS}+${X_POS}+${Y_POS}" -hold -e bash -c "$DOCKER_CMD" &
+      launch_terminal "${drone_type^^} $DRONE_ID" $(($DRONE_ID + 1)) "$DOCKER_CMD"
       DRONE_ID=$((DRONE_ID + 1))
     done
   }
@@ -244,6 +264,14 @@ read -n 1 -s # Wait for user input
 # Cleanup function
 cleanup() {
   DOCKER_PIDS=$(pgrep -f "docker run.*inst${INSTANCE}" 2>/dev/null || true)
+  # Record the bash wrappers before stopping the containers (GNOME Terminal windows close when their wrapper exits)
+  WRAPPER_PIDS=""
+  for dpid in $DOCKER_PIDS; do
+    wpid=$(ps -o ppid= -p $dpid 2>/dev/null | tr -d ' ')
+    if [[ -n "$wpid" && "$(ps -o comm= -p $wpid 2>/dev/null)" == "bash" ]]; then # Never kill gnome-terminal-server itself
+      WRAPPER_PIDS+="$wpid "
+    fi
+  done
   CONTAINER_NAMES=("${SIM_CONT_NAME}" "${GND_CONT_NAME}" "aircraft-container-inst${INSTANCE}")
   CONTAINERS_TO_STOP=""
   for name in "${CONTAINER_NAMES[@]}"; do
@@ -261,8 +289,13 @@ cleanup() {
       PARENT_PID=$(ps -o ppid= -p $dpid 2>/dev/null | tr -d ' ') # Determine process pids with a parent pid
       if [ -n "$PARENT_PID" ]; then
         echo "Killing terminal process $dpid"
-        kill $dpid
+        kill $dpid 2>/dev/null || true
       fi
+    done
+  fi
+  if [[ "$TERMINAL" == "gnome" ]]; then
+    for wpid in $WRAPPER_PIDS; do
+      kill $wpid 2>/dev/null && echo "Closing terminal window $wpid" || true
     done
   fi
   echo "All-clear"
