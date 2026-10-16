@@ -81,8 +81,6 @@ DEV_REPOS=( # Format: "URL;BRANCH;LOCAL_DIR_NAME"
   # Add repos for PDS-Swarm
   "git@github.com:droneswarmufpe/Chorus.git;main;Chorus"
   "git@github.com:droneswarmufpe/MAVKit.git;main;MAVKit"
-  "git@github.com:droneswarmufpe/RoboChart2Python-PDS;main;RoboChart2Python-PDS"
-  "git@github.com:droneswarmufpe/Sistemas.git;main;Sistemas"
   "git@github.com:droneswarmufpe/Projeto-Enxame-Drones.git;main;Projeto-Enxame-Drones"
 )
 
