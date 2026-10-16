@@ -226,10 +226,9 @@ windows:
   <% end %>
 
   <% unless gnd_container %>
-  - zenoh_and_qgc:
+  - qgc:
       layout: even-horizontal
       panes:
-        - zenoh-bridge-ros2dds
         <% if headless %>
         - echo "Headless mode, not launching QGroundControl."
         <% else %>

@@ -20,7 +20,6 @@
 - **Windows 11** compatibility *via* WSLg
 - Multi-**Jetson-in-the-loop simulation** (`JETSON=true`) to test NVIDIA- and ARM-based on-board compute
 - Dual network to separate simulated sensors (`SIM_SUBNET`) and inter-vehicle comms (`AIR_SUBNET`)
-- [Zenoh](https://github.com/eclipse-zenoh/zenoh-plugin-ros2dds) inter-vehicle ROS2 bridge
 - [PX4 Offboard](https://docs.px4.io/main/en/flight_modes/offboard.html) interface (e.g. CTBR/`VehicleRatesSetpoint` for agile, GNSS-denied flight) 
 - [ArduPilot Guided](https://ardupilot.org/copter/docs/ac2_guidedmode.html) interface (i.e. `setpoint_velocity`, `setpoint_accel` references)
 - Logs analysis with [`flight_review`](https://github.com/PX4/flight_review) (`.ulg`), MAVExplorer (`.bin`), and [PlotJuggler](https://github.com/facontidavide/PlotJuggler) (`rosbag`)
@@ -128,14 +127,14 @@ aerial-autonomy-stack
 │           └── aas_env.py                          # aerial-autonomy-stack as a Gymnasium environment
 │
 ├── aircraft
-│   ├── aircraft_resources                          # Aircraft scripts, patches, models, and Zenoh config
+│   ├── aircraft_resources                          # Aircraft scripts, patches, and models
 │   └── aircraft.yml.erb                            # Aircraft docker tmux entrypoint
 │
 ├── ground
-│   ├── ground_resources                            # Ground scripts, patches, and Zenoh config
+│   ├── ground_resources                            # Ground scripts and patches
 │   ├── ground_ws
 │   │   └── src
-│   │       ├── ground_system                       # Publisher of topic `/tracks` broadcasted by Zenoh
+│   │       ├── ground_system                       # Publisher of topic `/tracks`
 │   │       └── ground_system_msgs                  # Custom messages (also built in the aircraft workspace)
 │   │
 │   └── ground.yml.erb                              # Ground docker tmux entrypoint

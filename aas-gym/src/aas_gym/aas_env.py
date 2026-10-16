@@ -66,7 +66,7 @@ class AASEnv(gym.Env):
         self.SIM_ID = "100"
         # self.GROUND_ID = "101" # Unused
         #
-        self.GND_CONTAINER = False # Do NOT use the ground-image to run Zenoh (nor QGC)
+        self.GND_CONTAINER = False # Do NOT use the ground-image (QGC runs in the simulation container)
         self.RTF = 15.0 # Note: RTFs > 10 can destabilize PX4/ArduPilot SITL
         self.START_AS_PAUSED = True # Start the simulation paused and manually step with gz-sim WorldControl
         self.INSTANCE = instance
