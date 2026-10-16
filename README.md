@@ -316,35 +316,7 @@ python3 /aas/simulation_resources/scripts/gz_wind.py --stop_wind
 > ```
 > </details>
 > <details>
-> <summary>Tip 2: <b>develop within running containers</b> <i>(click to expand)</i></summary>
-> 
-> Launching the `sim_run.sh` script with `DEV=true`, does **not** start the simulation and mounts folders `[aircraft|ground|simulation]_resources` as volumes to more easily track, commit, push changes while building and testing them within the containers:
-> 
-> ```sh
-> cd aerial-autonomy-stack/scripts/
-> DEV=true ./sim_run.sh                                                                       # Starts one simulation-image, one ground-image, and one aircraft-image where the *_resources/ folders are mounted from the host
-> ```
-> 
-> To start the simulation, in the `QUAD` Xterm terminal:
-> 
-> ```sh
-> tmuxinator start -p /aas/aircraft.yml.erb
-> ```
-> 
-> In the `Ground` Xterm terminal:
-> ```sh
-> tmuxinator start -p /aas/ground.yml.erb
-> ```
-> 
-> In the `Simulation` Xterm terminal:
-> ```sh
-> tmuxinator start -p /aas/simulation.yml.erb
-> ```
-> 
-> To end the simulation, in each terminal detach Tmux with `Ctrl + b`, then `d`; kill all lingering processes with `tmux kill-server && pkill -f gz`
-> </details>
-> <details>
-> <summary>Tip 3: periodically run <b>Docker cleanups</b> <i>(click to expand)</i></summary>
+> <summary>Tip 2: periodically run <b>Docker cleanups</b> <i>(click to expand)</i></summary>
 >
 > ```sh
 > docker ps -a                          # List containers

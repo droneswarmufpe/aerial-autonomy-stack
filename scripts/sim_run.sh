@@ -25,7 +25,6 @@ X_OFFSET="${X_OFFSET:-0}" # X offset for drone placement in the world (default =
 Y_OFFSET="${Y_OFFSET:-0}" # Y offset for drone placement in the world (default = 0)
 #
 RCPILOT="${RCPILOT:-false}" # Options: true, false (default) - If true, the rcpilot repo will be cloned and built. This is useful for testing the rcpilot SDK and its integration with the AAS.
-DEV="${DEV:-false}" # Options: true, false (default)
 JETSON="${JETSON:-false}" # Options: true, false (default) - If true, SITL and cameras are streamed to an external Jetson (on the same LAN as this PC) instead of aircraft containers
 JETSON_IPS="${JETSON_IPS:-192.168.55.1}" # Comma-separated Jetson IPs, one per drone in drone ID order, used when JETSON=true (default = 192.168.55.1)
 GND_CONTAINER="${GND_CONTAINER:-true}" # Options: true (default), false
@@ -84,22 +83,6 @@ else
   TERMINAL="${TERMINAL:-xterm}" # Options: xterm (default on WSL), gnome
 fi
 echo "Terminal: $TERMINAL"
-
-# In dev mode, resources are mounted from the host
-if [[ "$DEV" == "true" ]]; then
-  SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-  #
-  DEV_SIM_OPTS="--entrypoint /bin/bash"
-  DEV_SIM_OPTS+=" -v ${SCRIPT_DIR}/../simulation/simulation_resources/:/aas/simulation_resources:cached"
-  #
-  DEV_GND_OPTS="--entrypoint /bin/bash"
-  DEV_GND_OPTS+=" -v ${SCRIPT_DIR}/../ground/ground_resources/:/aas/ground_resources:cached"
-  #
-  DEV_AIR_OPTS="--entrypoint /bin/bash"
-  DEV_AIR_OPTS+=" -v ${SCRIPT_DIR}/../aircraft/aircraft_resources/:/aas/aircraft_resources:cached"
-  RCPILOT_WORKSPACE_OPTS=" --volume ${SCRIPT_DIR}/../github_clones/rcpilot/build:/workspaces/rcpilot/build:cached"
-  RCPILOT_WORKSPACE_OPTS+=" --volume ${SCRIPT_DIR}/../github_clones/rcpilot/install:/workspaces/rcpilot/install:cached"
-fi
 
 # Create docker networks
 docker network inspect $SIM_NET_NAME >/dev/null 2>&1 || docker network create --subnet=${SIM_SUBNET}.0.0/16 $SIM_NET_NAME
@@ -202,7 +185,7 @@ fi
 if [[ "$DESK_ENV" == "wsl" ]]; then
   DOCKER_CMD="$DOCKER_CMD $WSL_OPTS"
 fi
-DOCKER_CMD="$DOCKER_CMD ${DEV_SIM_OPTS} simulation-image"
+DOCKER_CMD="$DOCKER_CMD simulation-image"
 launch_terminal "Simulation" 0 "$DOCKER_CMD"
 
 if [[ "$GND_CONTAINER" == "true" ]]; then
@@ -214,7 +197,6 @@ if [[ "$GND_CONTAINER" == "true" ]]; then
     --volume ${PARENT_DIR}/simulation/simulation_resources/custom_objects:/aas/custom_objects \
     --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
     --volume ${PARENT_DIR}/github_clones/rcpilot/src:/workspaces/rcpilot/src:cached \
-    ${RCPILOT_WORKSPACE_OPTS} \
     --volume ${PARENT_DIR}/github_clones/rcpilot/log:/workspaces/rcpilot/log:cached \
     --volume ${PARENT_DIR}/github_clones/rcpilot/sdk:/workspaces/rcpilot/sdk:cached \
     --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
@@ -230,9 +212,9 @@ if [[ "$GND_CONTAINER" == "true" ]]; then
     DOCKER_CMD="$DOCKER_CMD $WSL_OPTS"
   fi
   if [[ "$RCPILOT" == "true" ]]; then
-    DOCKER_CMD="$DOCKER_CMD ${DEV_GND_OPTS} rc-ground-image"
+    DOCKER_CMD="$DOCKER_CMD rc-ground-image"
   else
-    DOCKER_CMD="$DOCKER_CMD ${DEV_GND_OPTS} ground-image"
+    DOCKER_CMD="$DOCKER_CMD ground-image"
   fi
   launch_terminal "Ground" 1 "$DOCKER_CMD"
 fi
@@ -253,7 +235,6 @@ launch_aircraft_containers() {
       --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
       --volume ${PARENT_DIR}/github_clones/rcpilot/src:/workspaces/rcpilot/src:cached \
       --volume ${PARENT_DIR}/github_clones/rcpilot/sdk:/workspaces/rcpilot/sdk:cached \
-      ${RCPILOT_WORKSPACE_OPTS} \
       --volume ${PARENT_DIR}/github_clones/rcpilot/log:/workspaces/rcpilot/log:cached \
       --volume ${PARENT_DIR}/simulation/simulation_resources/custom_objects:/aas/custom_objects \
       --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
@@ -274,9 +255,9 @@ launch_aircraft_containers() {
       DOCKER_CMD="$DOCKER_CMD $WSL_OPTS"
     fi
     if [[ "$RCPILOT" == "true" ]]; then
-      DOCKER_CMD="$DOCKER_CMD ${DEV_AIR_OPTS} rc-aircraft-image"
+      DOCKER_CMD="$DOCKER_CMD rc-aircraft-image"
     else
-      DOCKER_CMD="$DOCKER_CMD ${DEV_AIR_OPTS} aircraft-image"
+      DOCKER_CMD="$DOCKER_CMD aircraft-image"
     fi
     launch_terminal "${drone_type^^} $DRONE_ID" $(($DRONE_ID + 1)) "$DOCKER_CMD"
     DRONE_ID=$((DRONE_ID + 1))
