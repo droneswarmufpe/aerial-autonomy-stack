@@ -1,4 +1,5 @@
 import json
+import os
 import random
 from shapely.geometry import Point, Polygon
 
@@ -32,7 +33,8 @@ while len(objects) < NUM_OBJECTS:
 
 output = {"targets": objects}
 
-with open("/home/pc-pds-3/jgocm/aerial-autonomy-stack/simulation/simulation_resources/patches/target_config.json", "w") as f:
+OUTPUT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "custom_objects", "target_config.json")
+with open(OUTPUT_PATH, "w") as f:
     json.dump(output, f, indent=2)
 
 print(f"Generated {NUM_OBJECTS} positions inside the polygon.")

@@ -38,25 +38,3 @@ Clones external repositories and builds the simulation, ground, and aircraft ima
 | --- | --- | --- |
 | `CLEAN_BUILD` | `false` | Remove `github_clones`, delete images, and prune the builder cache before rebuilding. |
 | `CLONE_ONLY` | `false` | Clone repositories without building Docker images. |
-
-## scripts/deploy_run.sh
-
-Runs the aircraft container on deployment/HITL setups and can also start the ground container.
-
-| Variable | Default | Description |
-| --- | --- | --- |
-| `HEADLESS` | `true` | Disable GUI when `true`. |
-| `CAMERA` | `true` | Enable camera sensors. |
-| `LIDAR` | `true` | Enable LiDAR sensors. |
-| `SIM_SUBNET` | `10.42` | Simulation subnet base. |
-| `AIR_SUBNET` | `10.22` | Inter-vehicle subnet base. |
-| `SIM_ID` | `100` | Last byte of the simulation container IP. |
-| `GROUND_ID` | `101` | Last byte of the ground container IP. |
-| `DRONE_TYPE` | `quad` | Drone type (`quad` or `vtol`). |
-| `DRONE_ID` | `1` | Drone ID inside the container. |
-| `NUM_QUADS` | `1` | Number of quadrotors (used by ground container). |
-| `NUM_VTOLS` | `0` | Number of VTOLs (used by ground container). |
-| `DEV` | `false` | Mount workspaces/resources from host and use `/bin/bash` as entrypoint. |
-| `HITL` | `false` | Run in HITL mode when `true`. |
-| `GND_CONTAINER` | `true` | Inform aircraft container whether a ground container is present. |
-| `GROUND` | `false` | When `true`, launch the ground container instead of aircraft. |

@@ -15,7 +15,6 @@
 - **Steppable** [Gymnasium environment](https://gymnasium.farama.org/index.html) and **faster-than-real-time**, **multi-instance** simulation
 - Gazebo's wind effects plugin
 - **Dockerized simulation** based on [`nvcr.io/nvidia/cuda:12.8.1-cudnn-runtime-ubuntu22.04`](https://catalog.ngc.nvidia.com/orgs/nvidia/containers/cuda/tags)
-- **Dockerized deployment** based on [`nvcr.io/nvidia/l4t-jetpack:r36.4.0`](https://catalog.ngc.nvidia.com/orgs/nvidia/containers/l4t-jetpack/tags)
 - **Windows 11** compatibility *via* WSLg
 - Multi-**Jetson-in-the-loop simulation** (`JETSON=true`) to test NVIDIA- and ARM-based on-board compute
 - Dual network to separate simulated sensors (`SIM_SUBNET`) and inter-vehicle comms (`AIR_SUBNET`)
@@ -139,9 +138,6 @@ aerial-autonomy-stack
 │   │   ├── Dockerfile.ground                       # Docker image for ground system simulation and deployment
 │   │   ├── Dockerfile.rc_ground                    # Ground image with rcpilot (used when RCPILOT=true)
 │   │   └── Dockerfile.simulation                   # Docker image for SITL simulation
-│   │
-│   ├── deploy_build.sh                             # Build `Dockerfile.aircraft` for arm64/Orin
-│   ├── deploy_run.sh                               # Start the aircraft docker on arm64/Orin or the ground docker on amd64
 │   │
 │   ├── gym_run.py                                  # Examples for the Gymnasium aas-gym package
 │   │

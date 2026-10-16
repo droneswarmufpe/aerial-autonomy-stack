@@ -156,7 +156,7 @@ SERIAL2_PROTOCOL MAVLink2
 ```
 
 > [!CAUTION]
-> Match ArduPilot parameter `SYSID_THISMAV` with the `DRONE_ID` used to launch `./deploy_run.sh`: this is the `ROS_DOMAIN_ID` of the aircraft container
+> Match ArduPilot parameter `SYSID_THISMAV` with the drone's `DRONE_ID`: this is the `ROS_DOMAIN_ID` of the aircraft container
 
 <!-- 
 - [ArduPilot serial configuration](https://ardupilot.org/copter/docs/common-serial-options.html)
