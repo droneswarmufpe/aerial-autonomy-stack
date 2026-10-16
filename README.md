@@ -180,18 +180,6 @@ cd aerial-autonomy-stack/scripts/
 # Note: the 1st build takes ~30GB of space and ~25' with good internet (`Ctrl + c` and restart if needed)
 ```
 
-<div align="right">
-  <a href="https://github.com/JacopoPan/aerial-autonomy-stack/actions/workflows/simulation-amd64-build.yml">
-    <img src="https://github.com/JacopoPan/aerial-autonomy-stack/actions/workflows/simulation-amd64-build.yml/badge.svg" alt="simulation-image amd64">
-  </a>
-  <a href="https://github.com/JacopoPan/aerial-autonomy-stack/actions/workflows/ground-amd64-build.yml">
-    <img src="https://github.com/JacopoPan/aerial-autonomy-stack/actions/workflows/ground-amd64-build.yml/badge.svg" alt="ground-image amd64">
-  </a>
-  <a href="https://github.com/JacopoPan/aerial-autonomy-stack/actions/workflows/aircraft-amd64-build.yml">
-    <img src="https://github.com/JacopoPan/aerial-autonomy-stack/actions/workflows/aircraft-amd64-build.yml/badge.svg" alt="aircraft-image amd64">
-  </a>
-</div>
-
 ## Simulation
 
 ![workspace](https://github.com/user-attachments/assets/ad909fcc-69de-44ac-84b3-c5bc7a1c896f)
