@@ -29,9 +29,10 @@ if [[ "$BASE_WORLD_WITH_PATH" != /* ]]; then
   BASE_WORLD_WITH_PATH="${SCRIPT_DIR}/${BASE_WORLD_WITH_PATH}"
 fi
 
-# Create a copy of the template to work on
-BASE_WORLD_DIR=$(dirname "$BASE_WORLD_WITH_PATH")
-OUTPUT_FILE="${BASE_WORLD_DIR}/populated_ardupilot.sdf"
+# Create a copy of the template to work on (generated files never go next to the source worlds)
+OUTPUT_DIR="${AAS_GENERATED_DIR:-/tmp/aas_generated}"
+mkdir -p "$OUTPUT_DIR"
+OUTPUT_FILE="${OUTPUT_DIR}/populated_ardupilot.sdf"
 cp "$BASE_WORLD_WITH_PATH" "$OUTPUT_FILE"
 
 # Use the REAL_TIME_FACTOR environment variable if set, otherwise keep the world's own value (default 1.0)

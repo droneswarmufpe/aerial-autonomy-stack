@@ -18,6 +18,10 @@ THERMAL_CAMERA=${THERMAL_CAMERA:-true}
 
 BASE_PORT=9002
 
+# Generated models are written here, never next to the source models
+OUTPUT_DIR="${AAS_GENERATED_DIR:-/tmp/aas_generated}"
+mkdir -p "$OUTPUT_DIR"
+
 # Paths to the base models
 QUAD_MODEL_PATH="/aas/simulation_resources/aircraft_models/iris_with_ardupilot"
 VTOL_MODEL_PATH="/aas/simulation_resources/aircraft_models/alti_transition_quad"
@@ -33,7 +37,7 @@ if [ ! -d "$VTOL_MODEL_PATH" ] && [ "$NUM_VTOLS" -gt 0 ]; then
     exit 1
 fi
 
-echo "Creating ${NUM_QUADS} quadcopter(s) and ${NUM_VTOLS} VTOL(s)..."
+echo "Creating ${NUM_QUADS} quadcopter(s) and ${NUM_VTOLS} VTOL(s) in ${OUTPUT_DIR}..."
 
 create_model() {
     local BASE_MODEL_PATH=$1
@@ -41,7 +45,7 @@ create_model() {
     
     BASE_MODEL_NAME=$(basename "$BASE_MODEL_PATH")
     NEW_MODEL_NAME="${BASE_MODEL_NAME}_${DRONE_ID}"
-    NEW_MODEL_DIR="${BASE_MODEL_PATH}/../${NEW_MODEL_NAME}"
+    NEW_MODEL_DIR="${OUTPUT_DIR}/${NEW_MODEL_NAME}"
 
     mkdir -p "$NEW_MODEL_DIR"
     cp "$BASE_MODEL_PATH"/model.sdf "$NEW_MODEL_DIR"/

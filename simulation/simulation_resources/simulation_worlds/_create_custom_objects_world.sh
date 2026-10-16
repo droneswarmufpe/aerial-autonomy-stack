@@ -5,7 +5,7 @@
 # local (x/y/z) using the world's <spherical_coordinates> origin, or using
 # local positions directly.
 #
-# Usage: ./_create_custom_targets_world.sh <full_path_to_world>
+# Usage: ./_create_custom_objects_world.sh <full_path_to_world>
 
 # Exit immediately if a command exits with a non-zero status
 set -e
@@ -264,7 +264,7 @@ resolve_origin() {
 parse_args() {
     if [[ "$#" -ne 1 ]]; then
         echo "Usage: $0 <full_path_to_world>"
-        echo "Example: ./_create_custom_targets_world.sh /aas/simulation_resources/simulation_worlds/populated_ardupilot.sdf"
+        echo "Example: ./_create_custom_objects_world.sh /tmp/aas_generated/populated_ardupilot.sdf"
         exit 1
     fi
     echo "$1"
@@ -289,7 +289,7 @@ main() {
     CUSTOM_OBJECTS_CONFIG_FILE="${SCRIPT_DIR}/../custom_objects/imav_hotspots_config.json"
     LATLON_TO_XY_SCRIPT="${SCRIPT_DIR}/../custom_objects/latlon_to_xy.py"
     EXTRACT_SPHERICAL_COORDS_SCRIPT="${SCRIPT_DIR}/../patches/extract_spherical_coords.py"
-    MODELS_DIR="$(dirname "$WORLD_FILE_PATH")"
+    MODELS_DIR="$SCRIPT_DIR" # Object models live next to the source worlds
 
     if [[ ! -f "$CUSTOM_OBJECTS_CONFIG_FILE" ]]; then
         log_warn "custom_object config file not found at $CUSTOM_OBJECTS_CONFIG_FILE. No objects will be added."
