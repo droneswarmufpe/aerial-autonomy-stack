@@ -31,14 +31,22 @@ def pose(element):
     return result
 
 
+def find_model(models, name):
+    """Return <name>/model.sdf from models/ or one of its subdirectories (e.g. aircraft/vehicles, aircraft/sensors)."""
+    for candidate in [models / name, *sorted(models.glob(f'*/{name}'))]:
+        if (candidate / 'model.sdf').is_file():
+            return candidate / 'model.sdf'
+    raise FileNotFoundError(f'Model {name} not found in {models}')
+
+
 def calibration(models, camera_pitch):
-    text = (models / 'iris_with_ardupilot/model.sdf').read_text()
+    text = find_model(models, 'iris_with_ardupilot').read_text()
     iris = ET.fromstring(text.replace('<!--CAMERA_PITCH_PLACEHOLDER-->', str(camera_pitch))).find('./model/model[@name="iris"]')
     imu_link = iris.find('./link[@name="imu_link"]')
     imu = imu_link.find('./sensor[@name="imu_sensor"]')
     imu_pose = pose(imu_link) @ pose(imu)
     mount = iris.find('./include[name="d435"]')
-    d435 = ET.parse(models / 'd435/model.sdf').getroot().find('model')
+    d435 = ET.parse(find_model(models, 'd435')).getroot().find('model')
     link = d435.find('./link[@name="base_footprint"]')
     # Optical axes (right, down, forward) expressed in Gazebo camera (forward,left,up).
     optical = np.eye(4)

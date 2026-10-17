@@ -148,7 +148,7 @@ attitude_to_sdf() {
     awk -v r="$roll" -v p="$pitch" -v y="$yaw" 'BEGIN { printf "%g %g %g\n", r + 90, p + 0, -y + 0 }'
 }
 
-# Resolve and validate an object's model name against MODELS_DIR.
+# Resolve and validate an object's model name against MODELS_DIRS.
 # Prints the model name on stdout, or nothing (with a warning) if the
 # object should be skipped.
 resolve_model() {
@@ -159,7 +159,7 @@ resolve_model() {
     model=$(default_if_empty "$model" "ime-target" "$obj_label" "model")
 
     if ! model_exists "$model"; then
-        log_warn "Model '$model' not found in $MODELS_DIR. Skipping this object."
+        log_warn "Model '$model' not found in ${MODELS_DIRS[*]}. Skipping this object."
         return 1
     fi
 
@@ -178,12 +178,11 @@ resolve_static() {
 model_exists() {
     local model_name="$1"
 
-    if [[ ! -d "$MODELS_DIR" ]]; then
-        log_warn "models directory not found at $MODELS_DIR"
-        return 1
-    fi
-
-    [[ -d "${MODELS_DIR}/${model_name}" ]]
+    local dir
+    for dir in "${MODELS_DIRS[@]}"; do
+        [[ -d "${dir}/${model_name}" ]] && return 0
+    done
+    return 1
 }
 
 # --------------------------------------------------------------------------
@@ -287,9 +286,9 @@ main() {
     WORLD_FILE_PATH="$(resolve_world_file_path "$WORLD_FILE_PATH")"
 
     CUSTOM_OBJECTS_CONFIG_FILE="${SCRIPT_DIR}/../custom_objects/imav_hotspots_config.json"
-    LATLON_TO_XY_SCRIPT="${SCRIPT_DIR}/../custom_objects/latlon_to_xy.py"
-    EXTRACT_SPHERICAL_COORDS_SCRIPT="${SCRIPT_DIR}/../patches/extract_spherical_coords.py"
-    MODELS_DIR="$SCRIPT_DIR" # Object models live next to the source worlds
+    LATLON_TO_XY_SCRIPT="${SCRIPT_DIR}/latlon_to_xy.py"
+    EXTRACT_SPHERICAL_COORDS_SCRIPT="${SCRIPT_DIR}/extract_spherical_coords.py"
+    MODELS_DIRS=("${SCRIPT_DIR}/../objects" "${SCRIPT_DIR}/../world_models") # Placeable objects first, then world models
 
     if [[ ! -f "$CUSTOM_OBJECTS_CONFIG_FILE" ]]; then
         log_warn "custom_object config file not found at $CUSTOM_OBJECTS_CONFIG_FILE. No objects will be added."

@@ -154,8 +154,8 @@ VIO_SIM_OPTS=""
 VIO_AIR_OPTS=""
 if [[ "$VIO_BRIDGE" == "true" ]]; then
   # Use identical source geometry for Gazebo and calibration, even with older images.
-  VIO_SIM_OPTS="--volume ${PARENT_DIR}/simulation/simulation_resources/aircraft_models/d435:/aas/simulation_resources/aircraft_models/d435:ro --volume ${PARENT_DIR}/simulation/simulation_resources/aircraft_models/iris_with_ardupilot:/aas/simulation_resources/aircraft_models/iris_with_ardupilot:ro"
-  VIO_AIR_OPTS="--volume ${PARENT_DIR}/simulation/simulation_resources/aircraft_models:/aas/vio_models:ro"
+  VIO_SIM_OPTS="--volume ${PARENT_DIR}/simulation/simulation_resources/aircraft/sensors/d435:/aas/simulation_resources/aircraft/sensors/d435:ro --volume ${PARENT_DIR}/simulation/simulation_resources/aircraft/vehicles/iris_with_ardupilot:/aas/simulation_resources/aircraft/vehicles/iris_with_ardupilot:ro"
+  VIO_AIR_OPTS="--volume ${PARENT_DIR}/simulation/simulation_resources/aircraft:/aas/vio_models:ro"
 fi
 
 # Launch the simulation container

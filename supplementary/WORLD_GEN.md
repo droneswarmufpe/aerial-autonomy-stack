@@ -754,7 +754,7 @@ world.sdf
     </details>
     
 
-- Após criar todos os arquivos na estrutura mostrada acima e ter adicionado o arquivo .glb do mundo exportado do blender, basta copiar os arquivos na pasta “aerial-autonomy-stack/simulation/simulation_resources/simulation_worlds”
+- Após criar todos os arquivos na estrutura mostrada acima e ter adicionado o arquivo .glb do mundo exportado do blender, basta copiar o arquivo .sdf do mundo para a pasta “aerial-autonomy-stack/simulation/simulation_resources/worlds” e a pasta do modelo do mundo para “aerial-autonomy-stack/simulation/simulation_resources/world_models”
 - Para executar, basta utilizar o nome do mundo na inicialização da simulação com a flag WORLD, ex.:
 
 ```sh

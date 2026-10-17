@@ -37,9 +37,9 @@ Caso essa opção não apareça, então o dono do modelo não autoriza o seu *do
 # Adicionando o modelo ao mundo
 
 ## Adicionando o modelo ao repositório
-- Com o arquivo do modelo pronto, será necessário criar uma pasta para ele em `simulation/simulation_resources/simulation_worlds/`. Logo, partindo da raíz do repositório:
+- Com o arquivo do modelo pronto, será necessário criar uma pasta para ele em `simulation/simulation_resources/objects/`. Logo, partindo da raíz do repositório:
 ```bash
-mkdir simulation/simulation_resources/simulation_worlds/<nome-do-modelo>
+mkdir simulation/simulation_resources/objects/<nome-do-modelo>
 ```
 - Dentro da pasta criada, é preciso criar dois arquivos `model.sdf` e `model.config`.
     - O formato deles é padronizado entre os modelos usados na simulação, sendo necessário apenas modificar as informações específicas do modelo que está sedo adicionado.
@@ -106,7 +106,7 @@ mkdir simulation/simulation_resources/simulation_worlds/<nome-do-modelo>
     É recomendado que a pasta do modelo e o arquivo do modelo baixado tenham o mesmo nome para evitar confusões.
 - Após isso, é preciso criar uma pasta chamada `meshes` dentro da mesma pasta do modelo que foi criada e onde foram adicionados os arquivos anteriormente.
 ```bash
-mkdir simulation/simulation_resources/simulation_worlds/<nome-do-modelo>/meshes
+mkdir simulation/simulation_resources/objects/<nome-do-modelo>/meshes
 ```
 - Após a criação da pasta, adicione nela o arquivo **.glb** ou **.fbx** baixado anteriormente.
 

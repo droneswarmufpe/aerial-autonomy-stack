@@ -141,19 +141,18 @@ aerial-autonomy-stack
 │   └── sim_run.sh                                  # Start the simulation (SITL, or Jetson-in-the-loop with JETSON=true)
 │
 └── simulation
-    ├── simulation_resources
-    │   ├── aircraft_models
-    │   │   ├── alti_transition_quad                # ArduPilot VTOL model
-    │   │   ├── iris_with_ardupilot                 # ArduPilot quad model
-    │   │   ├── d435                                # Intel RealSense D435 RGB-D camera model
-    │   │   └── sensor_thermal_camera               # Thermal camera model
-    │   └── simulation_worlds
-    │       ├── apple_orchard.sdf
-    │       ├── impalpable_greyness.sdf
-    │       ├── shibuya_crossing.sdf
-    │       └── swiss_town.sdf
+    ├── simulation_resources
+    │   ├── aircraft
+    │   │   ├── vehicles                            # ArduPilot quad (iris_with_ardupilot) and VTOL (alti_transition_quad) models
+    │   │   ├── sensors                             # Camera models (d435 RGB-D, sensor_thermal_camera)
+    │   │   └── payloads                            # Droppable payload models (grenade, fog_generator)
+    │   ├── worlds                                  # Gazebo world files (<world>.sdf)
+    │   ├── world_models                            # Models included by the world files
+    │   ├── objects                                 # Models that can be placed as custom objects
+    │   ├── custom_objects                          # Custom object configurations
+    │   └── scripts                                 # World generation and simulation helper scripts
     │
-    └── simulation.yml.erb                          # Simulation docker tmux entrypoint
+    └── simulation.yml.erb                          # Simulation docker tmux entrypoint
 ```
 </details>
 

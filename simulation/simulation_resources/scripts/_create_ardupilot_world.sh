@@ -5,7 +5,7 @@ set -e
 
 if [ "$#" -lt 3 ] || [ "$#" -gt 5 ]; then
   echo "Usage: $0 <num_quads> <num_vtols> <full_path_to_empty_world> [X_OFFSET] [Y_OFFSET]"
-  echo "Example: ./_create_ardupilot_world.sh 2 1 /aas/simulation_resources/simulation_worlds/impalpable_greyness.sdf 10 5"
+  echo "Example: ./_create_ardupilot_world.sh 2 1 /aas/simulation_resources/worlds/impalpable_greyness.sdf 10 5"
   exit 1
 fi
 
@@ -23,10 +23,10 @@ echo "BASE_WORLD_WITH_PATH: $BASE_WORLD_WITH_PATH"
 echo "X_OFFSET: $X_OFFSET"
 echo "Y_OFFSET: $Y_OFFSET"
 
-# Resolve the path relative to the script's directory if it's not absolute
+# Resolve the path relative to the worlds directory if it's not absolute
 if [[ "$BASE_WORLD_WITH_PATH" != /* ]]; then
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  BASE_WORLD_WITH_PATH="${SCRIPT_DIR}/${BASE_WORLD_WITH_PATH}"
+  BASE_WORLD_WITH_PATH="${SCRIPT_DIR}/../worlds/${BASE_WORLD_WITH_PATH}"
 fi
 
 # Create a copy of the template to work on (generated files never go next to the source worlds)

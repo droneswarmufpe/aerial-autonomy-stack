@@ -23,8 +23,8 @@ OUTPUT_DIR="${AAS_GENERATED_DIR:-/tmp/aas_generated}"
 mkdir -p "$OUTPUT_DIR"
 
 # Paths to the base models
-QUAD_MODEL_PATH="/aas/simulation_resources/aircraft_models/iris_with_ardupilot"
-VTOL_MODEL_PATH="/aas/simulation_resources/aircraft_models/alti_transition_quad"
+QUAD_MODEL_PATH="/aas/simulation_resources/aircraft/vehicles/iris_with_ardupilot"
+VTOL_MODEL_PATH="/aas/simulation_resources/aircraft/vehicles/alti_transition_quad"
 
 # Check if model directories exist
 if [ ! -d "$QUAD_MODEL_PATH" ] && [ "$NUM_QUADS" -gt 0 ]; then

@@ -8,7 +8,7 @@ gz service -s /world/$WORLD_NAME/create \
   --reqtype gz.msgs.EntityFactory \
   --reptype gz.msgs.Boolean \
   --timeout 3000 \
-  --req 'sdf_filename: "/aas/simulation_resources/simulation_worlds/aruco_5x5_0/model.sdf", name: "aruco_0", allow_renaming: true, pose: {position: {x: 10, y: -20, z: 2.0}}'
+  --req 'sdf_filename: "/aas/simulation_resources/objects/aruco_5x5_0/model.sdf", name: "aruco_0", allow_renaming: true, pose: {position: {x: 10, y: -20, z: 2.0}}'
 ```
 
 ## Spawn Several Markers
@@ -28,7 +28,7 @@ do
     --reqtype gz.msgs.EntityFactory \
     --reptype gz.msgs.Boolean \
     --timeout 3000 \
-    --req "sdf_filename: \"/aas/simulation_resources/simulation_worlds/aruco_5x5_0/model.sdf\", name: \"$1\", allow_renaming: true, pose: {position: {x: $2, y: $3, z: $4}}"
+    --req "sdf_filename: \"/aas/simulation_resources/objects/aruco_5x5_0/model.sdf\", name: \"$1\", allow_renaming: true, pose: {position: {x: $2, y: $3, z: $4}}"
 done
 ```
 

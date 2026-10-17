@@ -21,6 +21,14 @@ from gz.msgs10.image_pb2 import Image as GzImage
 from gz.msgs10.camera_info_pb2 import CameraInfo
 
 
+def find_model(models, name):
+    """Return <name>/model.sdf from models/ or one of its subdirectories (e.g. aircraft/vehicles, aircraft/sensors)."""
+    for candidate in [models / name, *sorted(models.glob(f'*/{name}'))]:
+        if (candidate / 'model.sdf').is_file():
+            return candidate / 'model.sdf'
+    raise FileNotFoundError(f'Model {name} not found in {models}')
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--binary', required=True)
@@ -62,14 +70,14 @@ def main():
                 if kind == 'sensors': ET.SubElement(plugin, 'render_engine').text = 'ogre2'
             outer = ET.SubElement(world, 'model', name='iris_with_ardupilot_1')
             iris = ET.SubElement(outer, 'model', name='iris')
-            source = ET.fromstring((args.models / 'iris_with_ardupilot/model.sdf').read_text().replace('<!--CAMERA_PITCH_PLACEHOLDER-->', '1.5707'))
+            source = ET.fromstring(find_model(args.models, 'iris_with_ardupilot').read_text().replace('<!--CAMERA_PITCH_PLACEHOLDER-->', '1.5707'))
             link = source.find('./model/model/link[@name="imu_link"]')
             ET.SubElement(link, 'gravity').text = 'false'
             iris.append(link)
             anchor = ET.SubElement(iris, 'joint', name='test_anchor', type='fixed')
             ET.SubElement(anchor, 'parent').text = 'world'
             ET.SubElement(anchor, 'child').text = 'imu_link'
-            camera = ET.parse(args.models / 'd435/model.sdf').getroot().find('model')
+            camera = ET.parse(find_model(args.models, 'd435')).getroot().find('model')
             # Remove unrelated cameras and meshes; preserve both actual IR sensor definitions.
             camera_link = camera.find('link')
             for child in list(camera_link):
