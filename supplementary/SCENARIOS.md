@@ -117,6 +117,19 @@ Nothing under `simulation_resources/` is modified, so every run starts from the 
 
 **What needs an image rebuild?** The `scenarios/` and `objects/` folders are mounted from your computer, so adding or editing a scenario or an object model takes effect on the next run, without a rebuild. Worlds (`worlds/`, `world_models/`) and aircraft models (`aircraft/`) are part of `simulation-image`: rebuild it after changing them (`CONTAINER=simulation ./sim_build.sh`). In the Gymnasium environment, a scenario given by name is read from the image, so pass a file path to use an edited scenario without rebuilding.
 
+## Running the world again
+
+To try changes to a scenario without restarting the containers, use the `gz_sim` window of the `Simulation` terminal. Its pane runs three separate commands, so each one is in the shell history:
+
+1. Stop Gazebo with `Ctrl + c`.
+2. Edit the scenario file on your computer (the `scenarios/` folder is mounted into the simulation container).
+3. Press the up arrow twice and `Enter` to run `build_world.py` again: it regenerates `/tmp/aas_generated/world.sdf` from the edited scenario.
+4. Press the up arrow twice and `Enter` to run `gz sim` again with the new world.
+
+ArduPilot SITL and the camera streams keep running in the other windows and reconnect to the new Gazebo. This works for changes to the custom objects and to the vehicles' poses. SITL may report a GPS glitch when a vehicle's position jumps, which clears by itself; restart its `ardu_sitl_N` window if you need a clean autopilot state.
+
+Changes to the number of vehicles, their cameras, `vio_bridge`, or the `world` need a new run of `sim_run.sh`: the SITL instances, camera streams, and ArduPilot's home location are set up from the scenario when the containers start.
+
 ## Stereo VIO
 
 Set `"vio_bridge": true` on a quad to publish its D435 infrared stereo pair and the Gazebo IMU in its ROS domain and start OpenVINS in its aircraft container. It requires `camera` and `rgbd_camera` on that quad, `RCPILOT=true`, and `JETSON=false`. Quads without `vio_bridge` in the same scenario keep the regular camera streams.
