@@ -106,7 +106,7 @@ python3 simulation/simulation_resources/scripts/scenario.py /path/to/my_scenario
 
 ## What happens at startup
 
-1. `sim_run.sh` resolves the scenario with [`scenario.py`](/simulation/simulation_resources/scripts/scenario.py) and mounts the file into every container at `/aas/scenario.json`. Each aircraft container gets its own drone's type, camera pitch, and VIO setting.
+1. `sim_run.sh` resolves the scenario with [`scenario.py`](/simulation/simulation_resources/scripts/scenario.py) and mounts the `scenarios/` folder into the simulation container at `/aas/simulation_resources/scenarios` (a scenario file outside that folder is mounted on its own at `/aas/scenario.json`). The `SCENARIO_FILE` environment variable holds the scenario's path inside the simulation container. Each aircraft container gets its own drone's type, camera pitch, and VIO setting.
 2. In the simulation container, [`build_world.py`](/simulation/simulation_resources/scripts/build_world.py) writes everything Gazebo needs to `/tmp/aas_generated/`:
     - one model per drone (`iris_with_ardupilot_1/`, ...) with its own name, topics, ArduPilot port, camera pitch, and only the cameras it enables
     - `world.sdf`: the scenario's world with ArduPilot's physics settings, the drones at their poses, and the custom objects
@@ -115,7 +115,7 @@ python3 simulation/simulation_resources/scripts/scenario.py /path/to/my_scenario
 
 Nothing under `simulation_resources/` is modified, so every run starts from the same files.
 
-**What needs an image rebuild?** Scenario files and the models in `objects/` are mounted from your computer, so editing a scenario or adding an object model takes effect on the next run. Worlds (`worlds/`, `world_models/`) and aircraft models (`aircraft/`) are part of `simulation-image`: rebuild it after changing them (`CONTAINER=simulation ./sim_build.sh`). In the Gymnasium environment, a scenario given by name is read from the image, so pass a file path to use an edited scenario without rebuilding.
+**What needs an image rebuild?** The `scenarios/` and `objects/` folders are mounted from your computer, so adding or editing a scenario or an object model takes effect on the next run, without a rebuild. Worlds (`worlds/`, `world_models/`) and aircraft models (`aircraft/`) are part of `simulation-image`: rebuild it after changing them (`CONTAINER=simulation ./sim_build.sh`). In the Gymnasium environment, a scenario given by name is read from the image, so pass a file path to use an edited scenario without rebuilding.
 
 ## Stereo VIO
 

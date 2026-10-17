@@ -189,7 +189,7 @@ SCENARIO=imav_hotspots CENTRALIZED=true RTF=3.0 ./sim_run.sh
 
 ### Scenarios
 
-A scenario is a JSON file that sets the world, the quads and VTOLs (each with its own cameras and pose), and the custom objects. `SCENARIO` is a file name in [`simulation/simulation_resources/scenarios/`](/simulation/simulation_resources/scenarios) (without `.json`) or a path to any `.json` file; it defaults to `default` (`esefex_fbx` with one quad). Scenario files are mounted into the containers, so editing one needs no image rebuild.
+A scenario is a JSON file that sets the world, the quads and VTOLs (each with its own cameras and pose), and the custom objects. `SCENARIO` is a file name in [`simulation/simulation_resources/scenarios/`](/simulation/simulation_resources/scenarios) (without `.json`) or a path to any `.json` file; it defaults to `default` (`esefex_fbx` with one quad). The `scenarios/` folder is mounted into the simulation container, so scenarios can be added or edited from the host without an image rebuild; changes apply on the next run.
 
 ```json
 {

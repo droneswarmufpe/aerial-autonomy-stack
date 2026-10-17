@@ -45,6 +45,18 @@ SCENARIO_SHELL=$(python3 "${RESOURCES_DIR}/scripts/scenario.py" "$SCENARIO" --nu
 eval "$SCENARIO_SHELL"
 echo "Scenario: $SCENARIO_FILE (world: $WORLD, quads: $NUM_QUADS, VTOLs: $NUM_VTOLS)"
 
+# Mount the scenarios folder into the simulation container, so scenarios can be edited from the host (changes apply on the next run).
+# A scenario file outside that folder is mounted on its own at /aas/scenario.json
+CONTAINER_SCENARIOS_DIR=/aas/simulation_resources/scenarios
+SCENARIO_OPTS="--volume ${RESOURCES_DIR}/scenarios:${CONTAINER_SCENARIOS_DIR}"
+if [[ "$(realpath "$(dirname "$SCENARIO_FILE")")" == "$(realpath "${RESOURCES_DIR}/scenarios")" ]]; then
+  CONTAINER_SCENARIO_FILE="${CONTAINER_SCENARIOS_DIR}/$(basename "$SCENARIO_FILE")"
+else
+  CONTAINER_SCENARIO_FILE=/aas/scenario.json
+  SCENARIO_OPTS+=" --volume ${SCENARIO_FILE}:${CONTAINER_SCENARIO_FILE}:ro"
+fi
+SCENARIO_OPTS+=" --env SCENARIO_FILE=${CONTAINER_SCENARIO_FILE}"
+
 if [[ "$JETSON" == "true" && "$CENTRALIZED" == "true" ]]; then
   echo "JETSON=true and CENTRALIZED=true are mutually exclusive (streams go either to the Jetson or to the ground container)" >&2
   exit 1
@@ -152,7 +164,7 @@ fi
 # Launch the simulation container
 DOCKER_CMD="docker run -it --rm \
   --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
-  --volume ${SCENARIO_FILE}:/aas/scenario.json:ro --env SCENARIO_FILE=/aas/scenario.json \
+  ${SCENARIO_OPTS} \
   --volume ${RESOURCES_DIR}/objects:/aas/simulation_resources/objects:ro \
   --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
   --env HEADLESS=$HEADLESS --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS --env WORLD=$WORLD $VIO_SIM_OPTS \
@@ -182,7 +194,6 @@ if [[ "$GND_CONTAINER" == "true" ]]; then
   DOCKER_CMD="docker run -it --rm \
     --ipc=host \
     --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
-    --volume ${SCENARIO_FILE}:/aas/scenario.json:ro \
     --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
     --volume ${PARENT_DIR}/github_clones/rcpilot/src:/workspaces/rcpilot/src:cached \
     --volume ${PARENT_DIR}/github_clones/rcpilot/log:/workspaces/rcpilot/log:cached \
@@ -220,7 +231,6 @@ launch_aircraft_containers() {
       --volume ${PARENT_DIR}/github_clones/rcpilot/src:/workspaces/rcpilot/src:cached \
       --volume ${PARENT_DIR}/github_clones/rcpilot/sdk:/workspaces/rcpilot/sdk:cached \
       --volume ${PARENT_DIR}/github_clones/rcpilot/log:/workspaces/rcpilot/log:cached \
-      --volume ${SCENARIO_FILE}:/aas/scenario.json:ro \
       --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
       --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
       --env HEADLESS=$HEADLESS \
