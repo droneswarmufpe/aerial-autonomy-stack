@@ -4,24 +4,17 @@
 set -e
 
 # Set up the simulation
+SCENARIO="${SCENARIO:-default}" # Scenario name (simulation/simulation_resources/scenarios/<name>.json) or path to a .json file: world, vehicles (with their cameras and poses), and custom objects
+NUM_QUADS="${NUM_QUADS:-}" # Spawn only the first NUM_QUADS quads of the scenario (default = all)
+NUM_VTOLS="${NUM_VTOLS:-}" # Spawn only the first NUM_VTOLS VTOLs of the scenario (default = all)
 HEADLESS="${HEADLESS:-false}" # Options: true, false (default)
-CAMERA="${CAMERA:-true}" # Options: true (default), false
-THERMAL_CAMERA="${THERMAL_CAMERA:-false}" # Options: true (default), false
-RGBD_CAMERA="${RGBD_CAMERA:-true}" # Options: true (default), false
-VIO_BRIDGE="${VIO_BRIDGE:-false}" # ROS stereo + Gazebo IMU and OpenVINS (ArduPilot Iris)
-CAMERA_PITCH="${CAMERA_PITCH:-1.5707}" # Camera pitch in radians (default = 1.5707, 90 deg down)
 #
 SIM_SUBNET="${SIM_SUBNET:-10.42}" # Simulation subnet (default = 10.42) Note: this is overridden if INSTANCE != 0
 AIR_SUBNET="${AIR_SUBNET:-10.22}" # Inter-vehicle subnet (default = 10.22) Note: this is overridden if INSTANCE != 0
 SIM_ID="${SIM_ID:-100}" # Last byte of the simulation container IP (default = 100)
 GROUND_ID="${GROUND_ID:-101}" # Last byte of the simulation container IP (default = 101)
 #
-NUM_QUADS="${NUM_QUADS:-2}" # Number of quadcopters (default = 1)
-NUM_VTOLS="${NUM_VTOLS:-0}" # Number of VTOLs (default = 0)
-WORLD="${WORLD:-esefex_fbx}" # Options: impalpable_greyness (default), apple_orchard, shibuya_crossing, swiss_town
 CENTRALIZED="${CENTRALIZED:-false}" # Options: true, false (default) - If true, all cameras will stream to the ground container. If false, each camera will stream to its own IP (useful for testing network conditions and scalability)
-X_OFFSET="${X_OFFSET:-0}" # X offset for drone placement in the world (default = 0)
-Y_OFFSET="${Y_OFFSET:-0}" # Y offset for drone placement in the world (default = 0)
 #
 RCPILOT="${RCPILOT:-false}" # Options: true, false (default) - If true, the rcpilot repo will be cloned and built. This is useful for testing the rcpilot SDK and its integration with the AAS.
 JETSON="${JETSON:-false}" # Options: true, false (default) - If true, SITL and cameras are streamed to an external Jetson (on the same LAN as this PC) instead of aircraft containers
@@ -41,26 +34,25 @@ SIM_NET_NAME="aas-sim-network-inst${INSTANCE}"
 AIR_NET_NAME="aas-air-network-inst${INSTANCE}"
 SIM_CONT_NAME="simulation-container-inst${INSTANCE}"
 GND_CONT_NAME="ground-container-inst${INSTANCE}"
-CUSTOM_OBJECTS="${CUSTOM_OBJECTS:-false}"
 
-if [[ "$VIO_BRIDGE" != "true" && "$VIO_BRIDGE" != "false" ]]; then
-  echo "VIO_BRIDGE must be true or false" >&2
-  exit 1
-fi
+PARENT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+RESOURCES_DIR="${PARENT_DIR}/simulation/simulation_resources"
+
+# Validate and resolve the scenario: sets SCENARIO_FILE, WORLD, NUM_QUADS, NUM_VTOLS, NUM_DRONES, ANY_VIO_BRIDGE,
+# and the per-drone arrays DRONE_TYPES, DRONE_CAMERA_PITCHES, DRONE_VIO_BRIDGES (in drone ID order)
+SCENARIO_SHELL=$(python3 "${RESOURCES_DIR}/scripts/scenario.py" "$SCENARIO" --num-quads "$NUM_QUADS" --num-vtols "$NUM_VTOLS" \
+  --rcpilot "$RCPILOT" --jetson "$JETSON" --format shell) || exit 1
+eval "$SCENARIO_SHELL"
+echo "Scenario: $SCENARIO_FILE (world: $WORLD, quads: $NUM_QUADS, VTOLs: $NUM_VTOLS)"
+
 if [[ "$JETSON" == "true" && "$CENTRALIZED" == "true" ]]; then
   echo "JETSON=true and CENTRALIZED=true are mutually exclusive (streams go either to the Jetson or to the ground container)" >&2
   exit 1
 fi
 if [[ "$JETSON" == "true" ]]; then
   IFS=',' read -ra JETSON_IP_LIST <<< "$JETSON_IPS"
-  if [[ ${#JETSON_IP_LIST[@]} -ne $((NUM_QUADS + NUM_VTOLS)) ]]; then
-    echo "JETSON_IPS must list one IP per drone: got ${#JETSON_IP_LIST[@]} IP(s) for $((NUM_QUADS + NUM_VTOLS)) drone(s)" >&2
-    exit 1
-  fi
-fi
-if [[ "$VIO_BRIDGE" == "true" ]]; then
-  if [[ "$NUM_VTOLS" != "0" || "$CAMERA" != "true" || "$RGBD_CAMERA" != "true" || "$JETSON" == "true" || "$RCPILOT" != "true" ]]; then
-    echo "VIO_BRIDGE requires RCPILOT=true, CAMERA=true, RGBD_CAMERA=true, NUM_VTOLS=0, JETSON=false" >&2
+  if [[ ${#JETSON_IP_LIST[@]} -ne $NUM_DRONES ]]; then
+    echo "JETSON_IPS must list one IP per drone: got ${#JETSON_IP_LIST[@]} IP(s) for $NUM_DRONES drone(s)" >&2
     exit 1
   fi
 fi
@@ -149,10 +141,9 @@ launch_terminal() {
   fi
 }
 
-PARENT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 VIO_SIM_OPTS=""
 VIO_AIR_OPTS=""
-if [[ "$VIO_BRIDGE" == "true" ]]; then
+if [[ "$ANY_VIO_BRIDGE" == "true" ]]; then
   # Use identical source geometry for Gazebo and calibration, even with older images.
   VIO_SIM_OPTS="--volume ${PARENT_DIR}/simulation/simulation_resources/aircraft/sensors/d435:/aas/simulation_resources/aircraft/sensors/d435:ro --volume ${PARENT_DIR}/simulation/simulation_resources/aircraft/vehicles/iris_with_ardupilot:/aas/simulation_resources/aircraft/vehicles/iris_with_ardupilot:ro"
   VIO_AIR_OPTS="--volume ${PARENT_DIR}/simulation/simulation_resources/aircraft:/aas/vio_models:ro"
@@ -161,16 +152,14 @@ fi
 # Launch the simulation container
 DOCKER_CMD="docker run -it --rm \
   --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
-  --volume ${PARENT_DIR}/simulation/simulation_resources/custom_objects:/aas/simulation_resources/custom_objects \
+  --volume ${SCENARIO_FILE}:/aas/scenario.json:ro --env SCENARIO_FILE=/aas/scenario.json \
+  --volume ${RESOURCES_DIR}/objects:/aas/simulation_resources/objects:ro \
   --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
-  --env HEADLESS=$HEADLESS --env CAMERA=$CAMERA --env THERMAL_CAMERA=$THERMAL_CAMERA --env RGBD_CAMERA=$RGBD_CAMERA --env CAMERA_PITCH=$CAMERA_PITCH \
-  --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS --env WORLD=$WORLD \
-  --env VIO_BRIDGE=$VIO_BRIDGE $VIO_SIM_OPTS \
+  --env HEADLESS=$HEADLESS --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS --env WORLD=$WORLD $VIO_SIM_OPTS \
   --env SIMULATED_TIME=true --env RTF=$RTF --env START_AS_PAUSED=$START_AS_PAUSED \
   --env JETSON=$JETSON --env JETSON_IPS=$JETSON_IPS \
   --env SIM_SUBNET=$SIM_SUBNET --env GROUND_ID=$GROUND_ID \
   --env GND_CONTAINER=$GND_CONTAINER --env CENTRALIZED=$CENTRALIZED \
-  --env X_OFFSET=$X_OFFSET --env Y_OFFSET=$Y_OFFSET --env CUSTOM_OBJECTS=$CUSTOM_OBJECTS \
   --env ROS_DOMAIN_ID=$SIM_ID \
   --privileged \
   --name $SIM_CONT_NAME"
@@ -193,7 +182,7 @@ if [[ "$GND_CONTAINER" == "true" ]]; then
   DOCKER_CMD="docker run -it --rm \
     --ipc=host \
     --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
-    --volume ${PARENT_DIR}/simulation/simulation_resources/custom_objects:/aas/custom_objects \
+    --volume ${SCENARIO_FILE}:/aas/scenario.json:ro \
     --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
     --volume ${PARENT_DIR}/github_clones/rcpilot/src:/workspaces/rcpilot/src:cached \
     --volume ${PARENT_DIR}/github_clones/rcpilot/log:/workspaces/rcpilot/log:cached \
@@ -218,15 +207,11 @@ if [[ "$GND_CONTAINER" == "true" ]]; then
   launch_terminal "Ground" 1 "$DOCKER_CMD"
 fi
 
-# Initialize a counter for the drone IDs
-DRONE_ID=1 # 1, 2, .., N drones
-
-# Function to launch the aircraft containers
+# Function to launch one aircraft container per drone, with the drone's type, camera pitch, and VIO bridge from the scenario
 launch_aircraft_containers() {
-  local drone_type=$1
-  local num_drones=$2
-  
-  for i in $(seq 1 $num_drones); do
+  for i in $(seq 0 $((NUM_DRONES - 1))); do
+    local DRONE_ID=$((i + 1))
+    local drone_type=${DRONE_TYPES[$i]}
     sleep 1.0 # Limit resource usage
     local NAME_AIRCRAFT_CNT="aircraft-container-inst${INSTANCE}_${DRONE_ID}"
     DOCKER_CMD="docker run -it --rm \
@@ -235,12 +220,12 @@ launch_aircraft_containers() {
       --volume ${PARENT_DIR}/github_clones/rcpilot/src:/workspaces/rcpilot/src:cached \
       --volume ${PARENT_DIR}/github_clones/rcpilot/sdk:/workspaces/rcpilot/sdk:cached \
       --volume ${PARENT_DIR}/github_clones/rcpilot/log:/workspaces/rcpilot/log:cached \
-      --volume ${PARENT_DIR}/simulation/simulation_resources/custom_objects:/aas/custom_objects \
+      --volume ${SCENARIO_FILE}:/aas/scenario.json:ro \
       --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
       --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
-      --env HEADLESS=$HEADLESS --env CAMERA=$CAMERA \
+      --env HEADLESS=$HEADLESS \
       --env DRONE_TYPE=$drone_type --env DRONE_ID=$DRONE_ID \
-      --env VIO_BRIDGE=$VIO_BRIDGE --env CAMERA_PITCH=$CAMERA_PITCH $VIO_AIR_OPTS \
+      --env VIO_BRIDGE=${DRONE_VIO_BRIDGES[$i]} --env CAMERA_PITCH=${DRONE_CAMERA_PITCHES[$i]} $VIO_AIR_OPTS \
       --env SIMULATED_TIME=true --env CENTRALIZED=$CENTRALIZED \
       --env JETSON=$JETSON \
       --env SIM_SUBNET=$SIM_SUBNET --env AIR_SUBNET=$AIR_SUBNET --env SIM_ID=$SIM_ID --env GROUND_ID=$GROUND_ID \
@@ -259,22 +244,18 @@ launch_aircraft_containers() {
       DOCKER_CMD="$DOCKER_CMD aircraft-image"
     fi
     launch_terminal "${drone_type^^} $DRONE_ID" $(($DRONE_ID + 1)) "$DOCKER_CMD"
-    DRONE_ID=$((DRONE_ID + 1))
   done
 }
 # With JETSON=true, the aircraft software runs on the Jetson instead of in aircraft containers
 if [[ "$JETSON" == "false" ]]; then
-  # Launch the Quad containers
-  launch_aircraft_containers "quad" $NUM_QUADS
-  # Launch the VTOL containers
-  launch_aircraft_containers "vtol" $NUM_VTOLS
+  launch_aircraft_containers
 fi  
 
 if [[ "$GND_CONTAINER" == "true" ]]; then
   sleep 2.0 # Once all containers are up, connect ground and aircraft containers to the air network
   docker network connect --ip=${AIR_SUBNET}.90.$GROUND_ID $AIR_NET_NAME $GND_CONT_NAME
   if [[ "$JETSON" == "false" ]]; then
-    for i in $(seq 1 $((NUM_QUADS + NUM_VTOLS))); do
+    for i in $(seq 1 $NUM_DRONES); do
       docker network connect --ip=${AIR_SUBNET}.90.$i $AIR_NET_NAME "aircraft-container-inst${INSTANCE}_${i}"
     done
   fi

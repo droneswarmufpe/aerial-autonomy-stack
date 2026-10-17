@@ -23,15 +23,15 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", type=str, default="step", choices=["step", "speedup", "vectorenv-speedup", "learn"])
     parser.add_argument("--repetitions", type=int, default=1),
-    parser.add_argument("--camera", action=argparse.BooleanOptionalAction, default=True, help="Enable/Disable Camera")
-    parser.add_argument("--num_quads", type=int, default=1)
+    parser.add_argument("--scenario", type=str, default="gym", help="Scenario name or path to a scenario .json file")
+    parser.add_argument("--num_quads", type=int, default=None, help="Spawn only the first N quads of the scenario (default: all)")
     args = parser.parse_args()
 
     if args.mode == "step":
         env = gym.make(
             "AASEnv-v0",
             gym_freq_hz=1,
-            camera=args.camera,
+            scenario=args.scenario,
             num_quads=args.num_quads,
             render_mode="human"
         )
@@ -59,7 +59,7 @@ def main():
             "AASEnv-v0",
             instance=1,
             gym_freq_hz=CTRL_FREQ_HZ,
-            camera=args.camera,
+            scenario=args.scenario,
             num_quads=args.num_quads,
             render_mode="ansi" # "ansi" for progress bar, "human" for GUI
         )
@@ -104,7 +104,7 @@ def main():
                     "AASEnv-v0",
                     instance=rank,
                     gym_freq_hz=freq_hz,
-                    camera=args.camera,
+                    scenario=args.scenario,
                     num_quads=args.num_quads,
                     render_mode=None
                 )
