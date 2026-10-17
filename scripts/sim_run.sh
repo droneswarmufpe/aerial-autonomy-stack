@@ -4,7 +4,7 @@
 set -e
 
 # Set up the simulation
-SCENARIO="${SCENARIO:-default}" # Scenario name (simulation/simulation_resources/scenarios/<name>.json) or path to a .json file: world, vehicles (with their cameras and poses), and custom objects
+SCENARIO="${SCENARIO:-imav_hotspots}" # Scenario name (simulation/simulation_resources/scenarios/<name>.json) or path to a .json file: world, vehicles (with their cameras and poses), and custom objects
 NUM_QUADS="${NUM_QUADS:-}" # Spawn only the first NUM_QUADS quads of the scenario (default = all)
 NUM_VTOLS="${NUM_VTOLS:-}" # Spawn only the first NUM_VTOLS VTOLs of the scenario (default = all)
 HEADLESS="${HEADLESS:-false}" # Options: true, false (default)

@@ -224,7 +224,7 @@ A scenario is a JSON file that sets the world, the quads and VTOLs (each with it
 
 - `custom_objects`: models from [`objects/`](/simulation/simulation_resources/objects) (or [`world_models/`](/simulation/simulation_resources/world_models)), each with a `global_position` (lat/lon/alt, converted with the world's `<spherical_coordinates>` origin) or a `local_position` (x/y/z), and optionally an `attitude` (roll/pitch/yaw in degrees) and `static` (default `false`)
 
-`NUM_QUADS` and `NUM_VTOLS` spawn only the first N quads/VTOLs of the scenario (all of them by default). `sim_run.sh` validates the scenario before starting any container.
+`NUM_QUADS` and `NUM_VTOLS` spawn only the first N quads/VTOLs of the scenario (all of them by default). `sim_run.sh` validates the scenario before starting any container. Full reference, including the available scenarios: [supplementary/SCENARIOS.md](/supplementary/SCENARIOS.md); custom objects: [supplementary/CUSTOM_OBJECTS.md](/supplementary/CUSTOM_OBJECTS.md).
 
 ```sh
 SCENARIO=esefex_targets_1 ./sim_run.sh                          # A scenario in scenarios/
