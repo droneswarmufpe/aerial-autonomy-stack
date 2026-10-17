@@ -1,0 +1,48 @@
+{
+  "world": "esefex_fbx",
+  "quads": [
+    {
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "vtols": [],
+  "custom_objects": [
+    {
+      "id": 1,
+      "model": "ime-target",
+      "local_position": {
+        "x": 15,
+        "y": -25,
+        "z": 0
+      }
+    },
+    {
+      "id": 2,
+      "model": "ime-target",
+      "local_position": {
+        "x": 20,
+        "y": -30,
+        "z": 0
+      }
+    },
+    {
+      "id": 3,
+      "model": "ime-target",
+      "local_position": {
+        "x": 25,
+        "y": -35,
+        "z": 0
+      }
+    },
+    {
+      "id": 4,
+      "model": "ime-target",
+      "local_position": {
+        "x": 5,
+        "y": -5,
+        "z": 0
+      }
+    }
+  ]
+}
