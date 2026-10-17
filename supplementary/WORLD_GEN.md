@@ -755,8 +755,8 @@ world.sdf
     
 
 - Após criar todos os arquivos na estrutura mostrada acima e ter adicionado o arquivo .glb do mundo exportado do blender, basta copiar o arquivo .sdf do mundo para a pasta “aerial-autonomy-stack/simulation/simulation_resources/worlds” e a pasta do modelo do mundo para “aerial-autonomy-stack/simulation/simulation_resources/world_models”
-- Para executar, basta utilizar o nome do mundo na inicialização da simulação com a flag WORLD, ex.:
+- Para executar, crie um cenário em “aerial-autonomy-stack/simulation/simulation_resources/scenarios” com o nome do mundo (por exemplo `big_esefex.json`, com `{"world": "big_esefex", "quads": [{"x": 0, "y": 0}]}`) e inicie a simulação com a variável SCENARIO, ex.:
 
 ```sh
-NUM_QUADS=1 WORLD=big_esefex RTF=1.0 CENTRALIZED=true ./sim_run.sh
+SCENARIO=big_esefex RTF=1.0 CENTRALIZED=true ./sim_run.sh
 ```

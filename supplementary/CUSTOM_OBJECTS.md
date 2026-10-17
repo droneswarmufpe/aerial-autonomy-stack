@@ -111,68 +111,68 @@ mkdir simulation/simulation_resources/objects/<nome-do-modelo>/meshes
 - Após a criação da pasta, adicione nela o arquivo **.glb** ou **.fbx** baixado anteriormente.
 
 >[!NOTE]
-> Caso queira adicionar mais de um objeto do mesmo modelo, é só adicionar mais elementos na lista de `objects`.
+> Caso queira adicionar mais de um objeto do mesmo modelo, é só adicionar mais elementos na lista de `custom_objects`.
 
 # Importando o modelo no mundo do Gazebo
 
-## Editando arquivo de configurações
+## Adicionando o objeto a um cenário
 >[!NOTE]
-> Para que um modelo seja carregado no mundo quando a simulação for executada, é preciso adicioná-lo no arquivo de configuração `simulation/simulation_resources/patches/custom_objects_config.json` e indicar qual será a sua posição.
+> Os objetos customizados fazem parte de um cenário: um arquivo .json em `simulation/simulation_resources/scenarios/` que define o mundo, os drones e os objetos (veja a seção Scenarios do README).
 
-- No arquivo `simulation/simulation_resources/patches/custom_objects_config.json`, dentro da lista de `objects`, adicione um objeto seguindo o template abaixo:
+- No arquivo do cenário, dentro da lista `custom_objects`, adicione um objeto seguindo o template abaixo:
 
 ```json
     {
-      "id": <id-unico>,     
-      "x": <posicao-em-x>,
-      "y": <posicao-em-y>,
-      "z": <posicao-em-z>,
+      "id": <id-unico>,
       "model": "<nome-do-modelo>",
+      "local_position": {"x": <posicao-em-x>, "y": <posicao-em-y>, "z": <posicao-em-z>},
+      "attitude": {"roll": <roll>, "pitch": <pitch>, "yaw": <yaw>},
       "static": true/false
     }
 ```
 - Segue as explicações de cada campo:
-    - id: número inteiro contendo um id que deve ser único para cada objeto da lista
-    - x: posição em metros no eixo x do mundo de simulação que o objeto deve ser criado
-    - y: posição em metros no eixo y do mundo de simulação que o objeto deve ser criado
-    - z: posição em metros no eixo z do mundo de simulação que o objeto deve ser criado
-    - model: string com nome do modelo que deve corresponder ao nome da pasta utilizada para salvar os arquivos -> caso não seja preenchido, o modelo é pulado durante o carregamento
-    - static: booleano (true/false) indicando se o modelo deve ser carregado como estático ou não -> caso não seja preenchido, o modelo é carregado por default como não-estático
+    - id: número inteiro que identifica o objeto (opcional)
+    - model: nome do modelo, que deve corresponder ao nome da pasta do modelo em `objects/` (ou `world_models/`) -> caso não seja preenchido, é usado o modelo `ime-target`
+    - local_position: posição em metros nos eixos x, y e z do mundo de simulação
+    - global_position: alternativa a `local_position`, com `lat`, `lon` e `alt`; a conversão para x/y usa a origem do mundo (`<spherical_coordinates>` do arquivo .sdf)
+    - attitude: orientação em graus (opcional, padrão 0)
+    - static: booleano (true/false) indicando se o modelo deve ser carregado como estático -> caso não seja preenchido, o modelo é carregado como não-estático
 
-## Criando novo arquivo de configurações
-Também é possível criar um novo arquivo de configurações para carregar objetos customizados. Para isto:
-- Crie um novo arquivo .json na pasta `simulation/simulation_resources/patches/`
-- Escreva as configurações dos objetos que deseja carregar conforme o exemplo:
+## Criando um novo cenário
+Também é possível criar um novo cenário. Para isto:
+- Crie um novo arquivo .json na pasta `simulation/simulation_resources/scenarios/` (ou em qualquer outra pasta)
+- Escreva o mundo, os drones e os objetos que deseja carregar conforme o exemplo:
 ```json
 {
-  "objects": [
+  "world": "imav",
+  "quads": [{"x": 0, "y": 0}],
+  "custom_objects": [
     {
       "id": 1,
-      "x": -16.8706,
-      "y": -0.9578,
-      "z": 4.0,
       "model": "panhard_vbl",
+      "local_position": {"x": -16.8706, "y": -0.9578, "z": 4.0},
       "static": false
     },
     {
       "id": 2,
-      "x": -6.8706,
-      "y": -0.9578,
-      "z": 4.0,
-      "model": "renault_ccfm",
+      "model": "renault_ccfm_a",
+      "local_position": {"x": -6.8706, "y": -0.9578, "z": 4.0},
       "static": false
     }
   ]
 }
 ```
-- No [script de criação dos objetos](simulation/simulation_resources/simulation_worlds/_create_ardupilot_world.sh), altere a [linha que define o arquivo utilizado para carregar as configurações de criação](../simulation/simulation_resources/simulation_worlds/_create_custom_objects_world.sh) utilizand o seu arquivo
+- Para verificar o cenário sem iniciar a simulação:
+```bash
+python3 simulation/simulation_resources/scripts/scenario.py <nome-do-cenario>
+```
 
 ## Executando a simulação com o novo modelo
-- Para executar a simulação, é necessário ativar a flag de objetos customizados da seguinte forma:
+- Para executar a simulação, informe o cenário com a variável `SCENARIO` (o nome de um arquivo em `scenarios/`, sem `.json`, ou o caminho para um arquivo .json):
 
 ```bash
 cd scripts
-CUSTOM_OBJECTS=true ./sim_run.sh
+SCENARIO=<nome-do-cenario> ./sim_run.sh
 ```
 
 - Com isso, a infraestrutura de simulação deve ser iniciada e você deverá ver o seu novo modelo no mundo do Gazebo.

@@ -149,7 +149,7 @@ aerial-autonomy-stack
     │   ├── worlds                                  # Gazebo world files (<world>.sdf)
     │   ├── world_models                            # Models included by the world files
     │   ├── objects                                 # Models that can be placed as custom objects
-    │   ├── custom_objects                          # Custom object configurations
+    │   ├── scenarios                               # Scenario files: world, vehicles, and custom objects
     │   └── scripts                                 # World generation and simulation helper scripts
     │
     └── simulation.yml.erb                          # Simulation docker tmux entrypoint
@@ -182,19 +182,54 @@ cd aerial-autonomy-stack/scripts/
 > On a low-mid range laptop—i7-11 with 16GB RAM and RTX 3060—AAS can simulate faster than real time with flag `RTF=0.0` (ArduPilot SITL speedup is capped at **10x**). Run multiple `sim_run.sh` in parallel adding flag `INSTANCE=1`, `INSTANCE=2`, etc. for even higher throughput. Make sure you run `sudo prime-select nvidia` and rebooted to leverage GPU rendering and compute.
 
 ```sh
-# 1. Start AAS (centralized mode)
+# 1. Start AAS with a scenario (centralized mode)
 cd aerial-autonomy-stack/scripts
-NUM_QUADS=1 NUM_VTOLS=1 WORLD=esefex_fbx CENTRALIZED=true RTF=3.0 ./sim_run.sh
+SCENARIO=imav_hotspots CENTRALIZED=true RTF=3.0 ./sim_run.sh
 ```
 
-### Camera switches
+### Scenarios
 
-`CAMERA` is the master camera switch in `sim_run.sh`; setting `CAMERA=false` prevents both RGB-D and thermal sensors from spawning, regardless of the individual switches. With `CAMERA=true` (the default), `RGBD_CAMERA` controls the D435 color, infrared, and depth streams, while `THERMAL_CAMERA` controls the thermal sensor and stream. Both individual switches default to `true`.
+A scenario is a JSON file that sets the world, the quads and VTOLs (each with its own cameras and pose), and the custom objects. `SCENARIO` is a file name in [`simulation/simulation_resources/scenarios/`](/simulation/simulation_resources/scenarios) (without `.json`) or a path to any `.json` file; it defaults to `default` (`esefex_fbx` with one quad). Scenario files are mounted into the containers, so editing one needs no image rebuild.
+
+```json
+{
+  "world": "imav",
+  "quads": [
+    {"x": 0, "y": 0, "yaw": 90},
+    {"x": 3, "y": 0, "rgbd_camera": false, "thermal_camera": true}
+  ],
+  "vtols": [
+    {"x": 0, "y": 4, "camera": false}
+  ],
+  "custom_objects": [
+    {"id": 1, "model": "construction_cone", "global_position": {"lat": 48.810124, "lon": 7.853343, "alt": 4}},
+    {"id": 2, "model": "ime-target", "local_position": {"x": 15, "y": -25, "z": 0}, "attitude": {"roll": 0, "pitch": 0, "yaw": 45}, "static": true}
+  ]
+}
+```
+
+- `world`: a world file in [`worlds/`](/simulation/simulation_resources/worlds) (without `.sdf`)
+- `quads` / `vtols`: one entry per vehicle. Drone IDs follow the list order, quads first: `iris_with_ardupilot_1`, `iris_with_ardupilot_2`, ..., then the VTOLs
+
+| Vehicle field | Default | Description |
+| --- | --- | --- |
+| `x`, `y` | required | Spawn position in meters (world frame) |
+| `z` | `0.75` | Spawn height in meters |
+| `yaw` | `0` | Spawn heading in degrees |
+| `camera` | `true` | Master camera switch: `false` disables both cameras below |
+| `rgbd_camera` | `true` | D435 color, infrared, and depth streams |
+| `thermal_camera` | `false` | Thermal camera stream |
+| `camera_pitch` | `1.5707` | Camera pitch in radians (90 deg down) |
+| `vio_bridge` | `false` | Stereo VIO (quads only), see below |
+
+- `custom_objects`: models from [`objects/`](/simulation/simulation_resources/objects) (or [`world_models/`](/simulation/simulation_resources/world_models)), each with a `global_position` (lat/lon/alt, converted with the world's `<spherical_coordinates>` origin) or a `local_position` (x/y/z), and optionally an `attitude` (roll/pitch/yaw in degrees) and `static` (default `false`)
+
+`NUM_QUADS` and `NUM_VTOLS` spawn only the first N quads/VTOLs of the scenario (all of them by default). `sim_run.sh` validates the scenario before starting any container.
 
 ```sh
-CAMERA=true RGBD_CAMERA=false THERMAL_CAMERA=true ./sim_run.sh    # Thermal only
-CAMERA=true RGBD_CAMERA=true THERMAL_CAMERA=false ./sim_run.sh    # D435 RGB-D only
-CAMERA=false ./sim_run.sh                                         # Disable all cameras
+SCENARIO=esefex_targets_1 ./sim_run.sh                          # A scenario in scenarios/
+SCENARIO=/path/to/my_scenario.json NUM_QUADS=1 ./sim_run.sh     # Any scenario file, only its first quad
+python3 ../simulation/simulation_resources/scripts/scenario.py imav_hotspots   # Validate and print a resolved scenario
 ```
 
 Gazebo derives the D435 infrared and depth image topics from each model's
@@ -210,14 +245,14 @@ startup templates, then enable the opt-in path:
 cd scripts
 CONTAINER=simulation ./sim_build.sh
 CONTAINER=rc_aircraft ./sim_build.sh
-VIO_BRIDGE=true WORLD=calibration_vio RTF=1 ./sim_run.sh
+SCENARIO=calibration_vio RCPILOT=true RTF=1 ./sim_run.sh
 ```
 
-`VIO_BRIDGE=true` requires ArduPilot Iris SITL, `RCPILOT=true`, `CAMERA=true`,
-`RGBD_CAMERA=true`, `NUM_VTOLS=0`, and `JETSON=false`. It starts OpenVINS in each
-aircraft container and sends that aircraft's sensor topics in its ROS domain
+`"vio_bridge": true` is set per quad in the scenario and requires `camera` and
+`rgbd_camera` on that quad, `RCPILOT=true`, and `JETSON=false`. It starts OpenVINS
+in that quad's aircraft container and sends its sensor topics in its ROS domain
 (`ROS_DOMAIN_ID=DRONE_ID`). VIO stays in the aircraft container even when
-`CENTRALIZED=true`. `VIO_BRIDGE=false` retains the existing video-stream path.
+`CENTRALIZED=true`. Quads without `vio_bridge` keep the existing video-stream path.
 
 | Topic in each aircraft's ROS domain | Data |
 | --- | --- |
@@ -239,7 +274,7 @@ the dot projector, or physical RealSense image processing.
 
 OpenVINS calibration is generated at aircraft startup in `/tmp/aas_vio/` from
 the same host-mounted D435 and Iris SDFs used by the simulation. It includes the
-camera mount, `CAMERA_PITCH`, sensor offsets, optical-axis rotation, and the
+camera mount, the quad's `camera_pitch`, sensor offsets, optical-axis rotation, and the
 plugin IMU's 180-degree roll (FRD frame). Intrinsics come from resolution and
 horizontal FOV (`fx=fy≈695.995`, `cx=640`, `cy=360`), distortion and camera/IMU
 time offset are zero. Calibration estimation is disabled for this known geometry.
@@ -267,10 +302,6 @@ Start with `RTF=1` when evaluating estimator performance. At accelerated RTF,
 sensor rates scale in wall time and OpenVINS must keep up. Restart OpenVINS after
 a simulation time reset. This mode starts the estimator only; it does not feed
 its odometry back into the flight controller.
-
-The default spawn offset is the world's local origin (`X_OFFSET=0`,
-`Y_OFFSET=0`). Set `X_OFFSET` and `Y_OFFSET` explicitly when a different
-start position is required.
 
 Centralized mode streams all aircraft data (including MAVLink) to the ground container, so the stack runs as external processing rather than onboard. Set `CENTRALIZED=false` to keep streams local to each aircraft container.
 
@@ -337,6 +368,9 @@ python3 /aas/simulation_resources/scripts/gz_wind.py --stop_wind
 ### Available worlds
 
 - `apple_orchard` — a GIS world created using [BlenderGIS](https://github.com/domlysz/BlenderGIS)
+- `betione` — custom world
+- `calibration_vio` — calibration world for the stereo VIO
+- `cbr_phase1`, `cbr_phase2` — RoboCup field worlds
 - `esefex_fbx` — RJ military base
 - `imav` — custom world
 - `impalpable_greyness` — an empty world with simple shapes
@@ -344,26 +378,24 @@ python3 /aas/simulation_resources/scripts/gz_wind.py --stop_wind
 - `shibuya_crossing` — a 3D world adapted from [cgtrader](https://www.cgtrader.com/)
 - `swiss_town` — a photogrammetry world courtesy of [Pix4D / pix4d.com](https://support.pix4d.com/hc/en-us/articles/360000235126)
 
-### Available models
+### Available objects
 
-- `airstream`
-- `apple`
-- `apple_grid`
-- `birch`
-- `birch_row`
-- `crash`
-- `duck`
-- `fog_generator` — particle filter model that emits fog via a particle emitter
-- `gazebo`
-- `grenade` — static grenade mesh used as an environment prop
-- `imav`
-- `ime-target` - target used for pose estimation in esefex world
-- `jeep`
-- `jockey`
-- `rabbit`
-- `subaru`
-- `suburb`
-- `unicorn`
+Models in `objects/` that scenarios can place as custom objects:
+
+- `Robocup4`
+- `arquus_vt4`
+- `aruco_5x5_0`
+- `construction_cone`
+- `human_dummy`
+- `ime-target`
+- `panhard_vbl`
+- `renault_ccfm_a`
+- `renault_ccfm_b`
+- `renault_ccfm_c`
+- `renault_gbc180`
+- `rescue_randy`
+- `toyota_hilux`
+- `vltt_a`
 
 ## License 
 
