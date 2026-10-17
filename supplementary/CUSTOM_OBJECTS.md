@@ -220,6 +220,8 @@ Uma forma de reduzir este consumo de processamento, é configurar os modelos com
 ### O cenário não é carregado: modelo não encontrado
 O `sim_run.sh` valida o cenário antes de iniciar os containers e para com um erro como `custom_objects[0].model 'meu_modelo' not found in objects/ or world_models/`. Verifique se o nome em `model` é exatamente o nome da pasta do modelo em `simulation/simulation_resources/objects/`.
 
+O mesmo vale para os arquivos usados pelo modelo: se o `model.sdf` aponta para uma malha ou textura que não existe (por exemplo `references missing file(s): model://meu_modelo/meshes/meu_modelo.glb`), o cenário não é carregado, pois o Gazebo não abriria o mundo. Confira os caminhos nas tags `<uri>` do `model.sdf` e os arquivos na pasta `meshes/` do modelo.
+
 ### O objeto aparece deitado ou de cabeça para baixo
 O `roll` recebe +90° automaticamente para modelos com o eixo Y para cima (veja [Orientação](#orientação)). Se o seu modelo já usa o eixo Z para cima, compense no cenário com `"roll": -90`, ou corrija a orientação da malha na tag `<pose>` do `<visual>` no `model.sdf`.
 

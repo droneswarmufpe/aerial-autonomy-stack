@@ -97,6 +97,34 @@ def find_object_model(model, resources_dir=RESOURCES_DIR):
     return None
 
 
+MODEL_FILE_PATTERN = re.compile(r'<(uri|[a-z_]+_map)>\s*([^<\s]+)\s*</\1>')
+
+
+def missing_model_files(model_dir, resources_dir=RESOURCES_DIR):
+    """Return the files and folders referenced by a model's model.sdf (meshes, textures, included models) that do not exist.
+
+    References are model://<model>[/<path>] URIs or paths relative to the model folder; other URLs are not checked.
+    """
+    sdf = os.path.join(model_dir, 'model.sdf')
+    if not os.path.isfile(sdf):
+        return [f'{os.path.basename(model_dir)}/model.sdf']
+    with open(sdf) as f:
+        text = f.read()
+    missing = []
+    for _, reference in MODEL_FILE_PATTERN.findall(text):
+        if reference.startswith('model://'):
+            model, _, path = reference[len('model://'):].partition('/')
+            model_path = find_object_model(model, resources_dir)
+            exists = model_path is not None and os.path.exists(os.path.join(model_path, path))
+        elif '://' in reference or os.path.isabs(reference):
+            continue
+        else:
+            exists = os.path.exists(os.path.join(model_dir, reference))
+        if not exists and reference not in missing:
+            missing.append(reference)
+    return missing
+
+
 def _is_number(value):
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
@@ -144,6 +172,10 @@ def _resolve_object(obj, index, resources_dir, errors):
         errors.append(f'{label}.model must be a model folder name')
     elif find_object_model(resolved['model'], resources_dir) is None:
         errors.append(f"{label}.model '{resolved['model']}' not found in {' or '.join(d + '/' for d in OBJECT_MODEL_DIRS)}")
+    else:
+        missing = missing_model_files(find_object_model(resolved['model'], resources_dir), resources_dir)
+        if missing:
+            errors.append(f"{label}.model '{resolved['model']}' references missing file(s): {', '.join(missing)}")
     if not isinstance(resolved['static'], bool):
         errors.append(f'{label}.static must be true or false')
 
