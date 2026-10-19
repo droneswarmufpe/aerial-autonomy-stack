@@ -18,11 +18,23 @@
   vio_bridge = ENV.fetch('VIO_BRIDGE', 'false') == 'true'
   camera_pitch = ENV.fetch('CAMERA_PITCH', '1.5707').to_f
 
+  # EVAAT: evaat_embedded_py mounted at /aas/evaat (sim_run.sh's EVAAT=true), EVAAT_CONFIG relative to it
+  evaat = ENV.fetch('EVAAT', 'false') == 'true'
+  evaat_config = ENV.fetch('EVAAT_CONFIG', 'config/sitl/drone1.yml')
 %>
 
 name: drone
 
 windows:
+
+  <% if evaat %>
+  - evaat:
+      panes:
+        - >-
+          cd /aas/evaat &&
+          flock native/evaat_codec/.aas_build.lock bash -c 'test -f native/evaat_codec/libevaat_codec.so || ./evaatctl build' &&
+          unset TMUX && EVAAT_NO_VENV=1 ./evaatctl run drone <%= evaat_config %> -y --here
+  <% end %>
 
   <% if vio_bridge %>
   - openvins:

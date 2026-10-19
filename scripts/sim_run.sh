@@ -8,21 +8,32 @@ SCENARIO="${SCENARIO:-imav_hotspots}" # Scenario name (simulation/simulation_res
 NUM_QUADS="${NUM_QUADS:-}" # Spawn only the first NUM_QUADS quads of the scenario (default = all)
 NUM_VTOLS="${NUM_VTOLS:-}" # Spawn only the first NUM_VTOLS VTOLs of the scenario (default = all)
 HEADLESS="${HEADLESS:-false}" # Options: true, false (default)
-#
+
+# NETWORK
 SIM_SUBNET="${SIM_SUBNET:-10.42}" # Simulation subnet (default = 10.42) Note: this is overridden if INSTANCE != 0
 AIR_SUBNET="${AIR_SUBNET:-10.22}" # Inter-vehicle subnet (default = 10.22) Note: this is overridden if INSTANCE != 0
 SIM_ID="${SIM_ID:-100}" # Last byte of the simulation container IP (default = 100)
 GROUND_ID="${GROUND_ID:-101}" # Last byte of the simulation container IP (default = 101)
-#
+
+# MODE
 CENTRALIZED="${CENTRALIZED:-false}" # Options: true, false (default) - If true, all cameras will stream to the ground container. If false, each camera will stream to its own IP (useful for testing network conditions and scalability)
-#
 RCPILOT="${RCPILOT:-false}" # Options: true, false (default) - If true, the rcpilot repo will be cloned and built. This is useful for testing the rcpilot SDK and its integration with the AAS.
 JETSON="${JETSON:-false}" # Options: true, false (default) - If true, SITL and cameras are streamed to an external Jetson (on the same LAN as this PC) instead of aircraft containers
 JETSON_IPS="${JETSON_IPS:-192.168.55.1}" # Comma-separated Jetson IPs, one per drone in drone ID order, used when JETSON=true (default = 192.168.55.1)
 GND_CONTAINER="${GND_CONTAINER:-true}" # Options: true (default), false
+
+# EVAAT
+EVAAT="${EVAAT:-true}" # Options: true, false (default) - If true, mount evaat_embedded_py and run its drone stack in each aircraft container and its GCS in the ground container
+EVAAT_DIR="${EVAAT_DIR:-}" # evaat_embedded_py checkout on the host, used when EVAAT=true (default = github_clones/evaat_embedded_py)
+EVAAT_DRONE_CONFIG="${EVAAT_DRONE_CONFIG:-}" # evaat drone config, relative to EVAAT_DIR; {id} is replaced by the drone ID (default = config/sitl/drone{id}.yml)
+[[ -n "$EVAAT_DRONE_CONFIG" ]] || EVAAT_DRONE_CONFIG='config/imav/drone{id}.yml' # Set apart: the braces would end a ${...:-default}
+EVAAT_GCS_CONFIG="${EVAAT_GCS_CONFIG:-config/imav/gcs.yml}" # evaat GCS config, relative to EVAAT_DIR (default = config/sitl/gcs.yml)
+
+# DISPLAY
 RTF="${RTF:-1.0}" # Real-time factor (default = 1.0), set to <=0.0 for as fast as possible execution
 START_AS_PAUSED="${START_AS_PAUSED:-false}" # Options: true, false (default)
 INSTANCE="${INSTANCE:-0}" # Integer ID to make docker network/container names unique as well as offsetting the second byte of the subnets (default = 0)
+
 # Set unique subnets and container/network names based on INSTANCE
 SIM_BYTE_1=$(echo "$SIM_SUBNET" | cut -d'.' -f1)
 SIM_BYTE_2=$(echo "$SIM_SUBNET" | cut -d'.' -f2)
@@ -67,6 +78,40 @@ if [[ "$JETSON" == "true" ]]; then
     echo "JETSON_IPS must list one IP per drone: got ${#JETSON_IP_LIST[@]} IP(s) for $NUM_DRONES drone(s)" >&2
     exit 1
   fi
+fi
+
+# EVAAT: the evaat_embedded_py checkout is mounted at /aas/evaat in the ground and aircraft containers (not in the images)
+EVAAT_GND_OPTS=""
+EVAAT_AIR_OPTS=()
+if [[ "$EVAAT" == "true" ]]; then
+  for flag in "RCPILOT=$RCPILOT" "JETSON=$JETSON" "CENTRALIZED=$CENTRALIZED"; do
+    if [[ "${flag#*=}" == "true" ]]; then
+      echo "EVAAT=true does not support ${flag}" >&2
+      exit 1
+    fi
+  done
+  if [[ "$GND_CONTAINER" != "true" ]]; then
+    echo "EVAAT=true requires GND_CONTAINER=true (the evaat GCS runs in the ground container)" >&2
+    exit 1
+  fi
+  EVAAT_DIR="${EVAAT_DIR:-${PARENT_DIR}/github_clones/evaat_embedded_py}"
+  if [[ ! -x "${EVAAT_DIR}/evaatctl" ]]; then
+    echo "EVAAT_DIR=${EVAAT_DIR} is not an evaat_embedded_py checkout (no evaatctl)" >&2
+    exit 1
+  fi
+  EVAAT_DIR=$(realpath "$EVAAT_DIR")
+  for config in "$EVAAT_GCS_CONFIG" $(for id in $(seq 1 $NUM_DRONES); do echo "${EVAAT_DRONE_CONFIG//\{id\}/$id}"; done); do
+    if [[ ! -f "${EVAAT_DIR}/${config}" ]]; then
+      echo "evaat config ${EVAAT_DIR}/${config} not found (see EVAAT_DRONE_CONFIG and EVAAT_GCS_CONFIG)" >&2
+      exit 1
+    fi
+  done
+  echo "EVAAT: ${EVAAT_DIR} (GCS: ${EVAAT_GCS_CONFIG}, drones: ${EVAAT_DRONE_CONFIG})"
+  # QTWEBENGINE_DISABLE_SANDBOX: QtWebEngine (the GCS map) refuses to run as root, as in the container, with its sandbox
+  EVAAT_GND_OPTS="--volume ${EVAAT_DIR}:/aas/evaat --env EVAAT=true --env EVAAT_CONFIG=${EVAAT_GCS_CONFIG} --env QTWEBENGINE_DISABLE_SANDBOX=1"
+  for id in $(seq 1 $NUM_DRONES); do
+    EVAAT_AIR_OPTS[$id]="--volume ${EVAAT_DIR}:/aas/evaat --env EVAAT=true --env EVAAT_CONFIG=${EVAAT_DRONE_CONFIG//\{id\}/$id}"
+  done
 fi
 
 # Detect the environment (Ubuntu/GNOME, WSL, etc.)
@@ -200,6 +245,7 @@ if [[ "$GND_CONTAINER" == "true" ]]; then
     --volume ${PARENT_DIR}/github_clones/rcpilot/sdk:/workspaces/rcpilot/sdk:cached \
     --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
     --env HEADLESS=$HEADLESS --env RCPILOT=$RCPILOT \
+    ${EVAAT_GND_OPTS} \
     --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS \
     --env SIMULATED_TIME=true --env CENTRALIZED=$CENTRALIZED \
     --env ROS_DOMAIN_ID=$GROUND_ID \
@@ -235,6 +281,7 @@ launch_aircraft_containers() {
       --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
       --env HEADLESS=$HEADLESS \
       --env DRONE_TYPE=$drone_type --env DRONE_ID=$DRONE_ID \
+      ${EVAAT_AIR_OPTS[$DRONE_ID]} \
       --env VIO_BRIDGE=${DRONE_VIO_BRIDGES[$i]} --env CAMERA_PITCH=${DRONE_CAMERA_PITCHES[$i]} $VIO_AIR_OPTS \
       --env SIMULATED_TIME=true --env CENTRALIZED=$CENTRALIZED \
       --env JETSON=$JETSON \
