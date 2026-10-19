@@ -19,7 +19,6 @@ import os
 import re
 import shutil
 import sys
-import xml.etree.ElementTree as ET
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from latlon_to_xy import latlon_to_xy  # noqa: E402
@@ -84,14 +83,6 @@ def build_vehicle_model(drone, resources_dir, output_dir):
     return model_dir
 
 
-def world_origin(world_file):
-    """Return (lat, lon) from the world's <spherical_coordinates>, or None."""
-    coords = ET.parse(world_file).getroot().find('.//spherical_coordinates')
-    if coords is None or coords.findtext('latitude_deg') is None or coords.findtext('longitude_deg') is None:
-        return None
-    return float(coords.findtext('latitude_deg')), float(coords.findtext('longitude_deg'))
-
-
 def world_real_time_factor(text):
     match = re.search(r'<physics.*?<real_time_factor>([^<]*)</real_time_factor>.*?</physics>', text, re.DOTALL)
     return match.group(1).strip() if match else '1.0'
@@ -137,7 +128,7 @@ def build_world(resolved, resources_dir, output_dir, real_time_factor=None):
     if count == 0:
         text = text.replace('</world>', f'{physics}\n</world>', 1)
 
-    origin = world_origin(world_file)
+    origin = scenario_lib.world_origin(world_file)
     includes = ''.join(vehicle_include(d) for d in resolved['drones'])
     includes += ''.join(object_include(o, i + 1, origin) for i, o in enumerate(resolved['custom_objects']))
     if text.count('</world>') != 1:

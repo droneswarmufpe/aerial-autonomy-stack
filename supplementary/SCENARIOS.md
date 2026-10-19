@@ -31,7 +31,8 @@ env = AASEnv(scenario="gym", num_quads=1)
   "world": "imav",
   "quads": [
     {"x": 0, "y": 0, "yaw": 90},
-    {"x": 3, "y": 0, "rgbd_camera": false, "thermal_camera": true}
+    {"x": 3, "y": 0, "rgbd_camera": false, "thermal_camera": true},
+    {"global_position": {"lat": 48.80255, "lon": 7.85420, "alt": 1}}
   ],
   "vtols": [
     {"x": 0, "y": 4, "camera": false}
@@ -58,7 +59,8 @@ Quads and VTOLs accept the same fields:
 
 | Field | Default | Description |
 | --- | --- | --- |
-| `x`, `y` | required | Spawn position in meters, in the world frame |
+| `x`, `y` | required, or `global_position` | Spawn position in meters, in the world frame |
+| `global_position` | — | Spawn position as `lat` and `lon` in degrees (and optionally `alt` in meters, used as `z`), instead of `x` and `y` |
 | `z` | `0.75` | Spawn height in meters |
 | `yaw` | `0` | Spawn heading in degrees |
 | `camera` | `true` | Master camera switch: `false` disables both cameras below, whatever their values |
@@ -70,6 +72,12 @@ Quads and VTOLs accept the same fields:
 So `{"x": 0, "y": 0}` is a complete vehicle: a downward-facing RGB-D camera, no thermal camera, at the world origin.
 
 The world frame is ENU, like Gazebo's: `x` points east, `y` points north, and `yaw` is measured counter-clockwise from `x`, so `"yaw": 90` faces north.
+
+A `global_position` is converted to `x` and `y` with the world's origin, the `<spherical_coordinates>` of its `.sdf` file, the same way as for custom objects. Its `alt` is the spawn height relative to that origin, like `z`, not an altitude above sea level; without `alt`, `z` (default `0.75`) is used. A vehicle has either `x`/`y` or a `global_position`, and `alt` and `z` can't both be set. `scenario.py` prints the resulting `x` and `y`:
+
+```sh
+python3 simulation/simulation_resources/scripts/scenario.py my_scenario
+```
 
 ### Custom objects
 

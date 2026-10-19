@@ -196,7 +196,8 @@ A scenario is a JSON file that sets the world, the quads and VTOLs (each with it
   "world": "imav",
   "quads": [
     {"x": 0, "y": 0, "yaw": 90},
-    {"x": 3, "y": 0, "rgbd_camera": false, "thermal_camera": true}
+    {"x": 3, "y": 0, "rgbd_camera": false, "thermal_camera": true},
+    {"global_position": {"lat": 48.80255, "lon": 7.85420, "alt": 1}}
   ],
   "vtols": [
     {"x": 0, "y": 4, "camera": false}
@@ -213,7 +214,8 @@ A scenario is a JSON file that sets the world, the quads and VTOLs (each with it
 
 | Vehicle field | Default | Description |
 | --- | --- | --- |
-| `x`, `y` | required | Spawn position in meters (world frame) |
+| `x`, `y` | required, or `global_position` | Spawn position in meters (world frame) |
+| `global_position` | — | Spawn position as `lat`/`lon` (and optionally `alt`, used as `z`), converted with the world's `<spherical_coordinates>` origin |
 | `z` | `0.75` | Spawn height in meters |
 | `yaw` | `0` | Spawn heading in degrees |
 | `camera` | `true` | Master camera switch: `false` disables both cameras below |

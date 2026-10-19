@@ -12,8 +12,10 @@ A scenario is a JSON file with the world to load, the quads and VTOLs to spawn, 
       "custom_objects": []
     }
 
-Each vehicle accepts camera, rgbd_camera, thermal_camera, vio_bridge (quads only), camera_pitch (radians), x, y
-(required), z, and yaw (degrees); missing fields take the defaults in VEHICLE_DEFAULTS. Each custom object has a
+Each vehicle accepts camera, rgbd_camera, thermal_camera, vio_bridge (quads only), camera_pitch (radians), x, y, z,
+and yaw (degrees); missing fields take the defaults in VEHICLE_DEFAULTS. Its spawn position is either x and y, or a
+global_position (lat, lon, and optionally alt, used as z), converted to x and y with the world's <spherical_coordinates>
+origin. Each custom object has a
 model, a global_position (lat, lon, alt) or a local_position (x, y, z), and optionally an id, an attitude (roll,
 pitch, yaw in degrees), and static.
 
@@ -35,6 +37,10 @@ import os
 import re
 import shlex
 import sys
+import xml.etree.ElementTree as ET
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from latlon_to_xy import latlon_to_xy  # noqa: E402
 
 RESOURCES_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
@@ -129,23 +135,50 @@ def _is_number(value):
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
+def world_origin(world_file):
+    """Return (lat, lon) from the world's <spherical_coordinates>, or None."""
+    coords = ET.parse(world_file).getroot().find('.//spherical_coordinates')
+    if coords is None or coords.findtext('latitude_deg') is None or coords.findtext('longitude_deg') is None:
+        return None
+    return float(coords.findtext('latitude_deg')), float(coords.findtext('longitude_deg'))
+
+
 def _resolve_vehicle(vehicle, vehicle_type, index, errors):
     label = f'{VEHICLE_TYPES[vehicle_type][0]}[{index}]'
     if not isinstance(vehicle, dict):
         errors.append(f'{label} must be an object')
         return None
-    unknown = set(vehicle) - set(VEHICLE_DEFAULTS) - set(VEHICLE_REQUIRED)
+    unknown = set(vehicle) - set(VEHICLE_DEFAULTS) - set(VEHICLE_REQUIRED) - {'global_position'}
     if unknown:
         errors.append(f'{label} has unknown field(s): {", ".join(sorted(unknown))}')
     resolved = dict(VEHICLE_DEFAULTS)
     resolved.update(vehicle)
-    for field in VEHICLE_REQUIRED:
-        if field not in vehicle:
-            errors.append(f'{label} is missing required field "{field}"')
+    if 'global_position' in vehicle:
+        # The spawn position as lat/lon (alt: z); resolve() converts it to x/y once the world's origin is known
+        position = vehicle['global_position']
+        resolved['x'] = resolved['y'] = None
+        if any(field in vehicle for field in VEHICLE_REQUIRED):
+            errors.append(f'{label} has both x/y and a global_position: use one of them')
+        elif not isinstance(position, dict) or not all(_is_number(position.get(k)) for k in ('lat', 'lon')):
+            errors.append(f'{label}.global_position needs numeric lat and lon')
+        elif set(position) - {'lat', 'lon', 'alt'}:
+            errors.append(f'{label}.global_position has unknown field(s): {", ".join(sorted(set(position) - {"lat", "lon", "alt"}))}')
+        elif 'alt' in position and 'z' in vehicle:
+            errors.append(f'{label} has both z and global_position.alt: use one of them')
+        elif 'alt' in position and not _is_number(position['alt']):
+            errors.append(f'{label}.global_position.alt must be a number')
+        elif 'alt' in position:
+            resolved['z'] = position['alt']
+    else:
+        for field in VEHICLE_REQUIRED:
+            if field not in vehicle:
+                errors.append(f'{label} is missing required field "{field}" (or a global_position)')
     for field in VEHICLE_BOOLEANS:
         if not isinstance(resolved[field], bool):
             errors.append(f'{label}.{field} must be true or false')
     for field in VEHICLE_NUMBERS:
+        if field in ('x', 'y') and 'global_position' in vehicle:
+            continue  # Set from global_position in resolve()
         if field in resolved and not _is_number(resolved[field]):
             errors.append(f'{label}.{field} must be a number')
     if vehicle_type == 'vtol' and resolved['vio_bridge'] is True:
@@ -225,11 +258,15 @@ def resolve(path, num_quads=None, num_vtols=None, rcpilot=None, jetson=None, res
         errors.append(f'unknown top-level field(s): {", ".join(sorted(unknown))}')
 
     world = scenario.get('world')
+    world_file = origin = None
     if not isinstance(world, str) or not NAME_PATTERN.match(world):
         errors.append('"world" must be the name of a world file in worlds/ (without .sdf)')
     elif not os.path.isfile(os.path.join(resources_dir, 'worlds', f'{world}.sdf')):
         available = ', '.join(list_names(os.path.join(resources_dir, 'worlds'), '.sdf'))
         errors.append(f"world '{world}' not found in worlds/. Available worlds: {available}")
+    else:
+        world_file = os.path.join(resources_dir, 'worlds', f'{world}.sdf')
+        origin = world_origin(world_file)
 
     drones = []
     counts = {}
@@ -250,9 +287,16 @@ def resolve(path, num_quads=None, num_vtols=None, rcpilot=None, jetson=None, res
         counts[vehicle_type] = limit
         for index, vehicle in enumerate(vehicles[:limit]):
             resolved = _resolve_vehicle(vehicle, vehicle_type, index, errors)
-            if resolved is not None:
-                resolved.update({'type': vehicle_type, 'base_model': base_model})
-                drones.append(resolved)
+            if resolved is None:
+                continue
+            position = resolved.get('global_position')
+            if isinstance(position, dict) and _is_number(position.get('lat')) and _is_number(position.get('lon')):
+                if origin is not None:
+                    resolved['x'], resolved['y'] = latlon_to_xy(position['lat'], position['lon'], *origin)
+                elif world_file is not None:
+                    errors.append(f"{key}[{index}] uses global_position but world '{world}' has no <spherical_coordinates>")
+            resolved.update({'type': vehicle_type, 'base_model': base_model})
+            drones.append(resolved)
 
     for sitl_instance, drone in enumerate(drones):
         drone['id'] = sitl_instance + 1
