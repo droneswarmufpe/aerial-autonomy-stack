@@ -45,9 +45,9 @@
       "id": 3,
       "model": "aruco_5x5_0",
       "global_position": {
-        "lat": 48.806571,
-        "lon": 7.852008,
-        "alt": 4
+        "lat": 48.8065596,
+        "lon": 7.8522795,
+        "alt": 0.1
       },
       "attitude": {
         "roll": 0,

@@ -56,15 +56,31 @@ The checkout is mounted read-write at `/aas/evaat`: evaat writes its node logs t
 
 Inside the `evaat` windows, evaat's tmux session is nested in the container's: press `Ctrl + b` twice to send a key to evaat's session (e.g. `Ctrl + b`, `Ctrl + b`, `n` for its next window).
 
+## Onboard perception
+
+evaat's perception node runs on each drone when its config enables it (`perception.enabled: true`, and `enabled: true` on a pipeline, see evaat's `docs/perception.md`). In the simulation, its `gstreamer` provider on port 5600 receives the drone's simulated RGB camera.
+
+The `yolo_detector` pipeline needs a TensorRT engine (`assets/models/<model_name>.engine`). A TensorRT engine only runs with the TensorRT version and GPU it was built with, so export it from the YOLO `.pt` model inside `aircraft-image`, on the computer that runs the simulation (e.g. for `assets/models/yolov11-ime-target.pt`):
+
+```sh
+docker run --rm --gpus all -v <EVAAT_DIR>:/aas/evaat -w /aas/evaat/assets/models --entrypoint yolo aircraft-image \
+  export model=yolov11-ime-target.pt format=engine device=0
+sudo chown $USER: <EVAAT_DIR>/assets/models/yolov11-ime-target.*    # The container writes them as root
+```
+
+Then set the pipeline's `model_name` to the engine's name (`yolov11-ime-target`). Re-export it after rebuilding `aircraft-image` with another TensorRT version, and on a different GPU. The intermediate `.onnx` file can be deleted.
+
+With `display: true`, the pipeline's annotated image opens in a window on your screen. The model detects the target from above (e.g. with the default `camera_pitch` pointing down, from a few meters up), not from the ground.
+
 ## Dependencies
 
 The images install evaat's third-party dependencies (from evaat's `requirements/`), not evaat itself:
 
 | Image | evaat profile | Packages |
 | --- | --- | --- |
-| `aircraft-image` (`Dockerfile.aircraft`) | drone | pyyaml, pyserial, pymavlink, utm, pyzmq, dearpygui, TensorRT, pycuda; Chorus, MAVKit, rcpilot.mavsys, and OpenCV are part of the image already. The image uses the CUDA *devel* base, which pycuda is built against |
+| `aircraft-image` (`Dockerfile.aircraft`) | drone | pyyaml, pyserial, pymavlink, utm, pyzmq, dearpygui, TensorRT, pycuda, and onnx / onnxslim (to export YOLO models to TensorRT engines); Chorus, MAVKit, rcpilot.mavsys, ultralytics, and OpenCV are part of the image already. The image uses the CUDA *devel* base, which pycuda is built against, and the system OpenCV, which has GStreamer (MAVProxy's pip OpenCV, without it, is removed) |
 | `ground-image` (`Dockerfile.ground`) | gcs | pyyaml, pyserial, PySide6 6.11.0 (with QtWebEngine), and the system libraries its Qt needs. PySide6 6.12.0 crashes the GCS on the image's Python 3.10 (`Fatal Python error: none_dealloc`) |
 
-The rcpilot images (`Dockerfile.rc_aircraft`, `Dockerfile.rc_ground`) don't include them, as `EVAAT=true` is not used with `RCPILOT=true`. evaat's optional `pyrealsense2` is not installed.
+The rcpilot images (`Dockerfile.rc_aircraft`, `Dockerfile.rc_ground`) don't include them, as `EVAAT=true` is not used with `RCPILOT=true`. evaat's optional `pyrealsense2` is not installed (the simulated camera comes through GStreamer).
 
 If evaat adds a dependency, add it to the matching Dockerfile: the ground image's build fails if PySide6's QtWebEngine can't be imported.
