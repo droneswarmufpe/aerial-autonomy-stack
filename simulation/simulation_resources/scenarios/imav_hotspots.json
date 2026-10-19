@@ -2,8 +2,11 @@
   "world": "imav",
   "quads": [
     {
-      "x": 0,
-      "y": 0
+      "global_position": {
+        "lat": 48.8065596,
+        "lon": 7.8522795,
+        "alt": 0.5
+      }
     }
   ],
   "vtols": [],
