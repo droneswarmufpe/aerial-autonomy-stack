@@ -15,7 +15,6 @@
   centralized = ENV.fetch('CENTRALIZED', 'false') == 'true'
   rcpilot = ENV.fetch('RCPILOT', 'false') == 'true'
 
-  simulated_time = ENV.fetch('SIMULATED_TIME', 'false') == 'true'
   vio_bridge = ENV.fetch('VIO_BRIDGE', 'false') == 'true'
   camera_pitch = ENV.fetch('CAMERA_PITCH', '1.5707').to_f
 
@@ -65,11 +64,7 @@ windows:
       layout: even-horizontal
       panes:
         - >
-          <% if simulated_time %>
           mavlink-routerd -t 0 -e 127.0.0.1:14550 -e <%= "#{sim_subnet}.90.#{drone_id}" %>:14572 -e <%= "#{sim_subnet}.90.#{drone_id}" %>:14571 <%= "#{sim_subnet}.90.#{drone_id}" %>:14570
-          <% else %>
-          mavlink-routerd -t 0 -e 127.0.0.1:14550 -e <%= "#{sim_subnet}.90.#{drone_id}" %>:14572 -e <%= "#{sim_subnet}.90.#{drone_id}" %>:14571 /dev/ttyACM0:57600
-          <% end %>
 
   <% if rcpilot %>
   - rcpilot:
