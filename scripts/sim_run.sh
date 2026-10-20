@@ -23,7 +23,7 @@ JETSON_IPS="${JETSON_IPS:-192.168.55.1}" # Comma-separated Jetson IPs, one per d
 GND_CONTAINER="${GND_CONTAINER:-true}" # Options: true (default), false
 
 # EVAAT
-EVAAT="${EVAAT:-false}" # Options: true, false (default) - If true, mount evaat_embedded_py and run its drone stack in each aircraft container and its GCS in the ground container
+EVAAT="${EVAAT:-true}" # Options: true, false (default) - If true, mount evaat_embedded_py and run its drone stack in each aircraft container and its GCS in the ground container
 EVAAT_DIR="${EVAAT_DIR:-}" # evaat_embedded_py checkout on the host, used when EVAAT=true (default = github_clones/evaat_embedded_py)
 EVAAT_DRONE_CONFIG="${EVAAT_DRONE_CONFIG:-}" # evaat drone config, relative to EVAAT_DIR; {id} is replaced by the drone ID (default = config/sitl/drone{id}.yml)
 [[ -n "$EVAAT_DRONE_CONFIG" ]] || EVAAT_DRONE_CONFIG='config/imav/drone{id}.yml' # Set apart: the braces would end a ${...:-default}
@@ -84,7 +84,7 @@ fi
 EVAAT_GND_OPTS=""
 EVAAT_AIR_OPTS=()
 if [[ "$EVAAT" == "true" ]]; then
-  for flag in "RCPILOT=$RCPILOT" "JETSON=$JETSON" "CENTRALIZED=$CENTRALIZED"; do
+  for flag in "RCPILOT=$RCPILOT" "CENTRALIZED=$CENTRALIZED"; do
     if [[ "${flag#*=}" == "true" ]]; then
       echo "EVAAT=true does not support ${flag}" >&2
       exit 1
@@ -100,18 +100,37 @@ if [[ "$EVAAT" == "true" ]]; then
     exit 1
   fi
   EVAAT_DIR=$(realpath "$EVAAT_DIR")
-  for config in "$EVAAT_GCS_CONFIG" $(for id in $(seq 1 $NUM_DRONES); do echo "${EVAAT_DRONE_CONFIG//\{id\}/$id}"; done); do
+  # With JETSON=true, the evaat drone stack runs on the Jetsons (no aircraft containers): only the GCS config is used here
+  EVAAT_CONFIGS=("$EVAAT_GCS_CONFIG")
+  if [[ "$JETSON" != "true" ]]; then
+    for id in $(seq 1 $NUM_DRONES); do EVAAT_CONFIGS+=("${EVAAT_DRONE_CONFIG//\{id\}/$id}"); done
+  fi
+  for config in "${EVAAT_CONFIGS[@]}"; do
     if [[ ! -f "${EVAAT_DIR}/${config}" ]]; then
       echo "evaat config ${EVAAT_DIR}/${config} not found (see EVAAT_DRONE_CONFIG and EVAAT_GCS_CONFIG)" >&2
       exit 1
     fi
   done
-  echo "EVAAT: ${EVAAT_DIR} (GCS: ${EVAAT_GCS_CONFIG}, drones: ${EVAAT_DRONE_CONFIG})"
+  if [[ "$JETSON" == "true" ]]; then
+    echo "EVAAT: ${EVAAT_DIR} (GCS: ${EVAAT_GCS_CONFIG}, drones: on the Jetsons)"
+  else
+    echo "EVAAT: ${EVAAT_DIR} (GCS: ${EVAAT_GCS_CONFIG}, drones: ${EVAAT_DRONE_CONFIG})"
+  fi
   # QTWEBENGINE_DISABLE_SANDBOX: QtWebEngine (the GCS map) refuses to run as root, as in the container, with its sandbox
   EVAAT_GND_OPTS="--volume ${EVAAT_DIR}:/aas/evaat --env EVAAT=true --env EVAAT_CONFIG=${EVAAT_GCS_CONFIG} --env QTWEBENGINE_DISABLE_SANDBOX=1"
   for id in $(seq 1 $NUM_DRONES); do
     EVAAT_AIR_OPTS[$id]="--volume ${EVAAT_DIR}:/aas/evaat --env EVAAT=true --env EVAAT_CONFIG=${EVAAT_DRONE_CONFIG//\{id\}/$id}"
   done
+fi
+
+# The ground container runs on the host network with EVAAT=true and JETSON=true: the evaat GCS links to the drones on the
+# Jetsons by UDP broadcast, which can't cross a docker network. SITL then sends the ground's MAVLink to 127.0.0.1
+GND_HOST_NETWORK=false
+if [[ "$EVAAT" == "true" && "$JETSON" == "true" ]]; then
+  GND_HOST_NETWORK=true
+  GND_NET_OPTS="--net=host"
+else
+  GND_NET_OPTS="--net=$SIM_NET_NAME --ip=${SIM_SUBNET}.90.${GROUND_ID}"
 fi
 
 # Detect the environment (Ubuntu/GNOME, WSL, etc.)
@@ -214,7 +233,7 @@ DOCKER_CMD="docker run -it --rm \
   --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
   --env HEADLESS=$HEADLESS --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS --env WORLD=$WORLD $VIO_SIM_OPTS \
   --env SIMULATED_TIME=true --env RTF=$RTF --env START_AS_PAUSED=$START_AS_PAUSED \
-  --env JETSON=$JETSON --env JETSON_IPS=$JETSON_IPS \
+  --env JETSON=$JETSON --env JETSON_IPS=$JETSON_IPS --env GND_HOST_NETWORK=$GND_HOST_NETWORK \
   --env SIM_SUBNET=$SIM_SUBNET --env GROUND_ID=$GROUND_ID \
   --env GND_CONTAINER=$GND_CONTAINER --env CENTRALIZED=$CENTRALIZED \
   --env ROS_DOMAIN_ID=$SIM_ID \
@@ -249,7 +268,7 @@ if [[ "$GND_CONTAINER" == "true" ]]; then
     --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS \
     --env SIMULATED_TIME=true --env CENTRALIZED=$CENTRALIZED \
     --env ROS_DOMAIN_ID=$GROUND_ID \
-    --net=$SIM_NET_NAME --ip=${SIM_SUBNET}.90.${GROUND_ID} \
+    ${GND_NET_OPTS} \
     --privileged \
     --name $GND_CONT_NAME"
   # Add WSL-specific options and complete the command
@@ -310,7 +329,9 @@ fi
 
 if [[ "$GND_CONTAINER" == "true" ]]; then
   sleep 2.0 # Once all containers are up, connect ground and aircraft containers to the air network
-  docker network connect --ip=${AIR_SUBNET}.90.$GROUND_ID $AIR_NET_NAME $GND_CONT_NAME
+  if [[ "$GND_HOST_NETWORK" == "false" ]]; then
+    docker network connect --ip=${AIR_SUBNET}.90.$GROUND_ID $AIR_NET_NAME $GND_CONT_NAME
+  fi
   if [[ "$JETSON" == "false" ]]; then
     for i in $(seq 1 $NUM_DRONES); do
       docker network connect --ip=${AIR_SUBNET}.90.$i $AIR_NET_NAME "aircraft-container-inst${INSTANCE}_${i}"

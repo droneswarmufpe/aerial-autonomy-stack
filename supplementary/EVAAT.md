@@ -36,7 +36,19 @@ EVAAT=true EVAAT_DRONE_CONFIG=config/ufpe/drone{id}.yml ./sim_run.sh   # Other e
 
 `sim_run.sh` checks the checkout and every config before starting any container. evaat ships SITL configs for 3 drones (`drone1.yml` to `drone3.yml`), so add configs for more drones. Each drone config's `autopilot` must be `127.0.0.1:14550` to receive the simulated drone's MAVLink, see [What runs where](#what-runs-where).
 
-`EVAAT=true` is not supported with `RCPILOT=true`, `JETSON=true` (evaat then runs on the Jetson itself), `CENTRALIZED=true` (the aircraft containers have no MAVLink router), or `GND_CONTAINER=false` (the GCS runs in the ground container).
+`EVAAT=true` is not supported with `RCPILOT=true`, `CENTRALIZED=true` (the aircraft containers have no MAVLink router), or `GND_CONTAINER=false` (the GCS runs in the ground container).
+
+### With Jetsons (`JETSON=true`)
+
+```sh
+EVAAT=true JETSON=true JETSON_IPS=192.168.1.50,192.168.1.51 ./sim_run.sh
+```
+
+The evaat drone stack runs on the Jetsons themselves, one per drone, so no aircraft containers are started (as always with `JETSON=true`) and `EVAAT_DRONE_CONFIG` is not used; only the GCS runs in the simulation, in the ground container.
+
+- The simulation streams each drone's SITL MAVLink (UDP `14550`) and cameras (UDP `5600`, ...) to its Jetson, as without EVAAT. The MAVLink arrives at the Jetson's LAN address, so the evaat drone config on each Jetson must listen there: `autopilot.ip` `0.0.0.0` (or the Jetson's IP) and `autopilot.port` `14550`, not `127.0.0.1`.
+- The ground container runs on the host network, like the simulation container: the evaat GCS links to the drones on the Jetsons by UDP broadcast (port 50053), which can't leave a docker network. The PC and the Jetsons must be on the same LAN.
+- SITL sends the ground's QGroundControl MAVLink to `127.0.0.1` instead of the ground container's docker IP, and the ground container isn't connected to the inter-vehicle docker network.
 
 ## What runs where
 

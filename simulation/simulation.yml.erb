@@ -25,6 +25,8 @@
   jetson_ips = ENV.fetch('JETSON_IPS', '192.168.55.1').split(',').map(&:strip) # One Jetson per drone, in drone ID order
   
   gnd_container = ENV.fetch('GND_CONTAINER', 'true') == 'true'
+  # The ground container is on the host network (sim_run.sh, with EVAAT=true and JETSON=true) or at its docker IP
+  ground_ip = ENV.fetch('GND_HOST_NETWORK', 'false') == 'true' ? '127.0.0.1' : "#{sim_subnet}.90.#{ground_id}"
   centralized = ENV.fetch('CENTRALIZED', 'false') == 'true'
 
   simulated_time = ENV.fetch('SIMULATED_TIME', 'false') == 'true'
@@ -134,7 +136,7 @@ windows:
           --out=udp:<%= "#{sim_subnet}.90.#{drone_id}" %>:14570 
           <% end %>
           <% if gnd_container %>
-          --out=udp:<%= "#{sim_subnet}.90.#{ground_id}" %>:<%= 14550 + drone_id%>
+          --out=udp:<%= ground_ip %>:<%= 14550 + drone_id%>
           <% else %>
           --out=udp:127.0.0.1:<%= 14550 + sitl_instance %>
           <% end %>

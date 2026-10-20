@@ -21,7 +21,7 @@ Starts the simulation, ground, and aircraft containers (SITL by default, Jetson-
 | `JETSON` | `false` | Jetson-in-the-loop: the simulation container uses host networking and streams each drone's SITL MAVLink (UDP `14550`) and cameras (UDP `5600`, `5700`, `5710`, `5720`, `5800`) to its own Jetson in `JETSON_IPS`. Aircraft containers are not started. Not compatible with `CENTRALIZED=true` or with quads using `vio_bridge`. |
 | `JETSON_IPS` | `192.168.55.1` | Comma-separated Jetson IPs on the same LAN as the PC, one per drone in drone ID order (quads first, then VTOLs), e.g. `192.168.1.50,192.168.1.51`. Used when `JETSON=true`. |
 | `GND_CONTAINER` | `true` | Start the ground container when `true`. |
-| `EVAAT` | `false` | Run the evaat_embedded_py drone stack in each aircraft container and its GCS in the ground container, from a checkout mounted into them. Not compatible with `RCPILOT=true`, `JETSON=true`, `CENTRALIZED=true`, or `GND_CONTAINER=false`. See [`EVAAT.md`](EVAAT.md). |
+| `EVAAT` | `false` | Run the evaat_embedded_py drone stack in each aircraft container and its GCS in the ground container, from a checkout mounted into them. With `JETSON=true`, the drone stack runs on the Jetsons instead and the ground container uses host networking. Not compatible with `RCPILOT=true`, `CENTRALIZED=true`, or `GND_CONTAINER=false`. See [`EVAAT.md`](EVAAT.md). |
 | `EVAAT_DIR` | `github_clones/evaat_embedded_py` | The evaat_embedded_py checkout on the host, used when `EVAAT=true`. |
 | `EVAAT_DRONE_CONFIG` | `config/sitl/drone{id}.yml` | evaat drone config, relative to `EVAAT_DIR`; `{id}` is replaced by the drone ID. |
 | `EVAAT_GCS_CONFIG` | `config/sitl/gcs.yml` | evaat GCS config, relative to `EVAAT_DIR`. |
