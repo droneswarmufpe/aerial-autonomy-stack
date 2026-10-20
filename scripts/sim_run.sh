@@ -18,12 +18,12 @@ GROUND_ID="${GROUND_ID:-101}" # Last byte of the simulation container IP (defaul
 # MODE
 CENTRALIZED="${CENTRALIZED:-false}" # Options: true, false (default) - If true, all cameras will stream to the ground container. If false, each camera will stream to its own IP (useful for testing network conditions and scalability)
 RCPILOT="${RCPILOT:-false}" # Options: true, false (default) - If true, the rcpilot repo will be cloned and built. This is useful for testing the rcpilot SDK and its integration with the AAS.
-JETSON="${JETSON:-true}" # Options: true (default), false - If true, SITL and cameras are streamed to an external Jetson (on the same LAN as this PC) instead of aircraft containers
+JETSON="${JETSON:-false}" # Options: true (default), false - If true, SITL and cameras are streamed to an external Jetson (on the same LAN as this PC) instead of aircraft containers
 JETSON_IPS="${JETSON_IPS:-192.168.55.1}" # Comma-separated Jetson IPs, one per drone in drone ID order, used when JETSON=true (default = 192.168.55.1)
 GND_CONTAINER="${GND_CONTAINER:-true}" # Options: true (default), false
 
 # EVAAT
-EVAAT="${EVAAT:-true}" # Options: true, false (default) - If true, mount evaat_embedded_py and run its drone stack in each aircraft container and its GCS in the ground container
+EVAAT="${EVAAT:-false}" # Options: true, false (default) - If true, mount evaat_embedded_py and run its drone stack in each aircraft container and its GCS in the ground container
 EVAAT_DIR="${EVAAT_DIR:-}" # evaat_embedded_py checkout on the host, used when EVAAT=true (default = github_clones/evaat_embedded_py)
 EVAAT_DRONE_CONFIG="${EVAAT_DRONE_CONFIG:-}" # evaat drone config, relative to EVAAT_DIR; {id} is replaced by the drone ID (default = config/sitl/drone{id}.yml)
 [[ -n "$EVAAT_DRONE_CONFIG" ]] || EVAAT_DRONE_CONFIG='config/imav/drone{id}.yml' # Set apart: the braces would end a ${...:-default}
