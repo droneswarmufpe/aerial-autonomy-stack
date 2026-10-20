@@ -2,28 +2,24 @@
 
 *Aerial autonomy stack* (AAS) is an all-in-one software stack to:
 
-1. **Develop** multi-drone autonomy—with ROS2, PX4, and ArduPilot
-2. **Simulate** faster-than-real-time perception and control—with YOLOv8 and 3D LiDAR 
+1. **Develop** multi-drone autonomy—with ROS2 and ArduPilot
+2. **Simulate** faster-than-real-time perception and control—with YOLOv8
 3. **Deploy** in real drones—with JetPack and NVIDIA Orin
 
 <details>
 <summary><b>Feature list</b> <i>(click to expand)</i></summary>
 
-- **PX4 and ArduPilot multi-vehicle** simulation (**quadrotors and VTOLs**)
-- ROS2 action-based autopilot interface (*via* XRCE-DDS or MAVROS)
-- **YOLOv8** (with ONNX GPU Runtimes) and **LiDAR** Odometry (with [KISS-ICP](https://github.com/PRBonn/kiss-icp))
+- **ArduPilot multi-vehicle** simulation (**quadrotors and VTOLs**)
+- **YOLOv8** (with ONNX GPU Runtimes)
 - 3D worlds for perception-based simulation
 - **Steppable** [Gymnasium environment](https://gymnasium.farama.org/index.html) and **faster-than-real-time**, **multi-instance** simulation
 - Gazebo's wind effects plugin
 - **Dockerized simulation** based on [`nvcr.io/nvidia/cuda:12.8.1-cudnn-runtime-ubuntu22.04`](https://catalog.ngc.nvidia.com/orgs/nvidia/containers/cuda/tags)
-- **Dockerized deployment** based on [`nvcr.io/nvidia/l4t-jetpack:r36.4.0`](https://catalog.ngc.nvidia.com/orgs/nvidia/containers/l4t-jetpack/tags)
 - **Windows 11** compatibility *via* WSLg
-- Multi-**Jetson-in-the-loop (HITL) simulation** to test NVIDIA- and ARM-based on-board compute
+- Multi-**Jetson-in-the-loop simulation** (`JETSON=true`) to test NVIDIA- and ARM-based on-board compute
 - Dual network to separate simulated sensors (`SIM_SUBNET`) and inter-vehicle comms (`AIR_SUBNET`)
-- [Zenoh](https://github.com/eclipse-zenoh/zenoh-plugin-ros2dds) inter-vehicle ROS2 bridge
-- [PX4 Offboard](https://docs.px4.io/main/en/flight_modes/offboard.html) interface (e.g. CTBR/`VehicleRatesSetpoint` for agile, GNSS-denied flight) 
 - [ArduPilot Guided](https://ardupilot.org/copter/docs/ac2_guidedmode.html) interface (i.e. `setpoint_velocity`, `setpoint_accel` references)
-- Logs analysis with [`flight_review`](https://github.com/PX4/flight_review) (`.ulg`), MAVExplorer (`.bin`), and [PlotJuggler](https://github.com/facontidavide/PlotJuggler) (`rosbag`)
+- Logs analysis with MAVExplorer (`.bin`)
 
 </details>
 
@@ -38,13 +34,12 @@ flowchart LR
     subgraph sim ["#nbsp;simulation#nbsp;container#nbsp;(amd64)"]
         direction TB
         gz(Gazebo Sim):::resource
-        sitl("[N x] PX4 / ArduPilot SITL"):::resource
+        sitl("[N x] ArduPilot SITL"):::resource
         gz <--> |"gz_bridge"| sitl
     end
 
     subgraph air ["[N#nbsp;x]#nbsp;aircraft#nbsp;container(s)#nbsp;(amd64/arm64)"]
         direction TB
-        lidar_in(("/lidar_points<br/>(Unconsumed)")):::algo
         
         mavrouter["mavlink-routerd<br/>:14570 → :14571, :14572"]:::bridge
         rcpilot[/"rcpilot"\]:::algo
@@ -63,7 +58,6 @@ flowchart LR
     sitl <--> |"MAVLink UDP :14550+N <br/> [SIM_SUBNET]"| qgc
     sitl <--> |"MAVLink UDP :14570 <br/> [SIM_SUBNET]"| mavrouter
     gz --> |"gz_gst_bridge (Camera Frame) <br/> [SIM_SUBNET]"| script04
-    gz --> |"LiDAR Pointcloud <br/> [SIM_SUBNET]"| lidar_in
 
     classDef bridge fill:#ffebd6,stroke:#f5a623,stroke-width:2px;
     classDef algo fill:#e1f5fe,stroke:#0277bd,stroke-width:2px;
@@ -79,13 +73,12 @@ flowchart LR
     subgraph sim ["simulation container (amd64) [SIM_SUBNET]"]
         direction TB
         gz(Gazebo Sim):::resource
-        sitl("[N x] PX4 / ArduPilot SITL"):::resource
+        sitl("[N x] ArduPilot SITL"):::resource
         gz <--> |"gz_bridge"| sitl
     end
 
     subgraph gnd ["#nbsp;ground#nbsp;container#nbsp;(amd64)"]
         direction TB
-        lidar_in(("/lidar_points<br/>(Unconsumed)")):::algo
         qgc(QGroundControl):::resource
 
         mavrouter["mavlink-routerd<br/>:14570+N → :14000+100*N, :14001+100*N"]:::bridge
@@ -105,7 +98,6 @@ flowchart LR
     sitl <--> |"MAVLink UDP :14550+N <br/> [SIM_SUBNET]"| qgc
     sitl <--> |"MAVLink UDP :14570+N <br/> [SIM_SUBNET]"| mavrouter
     gz --> |"gz_gst_bridge (Camera Frame) <br/> [SIM_SUBNET]"| script04
-    gz --> |"LiDAR Pointcloud <br/> [SIM_SUBNET]"| lidar_in
 
     classDef bridge fill:#ffebd6,stroke:#f5a623,stroke-width:2px;
     classDef algo fill:#e1f5fe,stroke:#0277bd,stroke-width:2px;
@@ -128,53 +120,39 @@ aerial-autonomy-stack
 │           └── aas_env.py                          # aerial-autonomy-stack as a Gymnasium environment
 │
 ├── aircraft
-│   ├── aircraft_ws
-│   │   └── src
-│   │       ├── autopilot_interface                 # Ardupilot/PX4 high-level actions (Takeoff, Orbit, Offboard, Land)
-│   │       ├── mission                             # Orchestrator of the actions in `autopilot_interface` 
-│   │       ├── offboard_control                    # Low-level references for the Offboard action in `autopilot_interface` 
-│   │       ├── state_sharing                       # Publisher of the `/state_sharing_drone_N` topic broadcasted by Zenoh
-│   │       └── yolo_py                             # GStreamer video acquisition and publisher of YOLO bounding boxes
-│   │
-│   └── aircraft.yml.erb                            # Aircraft docker tmux entrypoint
+│   ├── aircraft_resources                          # Aircraft scripts, patches, and models
+│   └── aircraft.yml.erb                            # Aircraft docker tmux entrypoint
 │
 ├── ground
-│   ├── ground_ws
-│   │   └── src
-│   │       └── ground_system                       # Publisher of topic `/tracks` broadcasted by Zenoh
-│   │
-│   └── ground.yml.erb                              # Ground docker tmux entrypoint
+│   ├── ground_resources                            # Ground scripts and patches
+│   └── ground.yml.erb                              # Ground docker tmux entrypoint
 │
 ├── scripts
-│   ├── docker
-│   │   ├── Dockerfile.aircraft                     # Docker image for aircraft simulation and deployment
-│   │   ├── Dockerfile.ground                       # Docker image for ground system simulation and deployment
-│   │   └── Dockerfile.simulation                   # Docker image for SITL and HITL simulation
-│   │
-│   ├── deploy_build.sh                             # Build `Dockerfile.aircraft` for arm64/Orin
-│   ├── deploy_run.sh                               # Start the aircraft docker on arm64/Orin or the ground docker on amd64 (deploy or HITL)
-│   │
-│   ├── gym_run.py                                  # Examples for the Gymnasium aas-gym package
-│   │
-│   ├── sim_build.sh                                # Build all dockerfiles for amd64/simulation
-│   └── sim_run.sh                                  # Start the simulation (SITL or HITL)
+│   ├── docker
+│   │   ├── Dockerfile.aircraft                     # Docker image for aircraft simulation and deployment
+│   │   ├── Dockerfile.rc_aircraft                  # Aircraft image with rcpilot and OpenVINS (used when RCPILOT=true)
+│   │   ├── Dockerfile.ground                       # Docker image for ground system simulation and deployment
+│   │   ├── Dockerfile.rc_ground                    # Ground image with rcpilot (used when RCPILOT=true)
+│   │   └── Dockerfile.simulation                   # Docker image for SITL simulation
+│   │
+│   ├── gym_run.py                                  # Examples for the Gymnasium aas-gym package
+│   │
+│   ├── sim_build.sh                                # Build all dockerfiles for amd64/simulation
+│   └── sim_run.sh                                  # Start the simulation (SITL, or Jetson-in-the-loop with JETSON=true)
 │
 └── simulation
-    ├── simulation_resources
-    │   ├── aircraft_models
-    │   │   ├── alti_transition_quad                # ArduPilot VTOL model
-    │   │   ├── iris_with_ardupilot                 # ArduPilot quad model
-    │   │   ├── sensor_camera                       # Camera model
-    │   │   ├── sensor_lidar                        # LiDAR model
-    │   │   ├── standard_vtol                       # PX4 VTOL model
-    │   │   └── x500                                # PX4 quad model
-    │   └── simulation_worlds
-    │       ├── apple_orchard.sdf
-    │       ├── impalpable_greyness.sdf
-    │       ├── shibuya_crossing.sdf
-    │       └── swiss_town.sdf
+    ├── simulation_resources
+    │   ├── aircraft
+    │   │   ├── vehicles                            # ArduPilot quad (iris_with_ardupilot) and VTOL (alti_transition_quad) models
+    │   │   ├── sensors                             # Camera models (d435 RGB-D, sensor_thermal_camera)
+    │   │   └── payloads                            # Droppable payload models (grenade, fog_generator)
+    │   ├── worlds                                  # Gazebo world files (<world>.sdf)
+    │   ├── world_models                            # Models included by the world files
+    │   ├── objects                                 # Models that can be placed as custom objects
+    │   ├── scenarios                               # Scenario files: world, vehicles, and custom objects
+    │   └── scripts                                 # World generation and simulation helper scripts
     │
-    └── simulation.yml.erb                          # Simulation docker tmux entrypoint
+    └── simulation.yml.erb                          # Simulation docker tmux entrypoint
 ```
 </details>
 
@@ -197,42 +175,141 @@ cd aerial-autonomy-stack/scripts/
 # Note: the 1st build takes ~30GB of space and ~25' with good internet (`Ctrl + c` and restart if needed)
 ```
 
-<div align="right">
-  <a href="https://github.com/JacopoPan/aerial-autonomy-stack/actions/workflows/simulation-amd64-build.yml">
-    <img src="https://github.com/JacopoPan/aerial-autonomy-stack/actions/workflows/simulation-amd64-build.yml/badge.svg" alt="simulation-image amd64">
-  </a>
-  <a href="https://github.com/JacopoPan/aerial-autonomy-stack/actions/workflows/ground-amd64-build.yml">
-    <img src="https://github.com/JacopoPan/aerial-autonomy-stack/actions/workflows/ground-amd64-build.yml/badge.svg" alt="ground-image amd64">
-  </a>
-  <a href="https://github.com/JacopoPan/aerial-autonomy-stack/actions/workflows/aircraft-amd64-build.yml">
-    <img src="https://github.com/JacopoPan/aerial-autonomy-stack/actions/workflows/aircraft-amd64-build.yml/badge.svg" alt="aircraft-image amd64">
-  </a>
-</div>
-
 ## Simulation
 
 ![workspace](https://github.com/user-attachments/assets/ad909fcc-69de-44ac-84b3-c5bc7a1c896f)
 
-> On a low-mid range laptop—i7-11 with 16GB RAM and RTX 3060—AAS can simulate a PX4 quad with YOLO and LiDAR at **10x real-time-factor** with flag `RTF=0.0`. Run multiple `sim_run.sh` in parallel adding flag `INSTANCE=1`, `INSTANCE=2`, etc. for even higher throughput. Make sure you run `sudo prime-select nvidia` and rebooted to leverage GPU rendering and compute.
+> On a low-mid range laptop—i7-11 with 16GB RAM and RTX 3060—AAS can simulate faster than real time with flag `RTF=0.0` (ArduPilot SITL speedup is capped at **10x**). Run multiple `sim_run.sh` in parallel adding flag `INSTANCE=1`, `INSTANCE=2`, etc. for even higher throughput. Make sure you run `sudo prime-select nvidia` and rebooted to leverage GPU rendering and compute.
 
 ```sh
-# 1. Start AAS (centralized mode)
+# 1. Start AAS with a scenario (centralized mode)
 cd aerial-autonomy-stack/scripts
-AUTOPILOT=ardupilot NUM_QUADS=1 NUM_VTOLS=1 WORLD=esefex_fbx CENTRALIZED=true RTF=3.0 ./sim_run.sh
+SCENARIO=imav_hotspots CENTRALIZED=true RTF=3.0 ./sim_run.sh
 ```
+
+### Scenarios
+
+A scenario is a JSON file that sets the world, the quads and VTOLs (each with its own cameras and pose), and the custom objects. `SCENARIO` is a file name in [`simulation/simulation_resources/scenarios/`](/simulation/simulation_resources/scenarios) (without `.json`) or a path to any `.json` file; it defaults to `default` (`esefex_fbx` with one quad). The `scenarios/` folder is mounted into the simulation container, so scenarios can be added or edited from the host without an image rebuild; changes apply on the next run.
+
+```json
+{
+  "world": "imav",
+  "quads": [
+    {"x": 0, "y": 0, "yaw": 90},
+    {"x": 3, "y": 0, "rgbd_camera": false, "thermal_camera": true},
+    {"global_position": {"lat": 48.80255, "lon": 7.85420, "alt": 1}}
+  ],
+  "vtols": [
+    {"x": 0, "y": 4, "camera": false}
+  ],
+  "custom_objects": [
+    {"id": 1, "model": "construction_cone", "global_position": {"lat": 48.810124, "lon": 7.853343, "alt": 4}},
+    {"id": 2, "model": "ime-target", "local_position": {"x": 15, "y": -25, "z": 0}, "attitude": {"roll": 0, "pitch": 0, "yaw": 45}, "static": true}
+  ]
+}
+```
+
+- `world`: a world file in [`worlds/`](/simulation/simulation_resources/worlds) (without `.sdf`)
+- `quads` / `vtols`: one entry per vehicle. Drone IDs follow the list order, quads first: `iris_with_ardupilot_1`, `iris_with_ardupilot_2`, ..., then the VTOLs
+
+| Vehicle field | Default | Description |
+| --- | --- | --- |
+| `x`, `y` | required, or `global_position` | Spawn position in meters (world frame) |
+| `global_position` | — | Spawn position as `lat`/`lon` (and optionally `alt`, used as `z`), converted with the world's `<spherical_coordinates>` origin |
+| `z` | `0.75` | Spawn height in meters |
+| `yaw` | `0` | Spawn heading in degrees |
+| `camera` | `true` | Master camera switch: `false` disables both cameras below |
+| `rgbd_camera` | `true` | D435 color, infrared, and depth streams |
+| `thermal_camera` | `false` | Thermal camera stream |
+| `camera_pitch` | `1.5707` | Camera pitch in radians (90 deg down) |
+| `vio_bridge` | `false` | Stereo VIO (quads only), see below |
+
+- `custom_objects`: models from [`objects/`](/simulation/simulation_resources/objects) (or [`world_models/`](/simulation/simulation_resources/world_models)), each with a `global_position` (lat/lon/alt, converted with the world's `<spherical_coordinates>` origin) or a `local_position` (x/y/z), and optionally an `attitude` (roll/pitch/yaw in degrees) and `static` (default `false`)
+
+`NUM_QUADS` and `NUM_VTOLS` spawn only the first N quads/VTOLs of the scenario (all of them by default). `sim_run.sh` validates the scenario before starting any container. Full reference, including the available scenarios: [supplementary/SCENARIOS.md](/supplementary/SCENARIOS.md); custom objects: [supplementary/CUSTOM_OBJECTS.md](/supplementary/CUSTOM_OBJECTS.md).
+
+```sh
+SCENARIO=esefex_targets_1 ./sim_run.sh                          # A scenario in scenarios/
+SCENARIO=/path/to/my_scenario.json NUM_QUADS=1 ./sim_run.sh     # Any scenario file, only its first quad
+python3 ../simulation/simulation_resources/scripts/scenario.py imav_hotspots   # Validate and print a resolved scenario
+```
+
+Gazebo derives the D435 infrared and depth image topics from each model's
+world/model path, so all four RGB-D streams are distinct for every drone.
+Infrared and depth run at 30 Hz.
+
+### Stereo VIO (ArduPilot Iris)
+
+Build the simulation and RC aircraft images after changing the VIO bridge or
+startup templates, then enable the opt-in path:
+
+```sh
+cd scripts
+CONTAINER=simulation ./sim_build.sh
+CONTAINER=rc_aircraft ./sim_build.sh
+SCENARIO=calibration_vio RCPILOT=true RTF=1 ./sim_run.sh
+```
+
+`"vio_bridge": true` is set per quad in the scenario and requires `camera` and
+`rgbd_camera` on that quad, `RCPILOT=true`, and `JETSON=false`. It starts OpenVINS
+in that quad's aircraft container and sends its sensor topics in its ROS domain
+(`ROS_DOMAIN_ID=DRONE_ID`). VIO stays in the aircraft container even when
+`CENTRALIZED=true`. Quads without `vio_bridge` keep the existing video-stream path.
+
+| Topic in each aircraft's ROS domain | Data |
+| --- | --- |
+| `/camera/infra1/image_raw` | Left `mono8`, 1280×720, 30 Hz simulation time |
+| `/camera/infra2/image_raw` | Right `mono8`, 1280×720, 30 Hz simulation time |
+| `/vio/imu` | Original Gazebo IMU feeding the ArduPilot plugin |
+| `/clock` | Gazebo simulation time |
+
+The [D435 stereo baseline](https://dev.realsenseai.com/docs/high-speed-capture-mode-of-intel-realsense-depth-camera-d435/)
+is 50 mm, with infra1 on the left. The renderer uses
+`RGB_INT8` to avoid the expensive Ogre2 L8 readback path; `vio_bridge` converts to
+grayscale before ROS publication. IR H.264 streams are disabled in VIO mode.
+The bridge publishes only pairs whose original Gazebo capture stamps match
+exactly; mismatched frames are dropped from a bounded cache, never retimestamped
+to manufacture a pair. ROS delivery is not atomic, so consumers still synchronize
+using those stamps. This models ideal instantaneous global-shutter stereo with
+Gaussian image noise. It does not model near-IR material response, exposure blur,
+the dot projector, or physical RealSense image processing.
+
+OpenVINS calibration is generated at aircraft startup in `/tmp/aas_vio/` from
+the same host-mounted D435 and Iris SDFs used by the simulation. It includes the
+camera mount, the quad's `camera_pitch`, sensor offsets, optical-axis rotation, and the
+plugin IMU's 180-degree roll (FRD frame). Intrinsics come from resolution and
+horizontal FOV (`fx=fy≈695.995`, `cx=640`, `cy=360`), distortion and camera/IMU
+time offset are zero. Calibration estimation is disabled for this known geometry.
+Gravity magnitude is 9.8 m/s², matching the current AAS worlds; update the
+generator if using a custom world with different gravity.
+The old external checkout's `gazebo_ros2` calibration is not used; its estimator
+settings serve as a template. Current support is limited to the rigid Iris SDF
+hierarchy, not arbitrary SDF `relative_to` frame graphs.
+
+The direct IMU path preserves acquisition timestamps in the same clock as the
+cameras. It uses the **same sensor that feeds SITL**, without adding another IMU
+or changing ArduPilot's sensor settings. Its 1000 Hz requested update rate is
+limited to approximately 500 Hz by the generated world's 2 ms physics step.
+There is no 200 Hz decimation. This IMU has no injected noise; the small nonzero
+noise values in the generated estimator config are filter tuning values.
+
+200 Hz `HIGHRES_IMU` traffic between containers is inexpensive, but Copter 4.6.2
+constructs its timestamp from `AP_HAL::micros64()` when sending the current
+filtered IMU values. It does not carry the original Gazebo sample timestamp.
+Using that path requires validating clock alignment and filter/sample latency;
+this VIO mode therefore bypasses MAVLink for IMU delivery. Do not also publish a
+MAVLink IMU on `/vio/imu`.
+
+Start with `RTF=1` when evaluating estimator performance. At accelerated RTF,
+sensor rates scale in wall time and OpenVINS must keep up. Restart OpenVINS after
+a simulation time reset. This mode starts the estimator only; it does not feed
+its odometry back into the flight controller.
 
 Centralized mode streams all aircraft data (including MAVLink) to the ground container, so the stack runs as external processing rather than onboard. Set `CENTRALIZED=false` to keep streams local to each aircraft container.
 
-In the `Ground` Xterm terminal:
-```sh
-# 2. Run a mission script
-cd /aas/Projeto-Enxame-Drones
-python3 01_busca_do_alvo.py                                                                  # Or run another script from this repo
-```
-
 In the `Simulation`'s Xterm terminal:
 ```sh
-# 3. Analyze
+# 2. Analyze
 /aas/simulation_resources/scripts/plot_logs.sh                                                # Analyze the flight logs at http://10.42.90.100:5006/browse or in MAVExplorer
 ```
 
@@ -267,42 +344,7 @@ python3 /aas/simulation_resources/scripts/gz_wind.py --stop_wind
 > ```
 > </details>
 > <details>
-> <summary>Tip 2: <b>develop within running containers</b> <i>(click to expand)</i></summary>
-> 
-> Launching the `sim_run.sh` script with `DEV=true`, does **not** start the simulation and mounts folders `[aircraft|ground|simulation]_resources`, `[aircraft|ground]_ws/src` as volumes to more easily track, commit, push changes while building and testing them within the containers:
-> 
-> ```sh
-> cd aerial-autonomy-stack/scripts/
-> DEV=true ./sim_run.sh                                                                       # Starts one simulation-image, one ground-image, and one aircraft-image where the *_resources/ and *_ws/src/ folders are mounted from the host
-> ```
-> 
-> To build changes—**made on the host**—in the `Ground` or `QUAD` Xterm terminal:
-> 
-> ```sh
-> cd /aas/aircraft_ws/                                                                        # Or cd /aas/ground_ws/
-> colcon build --symlink-install
-> ```
-> 
-> To start the simulation, in the `QUAD` Xterm terminal:
-> 
-> ```sh
-> tmuxinator start -p /aas/aircraft.yml.erb
-> ```
-> 
-> In the `Ground` Xterm terminal:
-> ```sh
-> tmuxinator start -p /aas/ground.yml.erb
-> ```
-> 
-> In the `Simulation` Xterm terminal:
-> ```sh
-> tmuxinator start -p /aas/simulation.yml.erb
-> ```
-> 
-> To end the simulation, in each terminal detach Tmux with `Ctrl + b`, then `d`; kill all lingering processes with `tmux kill-server && pkill -f gz`
-> </details>
-> <details>
-> <summary>Tip 3: periodically run <b>Docker cleanups</b> <i>(click to expand)</i></summary>
+> <summary>Tip 2: periodically run <b>Docker cleanups</b> <i>(click to expand)</i></summary>
 >
 > ```sh
 > docker ps -a                          # List containers
@@ -328,6 +370,9 @@ python3 /aas/simulation_resources/scripts/gz_wind.py --stop_wind
 ### Available worlds
 
 - `apple_orchard` — a GIS world created using [BlenderGIS](https://github.com/domlysz/BlenderGIS)
+- `betione` — custom world
+- `calibration_vio` — calibration world for the stereo VIO
+- `cbr_phase1`, `cbr_phase2` — RoboCup field worlds
 - `esefex_fbx` — RJ military base
 - `imav` — custom world
 - `impalpable_greyness` — an empty world with simple shapes
@@ -335,26 +380,24 @@ python3 /aas/simulation_resources/scripts/gz_wind.py --stop_wind
 - `shibuya_crossing` — a 3D world adapted from [cgtrader](https://www.cgtrader.com/)
 - `swiss_town` — a photogrammetry world courtesy of [Pix4D / pix4d.com](https://support.pix4d.com/hc/en-us/articles/360000235126)
 
-### Available models
+### Available objects
 
-- `airstream`
-- `apple`
-- `apple_grid`
-- `birch`
-- `birch_row`
-- `crash`
-- `duck`
-- `fog_generator` — particle filter model that emits fog via a particle emitter
-- `gazebo`
-- `grenade` — static grenade mesh used as an environment prop
-- `imav`
-- `ime-target` - target used for pose estimation in esefex world
-- `jeep`
-- `jockey`
-- `rabbit`
-- `subaru`
-- `suburb`
-- `unicorn`
+Models in `objects/` that scenarios can place as custom objects:
+
+- `Robocup4`
+- `arquus_vt4`
+- `aruco_5x5_0`
+- `construction_cone`
+- `human_dummy`
+- `ime-target`
+- `panhard_vbl`
+- `renault_ccfm_a`
+- `renault_ccfm_b`
+- `renault_ccfm_c`
+- `renault_gbc180`
+- `rescue_randy`
+- `toyota_hilux`
+- `vltt_a`
 
 ## License 
 
@@ -364,22 +407,6 @@ Distributed under the MIT License. See `LICENSE.txt` for more information. Copyr
 
 - ArduPilot SITL for Iris uses option -f that also sets "external": True, this is not the case for the Alti Transition from ArduPilot/SITL_Models
 - QGC is started with a virtual joystick (with low throttle if using only VTOLs and centered throttle if there are quads), this is reflective of real-life but note that this counts as "RC loss" when switching focus from one autopilot instance to another
-- On non-configured real-life AP, missing topics: ros2 topic echo /mavros/local_position/odom ros2 topic echo /mavros/home_position/home
-- Gazebo WindEffects plugin is disabled/not working for PX4 standard_vtol
 - Command 178 MAV_CMD_DO_CHANGE_SPEED is accepted but not effective in changing speed for ArduPilot VTOL
 - In ArdupilotInterface's action callbacks, std::shared_lock<std::shared_mutex> lock(node_data_mutex_); could be used on the reads of lat_, lon_, alt_
-- QGC does not save roll and pitch in the telemetry bar for PX4 VTOLs (MAV_TYPE 22)
-- PX4 quad max tilt is limited by the anti-windup gain (zero it to deactivate it): const float arw_gain = 2.f / _gain_vel_p(0);
 
-## TODOs
-
-LiDAR-inertial Odometry and SLAM
-- LiDAR driver https://github.com/Livox-SDK/livox_ros_driver2 in aircraft-image (the LiDAR should publish on topic `/lidar_points` for KISS-ICP)
-- Integrate [SPARK-FAST-LIO](https://github.com/MIT-SPARK/spark-fast-lio) or [SuperOdom](https://github.com/superxslam/SuperOdom) as additional baselines
-- Create a 3D world.sdf for LIO-based navigation and mapping
-- Create a 3D world.sdf WITHOUT GPS PLUGIN (and configure PX4/ArduPilot accordingly) for LIO-based navigation and mapping
-- Add examples in the README.md showing exploration of these world with 3D mapping
-- Develop own/custom SLAM/collaborative SLAM approach
-- Study how to compare/use/fuse LIO with PX4/ArduPilot state estimation
-
--->

@@ -1,0 +1,282 @@
+{
+  "world": "esefex_fbx",
+  "quads": [
+    {
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "vtols": [],
+  "custom_objects": [
+    {
+      "id": 1,
+      "model": "ime-target",
+      "local_position": {
+        "x": -6.2794,
+        "y": -14.7925,
+        "z": 0
+      }
+    },
+    {
+      "id": 2,
+      "model": "ime-target",
+      "local_position": {
+        "x": -22.4511,
+        "y": -18.2859,
+        "z": 0
+      }
+    },
+    {
+      "id": 3,
+      "model": "ime-target",
+      "local_position": {
+        "x": 40.7966,
+        "y": -8.9925,
+        "z": 0
+      }
+    },
+    {
+      "id": 4,
+      "model": "ime-target",
+      "local_position": {
+        "x": 17.9601,
+        "y": -9.3635,
+        "z": 0
+      }
+    },
+    {
+      "id": 5,
+      "model": "ime-target",
+      "local_position": {
+        "x": 21.5964,
+        "y": 0.075,
+        "z": 0
+      }
+    },
+    {
+      "id": 6,
+      "model": "ime-target",
+      "local_position": {
+        "x": 19.4273,
+        "y": 0.1525,
+        "z": 0
+      }
+    },
+    {
+      "id": 7,
+      "model": "ime-target",
+      "local_position": {
+        "x": -15.6845,
+        "y": -24.7812,
+        "z": 0
+      }
+    },
+    {
+      "id": 8,
+      "model": "ime-target",
+      "local_position": {
+        "x": -15.3774,
+        "y": -6.8219,
+        "z": 0
+      }
+    },
+    {
+      "id": 9,
+      "model": "ime-target",
+      "local_position": {
+        "x": 6.2619,
+        "y": 5.0879,
+        "z": 0
+      }
+    },
+    {
+      "id": 10,
+      "model": "ime-target",
+      "local_position": {
+        "x": 0.674,
+        "y": 4.2307,
+        "z": 0
+      }
+    },
+    {
+      "id": 11,
+      "model": "ime-target",
+      "local_position": {
+        "x": -14.1917,
+        "y": 15.7565,
+        "z": 0
+      }
+    },
+    {
+      "id": 12,
+      "model": "ime-target",
+      "local_position": {
+        "x": 30.7433,
+        "y": -2.5775,
+        "z": 0
+      }
+    },
+    {
+      "id": 13,
+      "model": "ime-target",
+      "local_position": {
+        "x": 26.3776,
+        "y": 17.6188,
+        "z": 0
+      }
+    },
+    {
+      "id": 14,
+      "model": "ime-target",
+      "local_position": {
+        "x": -16.233,
+        "y": 7.7826,
+        "z": 0
+      }
+    },
+    {
+      "id": 15,
+      "model": "ime-target",
+      "local_position": {
+        "x": 25.9758,
+        "y": 20.0944,
+        "z": 0
+      }
+    },
+    {
+      "id": 16,
+      "model": "ime-target",
+      "local_position": {
+        "x": 31.2036,
+        "y": -8.5664,
+        "z": 0
+      }
+    },
+    {
+      "id": 17,
+      "model": "ime-target",
+      "local_position": {
+        "x": -24.6178,
+        "y": 5.5753,
+        "z": 0
+      }
+    },
+    {
+      "id": 18,
+      "model": "ime-target",
+      "local_position": {
+        "x": -22.1757,
+        "y": -14.2891,
+        "z": 0
+      }
+    },
+    {
+      "id": 19,
+      "model": "ime-target",
+      "local_position": {
+        "x": 46.5752,
+        "y": -24.0767,
+        "z": 0
+      }
+    },
+    {
+      "id": 20,
+      "model": "ime-target",
+      "local_position": {
+        "x": 35.1135,
+        "y": -8.3154,
+        "z": 0
+      }
+    },
+    {
+      "id": 21,
+      "model": "ime-target",
+      "local_position": {
+        "x": 21.7083,
+        "y": 18.0217,
+        "z": 0
+      }
+    },
+    {
+      "id": 22,
+      "model": "ime-target",
+      "local_position": {
+        "x": 5.3311,
+        "y": 11.6973,
+        "z": 0
+      }
+    },
+    {
+      "id": 23,
+      "model": "ime-target",
+      "local_position": {
+        "x": -11.5215,
+        "y": -5.7607,
+        "z": 0
+      }
+    },
+    {
+      "id": 24,
+      "model": "ime-target",
+      "local_position": {
+        "x": 27.6728,
+        "y": -20.4598,
+        "z": 0
+      }
+    },
+    {
+      "id": 25,
+      "model": "ime-target",
+      "local_position": {
+        "x": 6.4311,
+        "y": -9.6978,
+        "z": 0
+      }
+    },
+    {
+      "id": 26,
+      "model": "ime-target",
+      "local_position": {
+        "x": 23.7591,
+        "y": 22.3335,
+        "z": 0
+      }
+    },
+    {
+      "id": 27,
+      "model": "ime-target",
+      "local_position": {
+        "x": -15.3039,
+        "y": 8.0208,
+        "z": 0
+      }
+    },
+    {
+      "id": 28,
+      "model": "ime-target",
+      "local_position": {
+        "x": 3.1792,
+        "y": -17.9381,
+        "z": 0
+      }
+    },
+    {
+      "id": 29,
+      "model": "ime-target",
+      "local_position": {
+        "x": 38.2979,
+        "y": 0.5829,
+        "z": 0
+      }
+    },
+    {
+      "id": 30,
+      "model": "ime-target",
+      "local_position": {
+        "x": -1.0285,
+        "y": 6.2397,
+        "z": 0
+      }
+    }
+  ]
+}

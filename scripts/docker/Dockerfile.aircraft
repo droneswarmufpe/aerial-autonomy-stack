@@ -1,7 +1,7 @@
 ################################################################################
 # Stage 1 - ?GB ################################################################
 ################################################################################
-FROM nvcr.io/nvidia/cuda:12.8.1-cudnn-runtime-ubuntu22.04 AS ros2-image
+FROM nvcr.io/nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04 AS ros2-image
 
 # Tell apt (and other Debian tools) not to prompt for user input during package installs
 ENV DEBIAN_FRONTEND=noninteractive
@@ -112,13 +112,6 @@ RUN pip3 install --no-cache-dir --upgrade pip \
 ################################################################################
 FROM ros2-gst-mav-yolo-image AS aircraft-dev-image
 
-# Install PlotJuggler
-RUN apt-get update && \
-    apt-get install -y ros-humble-plotjuggler \
-    ros-humble-plotjuggler-ros \
-    && apt clean \
-    && rm -rf /var/lib/apt/lists/*
-
 ################################################################################
 # Stage 7 - ?GB ################################################################
 ################################################################################
@@ -138,23 +131,28 @@ RUN pip install -i https://test.pypi.org/simple/ rcpilot.mavsys
 # Install dependencies
 RUN pip install numpy==1.26.4 transitions libtmux dearpygui zmq pymap3d utm cartopy scikit-learn
 
+# EVAAT drone dependencies (the evaat_embedded_py code is mounted at run time with EVAAT=true, see supplementary/EVAAT.md)
+# Chorus, MAVKit, rcpilot.mavsys, and OpenCV are installed above; TensorRT and pycuda (built against the CUDA toolkit
+# of the devel base image) as in Dockerfile.rc_aircraft
+RUN pip install --no-cache-dir numpy==1.26.4 pyyaml pyserial pymavlink utm pyzmq dearpygui
+RUN pip install --no-cache-dir --extra-index-url https://pypi.nvidia.com tensorrt
+RUN pip install --no-cache-dir pycuda
+# onnx and onnxslim: ultralytics exports YOLO .pt models to TensorRT engines (perception) through ONNX. Installed with
+# the image's packages as constraints, so they don't upgrade anything (e.g. numpy 1.x, which the system OpenCV needs)
+RUN pip freeze | grep -v "^-e\|@ file" > /tmp/constraints.txt \
+    && pip install --no-cache-dir -c /tmp/constraints.txt onnx onnxslim \
+    && rm /tmp/constraints.txt
+
+# Use the system OpenCV, built with GStreamer (the simulated cameras and evaat's gstreamer provider need it):
+# MAVProxy's dependency on opencv-python installs a pip OpenCV without GStreamer that would shadow it
+RUN pip uninstall -y opencv-python \
+    && python3 -c "import cv2, re; assert re.search(r'GStreamer:\s+YES', cv2.getBuildInformation()), 'OpenCV has no GStreamer'"
+
 # Add MAVLink 2 C library
 COPY /github_clones/c_library_v2 /usr/local/include/mavlink/
 
-# Build the ROS 2 workspace (NOTE: also includes ground_system_msgs from the ground_ws)
-COPY ground/ground_ws/src/ground_system_msgs /aas/aircraft_ws/src/ground_system_msgs
-COPY aircraft/aircraft_ws/src /aas/aircraft_ws/src
-WORKDIR /aas/aircraft_ws
-RUN rosdep update
-RUN rosdep install --from-paths src/ --ignore-src --rosdistro humble -y
-# Explicitly use bash, not sh, to source and build the workspace
-RUN bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release"
-
 # Copy resources and configuration files from this repository
 COPY aircraft/aircraft_resources/ /aas/aircraft_resources
-
-# Source the workspaces
-RUN echo "source /aas/aircraft_ws/install/setup.bash" >> /root/.bashrc
 
 # Final config
 WORKDIR /aas

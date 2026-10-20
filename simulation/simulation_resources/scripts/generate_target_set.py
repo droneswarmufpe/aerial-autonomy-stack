@@ -1,4 +1,5 @@
 import json
+import os
 import random
 from shapely.geometry import Point, Polygon
 
@@ -12,7 +13,7 @@ vertices = [
 
 polygon = Polygon(vertices)
 
-# Generate 30 random points inside the polygon
+# Generate 30 random target positions inside the polygon (esefex_fbx world)
 NUM_OBJECTS = 30
 objects = []
 
@@ -25,14 +26,15 @@ while len(objects) < NUM_OBJECTS:
     if polygon.contains(point):
         objects.append({
             "id": len(objects) + 1,
-            "x": round(x, 4),
-            "y": round(y, 4),
-            "z": 0
+            "model": "ime-target",
+            "local_position": {"x": round(x, 4), "y": round(y, 4), "z": 0}
         })
 
-output = {"targets": objects}
+# Write a scenario with one quad and the targets as custom objects
+output = {"world": "esefex_fbx", "quads": [{"x": 0, "y": 0}], "vtols": [], "custom_objects": objects}
 
-with open("/home/pc-pds-3/jgocm/aerial-autonomy-stack/simulation/simulation_resources/patches/target_config.json", "w") as f:
+OUTPUT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scenarios", "esefex_targets_random.json")
+with open(OUTPUT_PATH, "w") as f:
     json.dump(output, f, indent=2)
 
 print(f"Generated {NUM_OBJECTS} positions inside the polygon.")

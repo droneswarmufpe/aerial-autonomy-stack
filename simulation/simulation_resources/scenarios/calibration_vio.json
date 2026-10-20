@@ -1,0 +1,12 @@
+{
+  "world": "calibration_vio",
+  "quads": [
+    {
+      "x": 0,
+      "y": 0,
+      "vio_bridge": true
+    }
+  ],
+  "vtols": [],
+  "custom_objects": []
+}

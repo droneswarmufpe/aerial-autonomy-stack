@@ -1,0 +1,96 @@
+{
+  "world": "imav",
+  "quads": [
+    {
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "vtols": [],
+  "custom_objects": [
+    {
+      "id": 1,
+      "model": "vltt_a",
+      "global_position": {
+        "lat": 48.802462,
+        "lon": 7.854108,
+        "alt": 4
+      },
+      "attitude": {
+        "roll": 0,
+        "pitch": 0,
+        "yaw": 0
+      },
+      "static": false
+    },
+    {
+      "id": 2,
+      "model": "rescue_randy",
+      "global_position": {
+        "lat": 48.8104599,
+        "lon": 7.8514749,
+        "alt": -1.5
+      },
+      "attitude": {
+        "roll": 0,
+        "pitch": 0,
+        "yaw": 0
+      },
+      "static": true
+    },
+    {
+      "id": 3,
+      "model": "rescue_randy",
+      "global_position": {
+        "lat": 48.8105641,
+        "lon": 7.8516465,
+        "alt": -1.5
+      },
+      "attitude": {
+        "roll": 0,
+        "pitch": 0,
+        "yaw": 0
+      },
+      "static": true
+    },
+    {
+      "id": 4,
+      "model": "rescue_randy",
+      "global_position": {
+        "lat": 48.8105588,
+        "lon": 7.8517485,
+        "alt": -1.5
+      },
+      "attitude": {
+        "roll": 0,
+        "pitch": 0,
+        "yaw": 90
+      },
+      "static": true
+    },
+    {
+      "id": 5,
+      "model": "renault_ccfm_c",
+      "local_position": {
+        "x": -5.0,
+        "y": 0.0,
+        "z": 2.0
+      },
+      "attitude": {
+        "roll": 0,
+        "pitch": 0,
+        "yaw": 0
+      },
+      "static": false
+    },
+    {
+      "id": 6,
+      "model": "aruco_5x5_0",
+      "global_position": {
+        "lat": 48.8065031,
+        "lon": 7.8521803,
+        "alt": 2
+      }
+    }
+  ]
+}

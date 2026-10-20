@@ -37,9 +37,9 @@ Caso essa opção não apareça, então o dono do modelo não autoriza o seu *do
 # Adicionando o modelo ao mundo
 
 ## Adicionando o modelo ao repositório
-- Com o arquivo do modelo pronto, será necessário criar uma pasta para ele em `simulation/simulation_resources/simulation_worlds/`. Logo, partindo da raíz do repositório:
+- Com o arquivo do modelo pronto, será necessário criar uma pasta para ele em `simulation/simulation_resources/objects/`. Logo, partindo da raíz do repositório:
 ```bash
-mkdir simulation/simulation_resources/simulation_worlds/<nome-do-modelo>
+mkdir simulation/simulation_resources/objects/<nome-do-modelo>
 ```
 - Dentro da pasta criada, é preciso criar dois arquivos `model.sdf` e `model.config`.
     - O formato deles é padronizado entre os modelos usados na simulação, sendo necessário apenas modificar as informações específicas do modelo que está sedo adicionado.
@@ -106,76 +106,75 @@ mkdir simulation/simulation_resources/simulation_worlds/<nome-do-modelo>
     É recomendado que a pasta do modelo e o arquivo do modelo baixado tenham o mesmo nome para evitar confusões.
 - Após isso, é preciso criar uma pasta chamada `meshes` dentro da mesma pasta do modelo que foi criada e onde foram adicionados os arquivos anteriormente.
 ```bash
-mkdir simulation/simulation_resources/simulation_worlds/<nome-do-modelo>/meshes
+mkdir simulation/simulation_resources/objects/<nome-do-modelo>/meshes
 ```
 - Após a criação da pasta, adicione nela o arquivo **.glb** ou **.fbx** baixado anteriormente.
 
 >[!NOTE]
-> Caso queira adicionar mais de um objeto do mesmo modelo, é só adicionar mais elementos na lista de `objects`.
+> A pasta `objects/` é montada a partir do seu computador no container de simulação, então um modelo novo pode ser usado na próxima execução, sem precisar reconstruir a imagem `simulation-image`.
 
-# Importando o modelo no mundo do Gazebo
+# Adicionando o objeto a um cenário
+Os objetos customizados fazem parte de um cenário: um arquivo .json em `simulation/simulation_resources/scenarios/` que define o mundo, os drones e os objetos de uma simulação. O formato completo dos cenários está descrito em [`SCENARIOS.md`](SCENARIOS.md).
 
-## Editando arquivo de configurações
->[!NOTE]
-> Para que um modelo seja carregado no mundo quando a simulação for executada, é preciso adicioná-lo no arquivo de configuração `simulation/simulation_resources/patches/custom_objects_config.json` e indicar qual será a sua posição.
+- No arquivo do cenário, adicione um objeto à lista `custom_objects`. Para colocar mais de um objeto do mesmo modelo, basta adicionar um elemento para cada um.
 
-- No arquivo `simulation/simulation_resources/patches/custom_objects_config.json`, dentro da lista de `objects`, adicione um objeto seguindo o template abaixo:
-
-```json
-    {
-      "id": <id-unico>,     
-      "x": <posicao-em-x>,
-      "y": <posicao-em-y>,
-      "z": <posicao-em-z>,
-      "model": "<nome-do-modelo>",
-      "static": true/false
-    }
-```
-- Segue as explicações de cada campo:
-    - id: número inteiro contendo um id que deve ser único para cada objeto da lista
-    - x: posição em metros no eixo x do mundo de simulação que o objeto deve ser criado
-    - y: posição em metros no eixo y do mundo de simulação que o objeto deve ser criado
-    - z: posição em metros no eixo z do mundo de simulação que o objeto deve ser criado
-    - model: string com nome do modelo que deve corresponder ao nome da pasta utilizada para salvar os arquivos -> caso não seja preenchido, o modelo é pulado durante o carregamento
-    - static: booleano (true/false) indicando se o modelo deve ser carregado como estático ou não -> caso não seja preenchido, o modelo é carregado por default como não-estático
-
-## Criando novo arquivo de configurações
-Também é possível criar um novo arquivo de configurações para carregar objetos customizados. Para isto:
-- Crie um novo arquivo .json na pasta `simulation/simulation_resources/patches/`
-- Escreva as configurações dos objetos que deseja carregar conforme o exemplo:
 ```json
 {
-  "objects": [
+  "world": "imav",
+  "quads": [{"x": 0, "y": 0}],
+  "custom_objects": [
     {
       "id": 1,
-      "x": -16.8706,
-      "y": -0.9578,
-      "z": 4.0,
       "model": "panhard_vbl",
+      "local_position": {"x": -16.8706, "y": -0.9578, "z": 4.0},
       "static": false
     },
     {
       "id": 2,
-      "x": -6.8706,
-      "y": -0.9578,
-      "z": 4.0,
-      "model": "renault_ccfm",
-      "static": false
+      "model": "construction_cone",
+      "global_position": {"lat": 48.810124, "lon": 7.853343, "alt": 4},
+      "attitude": {"roll": 0, "pitch": 0, "yaw": 45},
+      "static": true
     }
   ]
 }
 ```
-- No [script de criação dos objetos](simulation/simulation_resources/simulation_worlds/_create_ardupilot_world.sh), altere a [linha que define o arquivo utilizado para carregar as configurações de criação](../simulation/simulation_resources/simulation_worlds/_create_custom_objects_world.sh) utilizand o seu arquivo
 
-## Executando a simulação com o novo modelo
-- Para executar a simulação, é necessário ativar a flag de objetos customizados da seguinte forma:
+| Campo | Padrão | Descrição |
+| --- | --- | --- |
+| `model` | `ime-target` | Nome da pasta do modelo em `objects/` (ou em `world_models/`) |
+| `local_position` | — | Posição `x`, `y`, `z` em metros no referencial do mundo (ENU: `x` para leste, `y` para norte) |
+| `global_position` | — | Alternativa a `local_position`: `lat` e `lon` em graus e `alt` em metros (padrão 0) |
+| `attitude` | `0, 0, 0` | Orientação `roll`, `pitch` e `yaw` em graus |
+| `static` | `false` | `true` carrega o objeto como estático (sem física, veja [os objetos estão causando lentidão](#os-objetos-estão-causando-lentidão-na-simulação)) |
+| `id` | posição na lista | Número que identifica o objeto no cenário |
+
+Cada objeto precisa de uma `local_position` ou de uma `global_position`.
+
+## Posição global
+Uma `global_position` é convertida para `x` e `y` em relação à origem do mundo, definida na tag `<spherical_coordinates>` do arquivo .sdf do mundo (a mesma origem usada pelo Gazebo e pelo GPS do ArduPilot). O valor de `alt` é usado diretamente como a altura `z` em relação a essa origem, e não como altitude acima do nível do mar.
+
+## Orientação
+Na hora de gerar o mundo, a orientação do cenário é ajustada da seguinte forma:
+- `roll` recebe **+90°**, porque os modelos baixados (como os do Sketchfab) usam o eixo Y para cima, enquanto o Gazebo usa o eixo Z para cima. Com `roll` 0 no cenário, o objeto já aparece de pé.
+- `pitch` é usado como está.
+- `yaw` é invertido (`yaw` de 45 no cenário vira -45 no Gazebo).
+
+Os ângulos podem ter casas decimais e ser negativos.
+
+## Executando a simulação com o novo objeto
+- Antes de executar, é possível validar o cenário. Erros como um modelo que não existe em `objects/` ou um objeto sem posição são listados:
+```bash
+python3 simulation/simulation_resources/scripts/scenario.py <nome-do-cenario>
+```
+- Para executar a simulação, informe o cenário com a variável `SCENARIO` (o nome de um arquivo em `scenarios/`, sem `.json`, ou o caminho para um arquivo .json):
 
 ```bash
 cd scripts
-CUSTOM_OBJECTS=true ./sim_run.sh
+SCENARIO=<nome-do-cenario> ./sim_run.sh
 ```
 
-- Com isso, a infraestrutura de simulação deve ser iniciada e você deverá ver o seu novo modelo no mundo do Gazebo.
+- Com isso, a infraestrutura de simulação deve ser iniciada e você deverá ver o seu novo modelo no mundo do Gazebo. No Gazebo, cada objeto recebe o nome `<modelo>_<posição-na-lista>`, por exemplo `construction_cone_2`.
 
 <div align="center">
   <img src="images/custom-objects-gazebo.png" alt="" style="max-width: 90%; height: auto;" />
@@ -214,9 +213,21 @@ Normalmete isso acaba ocorrendo, já que os modelos 3D não possuem uma padroniz
 ### Os objetos estão causando lentidão na simulação
 A utilização de objetos não estáticos gera colisões que dificultam o processamento do mundo simulado. Assim, quanto mais objetos não estáticos são gerados, mais colisões são criadas e maior o uso de CPU/GPU da simulação.
 
-Uma forma de reduzir este consumo de processamento, é configurar os modelos como estáticos. Contudo, nesta configuração, eles **não terão interação física com o ambiente**, isto é, não serão afetados por gravidade ou colisões, se tornando apenas objetos visuais. Consequentemente, caso deseja que um objeto estático seja posicionado no chão, por exemplo, sua altura deverá ser definida de acordo no arquivo de configurações. Caso contrário, o objeto permanecerá no ar, conforme ilustrado no exemplo da figura abaixo:
+Uma forma de reduzir este consumo de processamento, é configurar os modelos como estáticos. Contudo, nesta configuração, eles **não terão interação física com o ambiente**, isto é, não serão afetados por gravidade ou colisões, se tornando apenas objetos visuais. Consequentemente, caso deseja que um objeto estático seja posicionado no chão, por exemplo, sua altura (`z` ou `alt`) deverá ser definida de acordo no cenário. Caso contrário, o objeto permanecerá no ar, conforme ilustrado no exemplo da figura abaixo:
 
 ![flying static object](images/custom-objects-static-object.png)
+
+### O cenário não é carregado: modelo não encontrado
+O `sim_run.sh` valida o cenário antes de iniciar os containers e para com um erro como `custom_objects[0].model 'meu_modelo' not found in objects/ or world_models/`. Verifique se o nome em `model` é exatamente o nome da pasta do modelo em `simulation/simulation_resources/objects/`.
+
+O mesmo vale para os arquivos usados pelo modelo: se o `model.sdf` aponta para uma malha ou textura que não existe (por exemplo `references missing file(s): model://meu_modelo/meshes/meu_modelo.glb`), o cenário não é carregado, pois o Gazebo não abriria o mundo. Confira os caminhos nas tags `<uri>` do `model.sdf` e os arquivos na pasta `meshes/` do modelo.
+
+### O objeto aparece deitado ou de cabeça para baixo
+O `roll` recebe +90° automaticamente para modelos com o eixo Y para cima (veja [Orientação](#orientação)). Se o seu modelo já usa o eixo Z para cima, compense no cenário com `"roll": -90`, ou corrija a orientação da malha na tag `<pose>` do `<visual>` no `model.sdf`.
+
+### O objeto não aparece onde esperado
+- Com `global_position`, a conversão usa a origem do mundo (`<spherical_coordinates>`); confira se as coordenadas estão dentro da área do mundo escolhido em `world`.
+- O arquivo `/tmp/aas_generated/world.sdf`, dentro do container de simulação, contém a posição final de cada objeto em metros.
 
 # Referências
 - https://gazebosim.org/docs/latest/building_robot/#building-a-model

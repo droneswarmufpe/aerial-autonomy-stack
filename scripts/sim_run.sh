@@ -4,31 +4,36 @@
 set -e
 
 # Set up the simulation
-AUTOPILOT="${AUTOPILOT:-ardupilot}" # Options: ardupilot, px4 (removed support)
+SCENARIO="${SCENARIO:-imav_hotspots}" # Scenario name (simulation/simulation_resources/scenarios/<name>.json) or path to a .json file: world, vehicles (with their cameras and poses), and custom objects
+NUM_QUADS="${NUM_QUADS:-}" # Spawn only the first NUM_QUADS quads of the scenario (default = all)
+NUM_VTOLS="${NUM_VTOLS:-}" # Spawn only the first NUM_VTOLS VTOLs of the scenario (default = all)
 HEADLESS="${HEADLESS:-false}" # Options: true, false (default)
-CAMERA="${CAMERA:-true}" # Options: true (default), false
-LIDAR="${LIDAR:-false}" # Options: true (default), false 
-CAMERA_PITCH="${CAMERA_PITCH:-1.5707}" # Camera pitch in radians (default = 1.5707, 90 deg down)
-#
+
+# NETWORK
 SIM_SUBNET="${SIM_SUBNET:-10.42}" # Simulation subnet (default = 10.42) Note: this is overridden if INSTANCE != 0
 AIR_SUBNET="${AIR_SUBNET:-10.22}" # Inter-vehicle subnet (default = 10.22) Note: this is overridden if INSTANCE != 0
 SIM_ID="${SIM_ID:-100}" # Last byte of the simulation container IP (default = 100)
 GROUND_ID="${GROUND_ID:-101}" # Last byte of the simulation container IP (default = 101)
-#
-NUM_QUADS="${NUM_QUADS:-2}" # Number of quadcopters (default = 1)
-NUM_VTOLS="${NUM_VTOLS:-0}" # Number of VTOLs (default = 0)
-WORLD="${WORLD:-esefex_fbx}" # Options: impalpable_greyness (default), apple_orchard, shibuya_crossing, swiss_town
+
+# MODE
 CENTRALIZED="${CENTRALIZED:-false}" # Options: true, false (default) - If true, all cameras will stream to the ground container. If false, each camera will stream to its own IP (useful for testing network conditions and scalability)
-X_OFFSET="${X_OFFSET:-5}" # X offset for drone placement in the world (default = 0)
-Y_OFFSET="${Y_OFFSET:--110}" # Y offset for drone placement in the world (default = 0)
-#
 RCPILOT="${RCPILOT:-false}" # Options: true, false (default) - If true, the rcpilot repo will be cloned and built. This is useful for testing the rcpilot SDK and its integration with the AAS.
-DEV="${DEV:false}" # Options: true, false (default)
-HITL="${HITL:-false}" # Options: true, false (default)
+JETSON="${JETSON:-false}" # Options: true (default), false - If true, SITL and cameras are streamed to an external Jetson (on the same LAN as this PC) instead of aircraft containers
+JETSON_IPS="${JETSON_IPS:-192.168.55.1}" # Comma-separated Jetson IPs, one per drone in drone ID order, used when JETSON=true (default = 192.168.55.1)
 GND_CONTAINER="${GND_CONTAINER:-true}" # Options: true (default), false
+
+# EVAAT
+EVAAT="${EVAAT:-false}" # Options: true, false (default) - If true, mount evaat_embedded_py and run its drone stack in each aircraft container and its GCS in the ground container
+EVAAT_DIR="${EVAAT_DIR:-}" # evaat_embedded_py checkout on the host, used when EVAAT=true (default = github_clones/evaat_embedded_py)
+EVAAT_DRONE_CONFIG="${EVAAT_DRONE_CONFIG:-}" # evaat drone config, relative to EVAAT_DIR; {id} is replaced by the drone ID (default = config/sitl/drone{id}.yml)
+[[ -n "$EVAAT_DRONE_CONFIG" ]] || EVAAT_DRONE_CONFIG='config/imav/drone{id}.yml' # Set apart: the braces would end a ${...:-default}
+EVAAT_GCS_CONFIG="${EVAAT_GCS_CONFIG:-config/imav/gcs.yml}" # evaat GCS config, relative to EVAAT_DIR (default = config/sitl/gcs.yml)
+
+# DISPLAY
 RTF="${RTF:-1.0}" # Real-time factor (default = 1.0), set to <=0.0 for as fast as possible execution
 START_AS_PAUSED="${START_AS_PAUSED:-false}" # Options: true, false (default)
 INSTANCE="${INSTANCE:-0}" # Integer ID to make docker network/container names unique as well as offsetting the second byte of the subnets (default = 0)
+
 # Set unique subnets and container/network names based on INSTANCE
 SIM_BYTE_1=$(echo "$SIM_SUBNET" | cut -d'.' -f1)
 SIM_BYTE_2=$(echo "$SIM_SUBNET" | cut -d'.' -f2)
@@ -40,7 +45,93 @@ SIM_NET_NAME="aas-sim-network-inst${INSTANCE}"
 AIR_NET_NAME="aas-air-network-inst${INSTANCE}"
 SIM_CONT_NAME="simulation-container-inst${INSTANCE}"
 GND_CONT_NAME="ground-container-inst${INSTANCE}"
-CUSTOM_OBJECTS="${CUSTOM_OBJECTS:-false}"
+
+PARENT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+RESOURCES_DIR="${PARENT_DIR}/simulation/simulation_resources"
+
+# Validate and resolve the scenario: sets SCENARIO_FILE, WORLD, NUM_QUADS, NUM_VTOLS, NUM_DRONES, ANY_VIO_BRIDGE,
+# and the per-drone arrays DRONE_TYPES, DRONE_CAMERA_PITCHES, DRONE_VIO_BRIDGES (in drone ID order)
+SCENARIO_SHELL=$(python3 "${RESOURCES_DIR}/scripts/scenario.py" "$SCENARIO" --num-quads "$NUM_QUADS" --num-vtols "$NUM_VTOLS" \
+  --rcpilot "$RCPILOT" --jetson "$JETSON" --format shell) || exit 1
+eval "$SCENARIO_SHELL"
+echo "Scenario: $SCENARIO_FILE (world: $WORLD, quads: $NUM_QUADS, VTOLs: $NUM_VTOLS)"
+
+# Mount the scenarios folder into the simulation container, so scenarios can be edited from the host (changes apply on the next run).
+# A scenario file outside that folder is mounted on its own at /aas/scenario.json
+CONTAINER_SCENARIOS_DIR=/aas/simulation_resources/scenarios
+SCENARIO_OPTS="--volume ${RESOURCES_DIR}/scenarios:${CONTAINER_SCENARIOS_DIR}"
+if [[ "$(realpath "$(dirname "$SCENARIO_FILE")")" == "$(realpath "${RESOURCES_DIR}/scenarios")" ]]; then
+  CONTAINER_SCENARIO_FILE="${CONTAINER_SCENARIOS_DIR}/$(basename "$SCENARIO_FILE")"
+else
+  CONTAINER_SCENARIO_FILE=/aas/scenario.json
+  SCENARIO_OPTS+=" --volume ${SCENARIO_FILE}:${CONTAINER_SCENARIO_FILE}:ro"
+fi
+SCENARIO_OPTS+=" --env SCENARIO_FILE=${CONTAINER_SCENARIO_FILE}"
+
+if [[ "$JETSON" == "true" && "$CENTRALIZED" == "true" ]]; then
+  echo "JETSON=true and CENTRALIZED=true are mutually exclusive (streams go either to the Jetson or to the ground container)" >&2
+  exit 1
+fi
+if [[ "$JETSON" == "true" ]]; then
+  IFS=',' read -ra JETSON_IP_LIST <<< "$JETSON_IPS"
+  if [[ ${#JETSON_IP_LIST[@]} -ne $NUM_DRONES ]]; then
+    echo "JETSON_IPS must list one IP per drone: got ${#JETSON_IP_LIST[@]} IP(s) for $NUM_DRONES drone(s)" >&2
+    exit 1
+  fi
+fi
+
+# EVAAT: the evaat_embedded_py checkout is mounted at /aas/evaat in the ground and aircraft containers (not in the images)
+EVAAT_GND_OPTS=""
+EVAAT_AIR_OPTS=()
+if [[ "$EVAAT" == "true" ]]; then
+  for flag in "RCPILOT=$RCPILOT" "CENTRALIZED=$CENTRALIZED"; do
+    if [[ "${flag#*=}" == "true" ]]; then
+      echo "EVAAT=true does not support ${flag}" >&2
+      exit 1
+    fi
+  done
+  if [[ "$GND_CONTAINER" != "true" ]]; then
+    echo "EVAAT=true requires GND_CONTAINER=true (the evaat GCS runs in the ground container)" >&2
+    exit 1
+  fi
+  EVAAT_DIR="${EVAAT_DIR:-${PARENT_DIR}/github_clones/evaat_embedded_py}"
+  if [[ ! -x "${EVAAT_DIR}/evaatctl" ]]; then
+    echo "EVAAT_DIR=${EVAAT_DIR} is not an evaat_embedded_py checkout (no evaatctl)" >&2
+    exit 1
+  fi
+  EVAAT_DIR=$(realpath "$EVAAT_DIR")
+  # With JETSON=true, the evaat drone stack runs on the Jetsons (no aircraft containers): only the GCS config is used here
+  EVAAT_CONFIGS=("$EVAAT_GCS_CONFIG")
+  if [[ "$JETSON" != "true" ]]; then
+    for id in $(seq 1 $NUM_DRONES); do EVAAT_CONFIGS+=("${EVAAT_DRONE_CONFIG//\{id\}/$id}"); done
+  fi
+  for config in "${EVAAT_CONFIGS[@]}"; do
+    if [[ ! -f "${EVAAT_DIR}/${config}" ]]; then
+      echo "evaat config ${EVAAT_DIR}/${config} not found (see EVAAT_DRONE_CONFIG and EVAAT_GCS_CONFIG)" >&2
+      exit 1
+    fi
+  done
+  if [[ "$JETSON" == "true" ]]; then
+    echo "EVAAT: ${EVAAT_DIR} (GCS: ${EVAAT_GCS_CONFIG}, drones: on the Jetsons)"
+  else
+    echo "EVAAT: ${EVAAT_DIR} (GCS: ${EVAAT_GCS_CONFIG}, drones: ${EVAAT_DRONE_CONFIG})"
+  fi
+  # QTWEBENGINE_DISABLE_SANDBOX: QtWebEngine (the GCS map) refuses to run as root, as in the container, with its sandbox
+  EVAAT_GND_OPTS="--volume ${EVAAT_DIR}:/aas/evaat --env EVAAT=true --env EVAAT_CONFIG=${EVAAT_GCS_CONFIG} --env QTWEBENGINE_DISABLE_SANDBOX=1"
+  for id in $(seq 1 $NUM_DRONES); do
+    EVAAT_AIR_OPTS[$id]="--volume ${EVAAT_DIR}:/aas/evaat --env EVAAT=true --env EVAAT_CONFIG=${EVAAT_DRONE_CONFIG//\{id\}/$id}"
+  done
+fi
+
+# The ground container runs on the host network with EVAAT=true and JETSON=true: the evaat GCS links to the drones on the
+# Jetsons by UDP broadcast, which can't cross a docker network. SITL then sends the ground's MAVLink to 127.0.0.1
+GND_HOST_NETWORK=false
+if [[ "$EVAAT" == "true" && "$JETSON" == "true" ]]; then
+  GND_HOST_NETWORK=true
+  GND_NET_OPTS="--net=host"
+else
+  GND_NET_OPTS="--net=$SIM_NET_NAME --ip=${SIM_SUBNET}.90.${GROUND_ID}"
+fi
 
 # Detect the environment (Ubuntu/GNOME, WSL, etc.)
 if command -v gnome-terminal >/dev/null 2>&1 && [ -n "$XDG_CURRENT_DESKTOP" ]; then
@@ -60,28 +151,9 @@ else
 fi
 echo "Terminal: $TERMINAL"
 
-# In dev mode, resources and workspaces are mounted from the host
-if [[ "$DEV" == "true" ]]; then
-  SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-  #
-  DEV_SIM_OPTS="--entrypoint /bin/bash"
-  DEV_SIM_OPTS+=" -v ${SCRIPT_DIR}/../simulation/simulation_resources/:/aas/simulation_resources:cached"
-  #
-  DEV_GND_OPTS="--entrypoint /bin/bash"
-  DEV_GND_OPTS+=" -v ${SCRIPT_DIR}/../ground/ground_resources/:/aas/ground_resources:cached"
-  DEV_GND_OPTS+=" -v ${SCRIPT_DIR}/../ground/ground_ws/src:/aas/ground_ws/src:cached"
-  #
-  DEV_AIR_OPTS="--entrypoint /bin/bash"
-  DEV_AIR_OPTS+=" -v ${SCRIPT_DIR}/../aircraft/aircraft_resources/:/aas/aircraft_resources:cached"
-  DEV_AIR_OPTS+=" -v ${SCRIPT_DIR}/../aircraft/aircraft_ws/src:/aas/aircraft_ws/src:cached"
-  DEV_AIR_OPTS+=" -v ${SCRIPT_DIR}/../ground/ground_ws/src/ground_system_msgs:/aas/aircraft_ws/src/ground_system_msgs:cached"
-fi
-
-# Create docker networks for SITL
-if [[ "$HITL" == "false" ]]; then
-  docker network inspect $SIM_NET_NAME >/dev/null 2>&1 || docker network create --subnet=${SIM_SUBNET}.0.0/16 $SIM_NET_NAME
-  docker network inspect $AIR_NET_NAME >/dev/null 2>&1 || docker network create --subnet=${AIR_SUBNET}.0.0/16 $AIR_NET_NAME
-fi
+# Create docker networks
+docker network inspect $SIM_NET_NAME >/dev/null 2>&1 || docker network create --subnet=${SIM_SUBNET}.0.0/16 $SIM_NET_NAME
+docker network inspect $AIR_NET_NAME >/dev/null 2>&1 || docker network create --subnet=${AIR_SUBNET}.0.0/16 $AIR_NET_NAME
 
 # Grant access to the X server
 if command -v xhost >/dev/null 2>&1; then 
@@ -145,24 +217,30 @@ launch_terminal() {
   fi
 }
 
-PARENT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+VIO_SIM_OPTS=""
+VIO_AIR_OPTS=""
+if [[ "$ANY_VIO_BRIDGE" == "true" ]]; then
+  # Use identical source geometry for Gazebo and calibration, even with older images.
+  VIO_SIM_OPTS="--volume ${PARENT_DIR}/simulation/simulation_resources/aircraft/sensors/d435:/aas/simulation_resources/aircraft/sensors/d435:ro --volume ${PARENT_DIR}/simulation/simulation_resources/aircraft/vehicles/iris_with_ardupilot:/aas/simulation_resources/aircraft/vehicles/iris_with_ardupilot:ro"
+  VIO_AIR_OPTS="--volume ${PARENT_DIR}/simulation/simulation_resources/aircraft:/aas/vio_models:ro"
+fi
 
 # Launch the simulation container
 DOCKER_CMD="docker run -it --rm \
   --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
-  --volume ${PARENT_DIR}/simulation/simulation_resources/custom_objects:/aas/simulation_resources/custom_objects \
+  ${SCENARIO_OPTS} \
+  --volume ${RESOURCES_DIR}/objects:/aas/simulation_resources/objects:ro \
   --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
-  --env AUTOPILOT=$AUTOPILOT --env HEADLESS=$HEADLESS --env CAMERA=$CAMERA --env LIDAR=$LIDAR --env CAMERA_PITCH=$CAMERA_PITCH \
-  --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS --env WORLD=$WORLD \
+  --env HEADLESS=$HEADLESS --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS --env WORLD=$WORLD $VIO_SIM_OPTS \
   --env SIMULATED_TIME=true --env RTF=$RTF --env START_AS_PAUSED=$START_AS_PAUSED \
+  --env JETSON=$JETSON --env JETSON_IPS=$JETSON_IPS --env GND_HOST_NETWORK=$GND_HOST_NETWORK \
   --env SIM_SUBNET=$SIM_SUBNET --env GROUND_ID=$GROUND_ID \
   --env GND_CONTAINER=$GND_CONTAINER --env CENTRALIZED=$CENTRALIZED \
-  --env X_OFFSET=$X_OFFSET --env Y_OFFSET=$Y_OFFSET --env CUSTOM_OBJECTS=$CUSTOM_OBJECTS \
   --env ROS_DOMAIN_ID=$SIM_ID \
   --privileged \
   --name $SIM_CONT_NAME"
-# Configure network for HITL or SITL
-if [[ "$HITL" == "true" ]]; then
+# With JETSON=true, use host networking so the simulation can reach the Jetson on the LAN (and vice versa)
+if [[ "$JETSON" == "true" ]]; then
   DOCKER_CMD="$DOCKER_CMD --net=host"
 else
   DOCKER_CMD="$DOCKER_CMD --net=$SIM_NET_NAME --ip=${SIM_SUBNET}.90.${SIM_ID}"
@@ -171,87 +249,91 @@ fi
 if [[ "$DESK_ENV" == "wsl" ]]; then
   DOCKER_CMD="$DOCKER_CMD $WSL_OPTS"
 fi
-DOCKER_CMD="$DOCKER_CMD ${DEV_SIM_OPTS} simulation-image"
+DOCKER_CMD="$DOCKER_CMD simulation-image"
 launch_terminal "Simulation" 0 "$DOCKER_CMD"
 
-if [[ "$HITL" == "false" ]]; then
+if [[ "$GND_CONTAINER" == "true" ]]; then
+  sleep 1.0 # Limit resource usage
+  # Launch the ground container
+  DOCKER_CMD="docker run -it --rm \
+    --ipc=host \
+    --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
+    --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
+    --volume ${PARENT_DIR}/github_clones/rcpilot/src:/workspaces/rcpilot/src:cached \
+    --volume ${PARENT_DIR}/github_clones/rcpilot/log:/workspaces/rcpilot/log:cached \
+    --volume ${PARENT_DIR}/github_clones/rcpilot/sdk:/workspaces/rcpilot/sdk:cached \
+    --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
+    --env HEADLESS=$HEADLESS --env RCPILOT=$RCPILOT \
+    ${EVAAT_GND_OPTS} \
+    --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS \
+    --env SIMULATED_TIME=true --env CENTRALIZED=$CENTRALIZED \
+    --env ROS_DOMAIN_ID=$GROUND_ID \
+    ${GND_NET_OPTS} \
+    --privileged \
+    --name $GND_CONT_NAME"
+  # Add WSL-specific options and complete the command
+  if [[ "$DESK_ENV" == "wsl" ]]; then
+    DOCKER_CMD="$DOCKER_CMD $WSL_OPTS"
+  fi
+  if [[ "$RCPILOT" == "true" ]]; then
+    DOCKER_CMD="$DOCKER_CMD rc-ground-image"
+  else
+    DOCKER_CMD="$DOCKER_CMD ground-image"
+  fi
+  launch_terminal "Ground" 1 "$DOCKER_CMD"
+fi
 
-  if [[ "$GND_CONTAINER" == "true" ]]; then
+# Function to launch one aircraft container per drone, with the drone's type, camera pitch, and VIO bridge from the scenario
+launch_aircraft_containers() {
+  for i in $(seq 0 $((NUM_DRONES - 1))); do
+    local DRONE_ID=$((i + 1))
+    local drone_type=${DRONE_TYPES[$i]}
     sleep 1.0 # Limit resource usage
-    # Launch the ground container
+    local NAME_AIRCRAFT_CNT="aircraft-container-inst${INSTANCE}_${DRONE_ID}"
     DOCKER_CMD="docker run -it --rm \
       --ipc=host \
       --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
-      --volume ${PARENT_DIR}/simulation/simulation_resources/custom_objects:/aas/custom_objects \
+      --volume ${PARENT_DIR}/github_clones/rcpilot/src:/workspaces/rcpilot/src:cached \
+      --volume ${PARENT_DIR}/github_clones/rcpilot/sdk:/workspaces/rcpilot/sdk:cached \
+      --volume ${PARENT_DIR}/github_clones/rcpilot/log:/workspaces/rcpilot/log:cached \
       --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
       --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
-      --env HEADLESS=$HEADLESS --env RCPILOT=$RCPILOT \
-      --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS \
+      --env HEADLESS=$HEADLESS \
+      --env DRONE_TYPE=$drone_type --env DRONE_ID=$DRONE_ID \
+      ${EVAAT_AIR_OPTS[$DRONE_ID]} \
+      --env VIO_BRIDGE=${DRONE_VIO_BRIDGES[$i]} --env CAMERA_PITCH=${DRONE_CAMERA_PITCHES[$i]} $VIO_AIR_OPTS \
       --env SIMULATED_TIME=true --env CENTRALIZED=$CENTRALIZED \
-      --env ROS_DOMAIN_ID=$GROUND_ID \
-      --net=$SIM_NET_NAME --ip=${SIM_SUBNET}.90.${GROUND_ID} \
+      --env JETSON=$JETSON \
+      --env SIM_SUBNET=$SIM_SUBNET --env AIR_SUBNET=$AIR_SUBNET --env SIM_ID=$SIM_ID --env GROUND_ID=$GROUND_ID \
+      --env GND_CONTAINER=$GND_CONTAINER --env RCPILOT=$RCPILOT \
+      --env ROS_DOMAIN_ID=$DRONE_ID \
+      --net=$SIM_NET_NAME --ip=${SIM_SUBNET}.90.$DRONE_ID \
       --privileged \
-      --name $GND_CONT_NAME"
+      --name $NAME_AIRCRAFT_CNT"
     # Add WSL-specific options and complete the command
     if [[ "$DESK_ENV" == "wsl" ]]; then
       DOCKER_CMD="$DOCKER_CMD $WSL_OPTS"
     fi
     if [[ "$RCPILOT" == "true" ]]; then
-      DOCKER_CMD="$DOCKER_CMD ${DEV_GND_OPTS} rc-ground-image"
+      DOCKER_CMD="$DOCKER_CMD rc-aircraft-image"
     else
-      DOCKER_CMD="$DOCKER_CMD ${DEV_GND_OPTS} ground-image"
+      DOCKER_CMD="$DOCKER_CMD aircraft-image"
     fi
-    launch_terminal "Ground" 1 "$DOCKER_CMD"
-  fi
+    launch_terminal "${drone_type^^} $DRONE_ID" $(($DRONE_ID + 1)) "$DOCKER_CMD"
+  done
+}
+# With JETSON=true, the aircraft software runs on the Jetson instead of in aircraft containers
+if [[ "$JETSON" == "false" ]]; then
+  launch_aircraft_containers
+fi  
 
-  # Initialize a counter for the drone IDs
-  DRONE_ID=1 # 1, 2, .., N drones
-
-  # Function to launch the aircraft containers
-  launch_aircraft_containers() {
-    local drone_type=$1
-    local num_drones=$2
-    
-    for i in $(seq 1 $num_drones); do
-      sleep 1.0 # Limit resource usage
-      local NAME_AIRCRAFT_CNT="aircraft-container-inst${INSTANCE}_${DRONE_ID}"
-      DOCKER_CMD="docker run -it --rm \
-        --ipc=host \
-        --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
-        --volume ${PARENT_DIR}/simulation/simulation_resources/custom_objects:/aas/custom_objects \
-        --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
-        --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
-        --env AUTOPILOT=$AUTOPILOT --env HEADLESS=$HEADLESS --env CAMERA=$CAMERA --env LIDAR=$LIDAR \
-        --env DRONE_TYPE=$drone_type --env DRONE_ID=$DRONE_ID \
-        --env SIMULATED_TIME=true --env CENTRALIZED=$CENTRALIZED \
-        --env SIM_SUBNET=$SIM_SUBNET --env AIR_SUBNET=$AIR_SUBNET --env SIM_ID=$SIM_ID --env GROUND_ID=$GROUND_ID \
-        --env GND_CONTAINER=$GND_CONTAINER --env RCPILOT=$RCPILOT \
-        --env ROS_DOMAIN_ID=$DRONE_ID \
-        --net=$SIM_NET_NAME --ip=${SIM_SUBNET}.90.$DRONE_ID \
-        --privileged \
-        --name $NAME_AIRCRAFT_CNT"
-      # Add WSL-specific options and complete the command
-      if [[ "$DESK_ENV" == "wsl" ]]; then
-        DOCKER_CMD="$DOCKER_CMD $WSL_OPTS"
-      fi
-      if [[ "$RCPILOT" == "true" ]]; then
-        DOCKER_CMD="$DOCKER_CMD ${DEV_AIR_OPTS} rc-aircraft-image"
-      else
-        DOCKER_CMD="$DOCKER_CMD ${DEV_AIR_OPTS} aircraft-image"
-      fi
-      launch_terminal "${drone_type^^} $DRONE_ID" $(($DRONE_ID + 1)) "$DOCKER_CMD"
-      DRONE_ID=$((DRONE_ID + 1))
-    done
-  }
-  # Launch the Quad containers
-  launch_aircraft_containers "quad" $NUM_QUADS
-  # Launch the VTOL containers
-  launch_aircraft_containers "vtol" $NUM_VTOLS  
-
-  if [[ "$GND_CONTAINER" == "true" ]]; then
-    sleep 2.0 # Once all containers are up, connect ground and aircraft containers to the air network
+if [[ "$GND_CONTAINER" == "true" ]]; then
+  sleep 2.0 # Once all containers are up, connect ground and aircraft containers to the air network
+  if [[ "$GND_HOST_NETWORK" == "false" ]]; then
     docker network connect --ip=${AIR_SUBNET}.90.$GROUND_ID $AIR_NET_NAME $GND_CONT_NAME
-    for i in $(seq 1 $((NUM_QUADS + NUM_VTOLS))); do
+  fi
+  if [[ "$JETSON" == "false" ]]; then
+    for i in $(seq 1 $NUM_DRONES); do
       docker network connect --ip=${AIR_SUBNET}.90.$i $AIR_NET_NAME "aircraft-container-inst${INSTANCE}_${i}"
     done
   fi

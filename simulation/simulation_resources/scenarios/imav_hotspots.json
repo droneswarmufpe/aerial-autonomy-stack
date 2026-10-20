@@ -1,0 +1,60 @@
+{
+  "world": "imav",
+  "quads": [
+    {
+      "global_position": {
+        "lat": 48.8065596,
+        "lon": 7.8522795,
+        "alt": 0.5
+      }
+    }
+  ],
+  "vtols": [],
+  "custom_objects": [
+    {
+      "id": 1,
+      "model": "construction_cone",
+      "global_position": {
+        "lat": 48.810124,
+        "lon": 7.853343,
+        "alt": 4
+      },
+      "attitude": {
+        "roll": 0,
+        "pitch": 90,
+        "yaw": 0
+      },
+      "static": false
+    },
+    {
+      "id": 2,
+      "model": "construction_cone",
+      "global_position": {
+        "lat": 48.810227,
+        "lon": 7.853048,
+        "alt": 4
+      },
+      "attitude": {
+        "roll": 0,
+        "pitch": 0,
+        "yaw": 0
+      },
+      "static": false
+    },
+    {
+      "id": 3,
+      "model": "aruco_5x5_0",
+      "global_position": {
+        "lat": 48.8065596,
+        "lon": 7.8522795,
+        "alt": 0.1
+      },
+      "attitude": {
+        "roll": 0,
+        "pitch": 0,
+        "yaw": 0
+      },
+      "static": false
+    }
+  ]
+}
