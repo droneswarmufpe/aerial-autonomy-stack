@@ -103,12 +103,11 @@ def build_vehicle_model(drone, resources_dir, output_dir):
     with open(os.path.join(model_dir, 'model.sdf'), 'w') as f:
         f.write(text)
     # Loaded only by the Gazebo SITL launch command, after the copied vehicle defaults.
-    # VIO scenarios retain EKF3 so they can validate estimator integration.
-    estimator = 3 if drone['vio_bridge'] else 10
+    # Ground-truth startup is an explicit per-vehicle opt-in, independent of VIO.
     with open(os.path.join(model_dir, 'sitl-estimator.params'), 'w') as f:
         f.write('# Generated for Gazebo SITL only; do not load onto a hardware autopilot.\n')
-        f.write(f'AHRS_EKF_TYPE {estimator}\n')
-        if not drone['vio_bridge']:
+        if drone.get('sitl_ground_truth', False):
+            f.write('AHRS_EKF_TYPE 10\n')
             # Read GPS directly from the simulator, avoiding serial receiver detection/configuration.
             f.write('GPS1_TYPE 100\n')
             # One simulated IMU avoids the multi-IMU consistency warm-up; arming checks still run.

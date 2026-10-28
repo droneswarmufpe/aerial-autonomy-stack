@@ -20,8 +20,8 @@ class SitlEstimatorTests(unittest.TestCase):
             root = Path(temporary)
             config = root / 'scenario.json'
             config.write_text(json.dumps({'world': 'esefex_fbx',
-                                          'quads': [{'x': 0, 'y': 0, 'camera': False}],
-                                          'vtols': [{'x': 3, 'y': 0, 'camera': False}]}))
+                                          'quads': [{'x': 0, 'y': 0, 'camera': False, 'sitl_ground_truth': True}],
+                                          'vtols': [{'x': 3, 'y': 0, 'camera': False, 'sitl_ground_truth': True}]}))
             for drone in scenario.resolve(str(config))['drones']:
                 with self.subTest(vehicle=drone['type']):
                     source = resources / 'aircraft/vehicles' / drone['base_model']
@@ -45,20 +45,37 @@ class SitlEstimatorTests(unittest.TestCase):
                     self.assertEqual(source_params.read_bytes(), original)
                     self.assertFalse((source / 'sitl-estimator.params').exists())
 
-    def test_vio_uses_ekf3_without_affecting_other_drones(self):
-        with tempfile.TemporaryDirectory(prefix='aas_sitl_vio_') as temporary:
+    def test_selection_is_explicit_and_independent_of_vio(self):
+        with tempfile.TemporaryDirectory(prefix='aas_sitl_selection_') as temporary:
             root = Path(temporary)
+            vehicles = []
+            for vio in (False, True):
+                for selection in (None, False, True):
+                    vehicle = {'x': len(vehicles) * 3, 'y': 0, 'vio_bridge': vio}
+                    if selection is not None:
+                        vehicle['sitl_ground_truth'] = selection
+                    vehicles.append(vehicle)
             config = root / 'scenario.json'
+            config.write_text(json.dumps({'world': 'esefex_fbx', 'quads': vehicles}))
+            for drone in scenario.resolve(str(config), rcpilot=True)['drones']:
+                with self.subTest(vio=drone['vio_bridge'], enabled=drone['sitl_ground_truth']):
+                    model = Path(build_world.build_vehicle_model(drone, scenario.RESOURCES_DIR, str(root)))
+                    params = self.read_params(model / 'sitl-estimator.params')
+                    if drone['sitl_ground_truth']:
+                        self.assertEqual(params['AHRS_EKF_TYPE'], 10)
+                        self.assertEqual(params['GPS1_TYPE'], 100)
+                        self.assertEqual(params['SIM_IMU_COUNT'], 1)
+                    else:
+                        self.assertEqual(params, {})
+
+    def test_selection_requires_boolean(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            config = Path(temporary) / 'scenario.json'
             config.write_text(json.dumps({'world': 'esefex_fbx', 'quads': [
-                {'x': 0, 'y': 0, 'vio_bridge': True},
-                {'x': 3, 'y': 0, 'camera': False},
+                {'x': 0, 'y': 0, 'sitl_ground_truth': 'true'},
             ]}))
-            for drone, expected in zip(scenario.resolve(str(config), rcpilot=True)['drones'], (3, 10)):
-                model = Path(build_world.build_vehicle_model(drone, scenario.RESOURCES_DIR, str(root)))
-                params = self.read_params(model / 'sitl-estimator.params')
-                self.assertEqual(params['AHRS_EKF_TYPE'], expected)
-                if drone['vio_bridge']:
-                    self.assertEqual(params, {'AHRS_EKF_TYPE': 3})
+            with self.assertRaisesRegex(scenario.ScenarioError, 'sitl_ground_truth must be true or false'):
+                scenario.resolve(str(config))
 
 
 if __name__ == '__main__':

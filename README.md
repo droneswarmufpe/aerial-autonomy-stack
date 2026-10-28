@@ -232,6 +232,7 @@ A scenario is a JSON file that sets the world, the quads and VTOLs (each with it
 | `depth_camera` | `true` | D435 depth sensor and stream |
 | `thermal_camera` | `false` | Thermal camera stream |
 | `camera_pitch` | `1.5707` | Camera pitch in radians (90 deg down) |
+| `sitl_ground_truth` | `false` | Enable ground-truth estimator, direct simulated GPS, and one simulated IMU together |
 | `vio_bridge` | `false` | Stereo VIO (quads only), see below |
 
 Set these fields on each vehicle in the scenario JSON. [`esefex_fbx.json`](/simulation/simulation_resources/scenarios/esefex_fbx.json) lists its camera settings explicitly. Omitted fields keep their defaults. Camera changes apply on the next run of `sim_run.sh`, without an image rebuild.
@@ -252,7 +253,7 @@ Infrared and depth run at 30 Hz.
 
 ### Stereo VIO (ArduPilot Iris)
 
-Ordinary Gazebo SITL runs use simulator ground truth (`AHRS_EKF_TYPE=10`), direct simulated GPS, and a single simulated IMU, through a generated SITL-only parameter overlay. This removes EKF convergence, GPS receiver probing, and multi-IMU consistency delays without changing RTF or hardware configurations. Arming checks remain enabled. Quads with `vio_bridge: true` retain EKF3 and their original GPS/IMU setup for estimator validation. See [SITL estimator](/supplementary/SCENARIOS.md#sitl-estimator).
+Set `"sitl_ground_truth": true` per vehicle in the scenario JSON to enable simulator ground truth (`AHRS_EKF_TYPE=10`), direct simulated GPS (`GPS1_TYPE=100`), and one simulated IMU (`SIM_IMU_COUNT=1`) together. If absent or false, the vehicle's normal EKF, GPS, and IMU defaults apply. This flag is independent of `vio_bridge` and only affects generated SITL parameters; arming checks remain enabled. See [SITL estimator](/supplementary/SCENARIOS.md#sitl-estimator).
 
 Build the simulation and RC aircraft images after changing the VIO bridge or
 startup templates, then enable the opt-in path:

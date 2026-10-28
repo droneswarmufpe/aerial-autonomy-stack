@@ -73,6 +73,7 @@ Quads and VTOLs accept the same fields:
 | `depth_camera` | `true` | D435 depth sensor and stream |
 | `thermal_camera` | `false` | Thermal camera stream |
 | `camera_pitch` | `1.5707` | Camera pitch in radians (`1.5707` = 90 deg, pointing down) |
+| `sitl_ground_truth` | `false` | Enable ground-truth estimator, direct simulated GPS, and one simulated IMU together |
 | `vio_bridge` | `false` | Stereo visual-inertial odometry (quads only), see [Stereo VIO](#stereo-vio) |
 
 So `{"x": 0, "y": 0}` is a complete vehicle: a downward-facing RGB-D camera, no thermal camera, at the world origin.
@@ -147,9 +148,9 @@ Nothing under `simulation_resources/` is modified, so every run starts from the 
 
 ### SITL estimator
 
-Gazebo SITL uses simulator ground truth (`AHRS_EKF_TYPE=10`) by default. `build_world.py` writes a separate `sitl-estimator.params` in each generated vehicle directory, and `simulation.yml.erb` loads it after that vehicle's defaults. This avoids EKF convergence delay without changing RTF. Vehicles with `vio_bridge: true` use EKF3 (`AHRS_EKF_TYPE=3`) for estimator validation.
+Set `"sitl_ground_truth": true` on an individual quad or VTOL in the scenario JSON to enable all three startup overrides together: simulator ground truth (`AHRS_EKF_TYPE=10`), direct simulated GPS (`GPS1_TYPE=100`), and one simulated IMU (`SIM_IMU_COUNT=1`). For example: `{"x": 0, "y": 0, "sitl_ground_truth": true}`. If the flag is absent or false, no estimator, GPS, or IMU overrides are added, preserving the vehicle defaults. The selection is independent of `vio_bridge`.
 
-The ground-truth profile also uses direct simulated GPS (`GPS1_TYPE=100`) and one simulated IMU (`SIM_IMU_COUNT=1`). This removes GPS serial receiver probing and the multi-IMU consistency wait before arming. Calibration records for unused accelerometers are cleared in the generated overlay to match the simulated sensor count. Arming checks remain enabled; VIO scenarios retain their original GPS and IMU setup.
+`build_world.py` writes `sitl-estimator.params` in each generated vehicle directory; `simulation.yml.erb` loads it after the vehicle defaults. The enabled profile also clears calibration records for unused accelerometers. Arming checks remain enabled. This affects Gazebo SITL only and does not change RTF or hardware configurations.
 
 The override exists only in `/tmp/aas_generated/` inside the simulation container and is passed only to `sim_vehicle.py`. Source parameter files, EVAAT configs, and hardware autopilots are unchanged. Other pre-arm checks still apply.
 
@@ -166,7 +167,7 @@ To try changes to a scenario without restarting the containers, use the `gz_sim`
 
 ArduPilot SITL and the camera streams keep running in the other windows and reconnect to the new Gazebo. This works for changes to the custom objects and to the vehicles' poses. SITL may report a GPS glitch when a vehicle's position jumps, which clears by itself; restart its `ardu_sitl_N` window if you need a clean autopilot state.
 
-Changes to the number of vehicles, their cameras, `vio_bridge`, or the `world` need a new run of `sim_run.sh`: the SITL instances, camera streams, and ArduPilot's home location are set up from the scenario when the containers start.
+Changes to the number of vehicles, their cameras, `vio_bridge`, `sitl_ground_truth`, or the `world` need a new run of `sim_run.sh`: the SITL instances, camera streams, and ArduPilot's home location are set up from the scenario when the containers start.
 
 ## Stereo VIO
 
