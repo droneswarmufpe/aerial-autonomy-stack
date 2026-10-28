@@ -26,8 +26,8 @@ GND_CONTAINER="${GND_CONTAINER:-true}" # Options: true (default), false
 EVAAT="${EVAAT:-false}" # Options: true, false (default) - If true, mount evaat_embedded_py and run its drone stack in each aircraft container and its GCS in the ground container
 EVAAT_DIR="${EVAAT_DIR:-}" # evaat_embedded_py checkout on the host, used when EVAAT=true (default = github_clones/evaat_embedded_py)
 EVAAT_DRONE_CONFIG="${EVAAT_DRONE_CONFIG:-}" # evaat drone config, relative to EVAAT_DIR; {id} is replaced by the drone ID (default = config/sitl/drone{id}.yml)
-[[ -n "$EVAAT_DRONE_CONFIG" ]] || EVAAT_DRONE_CONFIG='config/imav/drone{id}.yml' # Set apart: the braces would end a ${...:-default}
-EVAAT_GCS_CONFIG="${EVAAT_GCS_CONFIG:-config/imav/gcs.yml}" # evaat GCS config, relative to EVAAT_DIR (default = config/sitl/gcs.yml)
+[[ -n "$EVAAT_DRONE_CONFIG" ]] || EVAAT_DRONE_CONFIG='config/sitl/drone{id}.yml' # Set apart: the braces would end a ${...:-default}
+EVAAT_GCS_CONFIG="${EVAAT_GCS_CONFIG:-config/sitl/gcs.yml}" # evaat GCS config, relative to EVAAT_DIR (default = config/sitl/gcs.yml, ESEFEX)
 
 # DISPLAY
 RTF="${RTF:-1.0}" # Target real-time factor (default = 1.0), set to <=0.0 for as fast as possible execution

@@ -19,6 +19,7 @@ import os
 import re
 import shutil
 import sys
+import xml.etree.ElementTree as ET
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from latlon_to_xy import latlon_to_xy  # noqa: E402
@@ -54,6 +55,26 @@ def _remove_marked_block(text, marker):
     return pattern.sub('', text)
 
 
+def build_rgbd_camera_model(drone, resources_dir, output_dir):
+    """Generate a D435 per drone, omitting disabled sensors. The vehicle's include keeps its name 'd435' for topics."""
+    name = f"d435_{drone['id']}"
+    source_dir = os.path.join(resources_dir, 'aircraft', 'sensors', 'd435')
+    model_dir = os.path.join(output_dir, name)
+    os.makedirs(model_dir, exist_ok=True)
+    tree = ET.parse(os.path.join(source_dir, 'model.sdf'))
+    tree.getroot().find('model').set('name', name)
+    disabled = {sensor for field, sensor in scenario_lib.RGBD_CAMERA_SENSORS.items() if not drone[field]}
+    for link in tree.iter('link'):
+        for sensor in link.findall('sensor'):
+            if sensor.get('name') in disabled:
+                link.remove(sensor)
+    tree.write(os.path.join(model_dir, 'model.sdf'), encoding='utf-8', xml_declaration=True)
+    config = ET.parse(os.path.join(source_dir, 'model.config'))
+    config.getroot().find('name').text = name
+    config.write(os.path.join(model_dir, 'model.config'), encoding='utf-8', xml_declaration=True)
+    return name
+
+
 def build_vehicle_model(drone, resources_dir, output_dir):
     """Copy the drone's base model to <output>/<model_name>, adapted to the drone. Returns the model directory."""
     base, name, drone_id = drone['base_model'], drone['model_name'], drone['id']
@@ -69,6 +90,9 @@ def build_vehicle_model(drone, resources_dir, output_dir):
     text = text.replace('<!--CAMERA_PITCH_PLACEHOLDER-->', str(drone['camera_pitch']))
     if not (drone['camera'] and drone['rgbd_camera']):
         text = _remove_marked_block(text, 'RGBD_CAMERA')
+    else:
+        camera_model = build_rgbd_camera_model(drone, resources_dir, output_dir)
+        text = text.replace('<uri>model://d435</uri>', f'<uri>model://{camera_model}</uri>')
     if not (drone['camera'] and drone['thermal_camera']):
         text = _remove_marked_block(text, 'THERMAL_CAMERA')
     # Topics of the model, its payload plugins, and the particle emitter, e.g. /iris_with_ardupilot/... -> /iris_with_ardupilot_1/...
@@ -78,6 +102,24 @@ def build_vehicle_model(drone, resources_dir, output_dir):
 
     with open(os.path.join(model_dir, 'model.sdf'), 'w') as f:
         f.write(text)
+    # Loaded only by the Gazebo SITL launch command, after the copied vehicle defaults.
+    # VIO scenarios retain EKF3 so they can validate estimator integration.
+    estimator = 3 if drone['vio_bridge'] else 10
+    with open(os.path.join(model_dir, 'sitl-estimator.params'), 'w') as f:
+        f.write('# Generated for Gazebo SITL only; do not load onto a hardware autopilot.\n')
+        f.write(f'AHRS_EKF_TYPE {estimator}\n')
+        if not drone['vio_bridge']:
+            # Read GPS directly from the simulator, avoiding serial receiver detection/configuration.
+            f.write('GPS1_TYPE 100\n')
+            # One simulated IMU avoids the multi-IMU consistency warm-up; arming checks still run.
+            f.write('SIM_IMU_COUNT 1\n')
+            # Base profiles contain calibration for extra IMUs. Clear only the unused instances.
+            for index in (2, 3):
+                f.write(f'INS_ACC{index}_ID 0\n')
+                for axis in 'XYZ':
+                    f.write(f'INS_ACC{index}OFFS_{axis} 0\n')
+                    f.write(f'INS_ACC{index}SCAL_{axis} 1\n')
+    # The SITL launch waits for this params copy: write the estimator overlay before it.
     for file_name in ('model.config', 'ardupilot-4.6.params'):
         shutil.copyfile(os.path.join(source_dir, file_name), os.path.join(model_dir, file_name))
     return model_dir
@@ -167,7 +209,12 @@ def main():
     print(f"Scenario {path}: world '{resolved['world']}', {resolved['num_quads']} quad(s), "
           f"{resolved['num_vtols']} VTOL(s), {len(resolved['custom_objects'])} custom object(s)")
     for drone in resolved['drones']:
-        cameras = [c for c in ('rgbd_camera', 'thermal_camera') if drone['camera'] and drone[c]]
+        cameras = []
+        if drone['camera']:
+            if drone['rgbd_camera']:
+                cameras.extend(field for field in scenario_lib.RGBD_CAMERA_SENSORS if drone[field])
+            if drone['thermal_camera']:
+                cameras.append('thermal_camera')
         print(f"  drone {drone['id']}: {drone['model_name']} at ({fmt(drone['x'])}, {fmt(drone['y'])}, {fmt(drone['z'])}), "
               f"yaw {fmt(drone['yaw'])}, cameras: {', '.join(cameras) or 'none'}{', vio_bridge' if drone['vio_bridge'] else ''}")
     print(f'World written to {world_path}')
