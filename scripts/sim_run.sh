@@ -254,6 +254,9 @@ fi
 # Add WSL-specific options and complete the command
 if [[ "$DESK_ENV" == "wsl" ]]; then
   DOCKER_CMD="$DOCKER_CMD $WSL_OPTS"
+else
+  # Exposing the NVIDIA GPU to Docker does not select it for X11 rendering on hybrid-GPU laptops.
+  DOCKER_CMD="$DOCKER_CMD --env __NV_PRIME_RENDER_OFFLOAD=1 --env __GLX_VENDOR_LIBRARY_NAME=nvidia"
 fi
 DOCKER_CMD="$DOCKER_CMD simulation-image"
 launch_terminal "Simulation" 0 "$DOCKER_CMD"
