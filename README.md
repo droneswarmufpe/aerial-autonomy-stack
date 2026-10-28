@@ -179,17 +179,23 @@ cd aerial-autonomy-stack/scripts/
 
 ![workspace](https://github.com/user-attachments/assets/ad909fcc-69de-44ac-84b3-c5bc7a1c896f)
 
-> On a low-mid range laptop—i7-11 with 16GB RAM and RTX 3060—AAS can simulate faster than real time with flag `RTF=0.0` (ArduPilot SITL speedup is capped at **10x**). Run multiple `sim_run.sh` in parallel adding flag `INSTANCE=1`, `INSTANCE=2`, etc. for even higher throughput. Make sure you run `sudo prime-select nvidia` and rebooted to leverage GPU rendering and compute.
+> On a low-mid range laptop—i7-11 with 16GB RAM and RTX 3060—AAS can simulate faster than real time with flag `RTF=0.0` (ArduPilot SITL speedup is capped at **10x**). Run multiple `sim_run.sh` in parallel adding flag `INSTANCE=1`, `INSTANCE=2`, etc. for even higher throughput. On native Linux, `sim_run.sh` selects NVIDIA for Gazebo rendering using PRIME render offload. `RTF` sets a target; Gazebo displays the measured speed (100% = real time, 300% = 3×), which depends on the active cameras and other processing.
 
 ```sh
-# 1. Start AAS with a scenario (centralized mode)
+# Start AAS with a scenario (centralized mode)
 cd aerial-autonomy-stack/scripts
-SCENARIO=imav_hotspots CENTRALIZED=true RTF=3.0 ./sim_run.sh
+SCENARIO=imav_hotspots CENTRALIZED=true EVAAT=false RTF=3.0 ./sim_run.sh
+```
+
+```sh
+# Start AAS with the ESEFEX scenario, one drone, and the EVAAT GCS
+cd aerial-autonomy-stack/scripts
+SCENARIO=esefex_fbx CENTRALIZED=false EVAAT=true RTF=3.0 ./sim_run.sh
 ```
 
 ### Scenarios
 
-A scenario is a JSON file that sets the world, the quads and VTOLs (each with its own cameras and pose), and the custom objects. `SCENARIO` is a file name in [`simulation/simulation_resources/scenarios/`](/simulation/simulation_resources/scenarios) (without `.json`) or a path to any `.json` file; it defaults to `default` (`esefex_fbx` with one quad). The `scenarios/` folder is mounted into the simulation container, so scenarios can be added or edited from the host without an image rebuild; changes apply on the next run.
+A scenario is a JSON file that sets the world, the quads and VTOLs (each with its own cameras and pose), and the custom objects. `SCENARIO` is a file name in [`simulation/simulation_resources/scenarios/`](/simulation/simulation_resources/scenarios) (without `.json`) or a path to any `.json` file; it defaults to `default` (`esefex_fbx` with one quad). The `scenarios/` and `world_models/` folders are mounted into the simulation container, so scenarios and worlds can be added or edited from the host without an image rebuild; changes apply on the next run.
 
 ```json
 {
@@ -218,11 +224,17 @@ A scenario is a JSON file that sets the world, the quads and VTOLs (each with it
 | `global_position` | — | Spawn position as `lat`/`lon` (and optionally `alt`, used as `z`), converted with the world's `<spherical_coordinates>` origin |
 | `z` | `0.75` | Spawn height in meters |
 | `yaw` | `0` | Spawn heading in degrees |
-| `camera` | `true` | Master camera switch: `false` disables both cameras below |
-| `rgbd_camera` | `true` | D435 color, infrared, and depth streams |
+| `camera` | `true` | Master camera switch: `false` disables all cameras |
+| `rgbd_camera` | `true` | Master switch for the four D435 sensors below |
+| `rgb_camera` | `true` | D435 RGB color sensor and stream |
+| `infrared_1_camera` | `true` | D435 left infrared sensor and stream |
+| `infrared_2_camera` | `true` | D435 right infrared sensor and stream |
+| `depth_camera` | `true` | D435 depth sensor and stream |
 | `thermal_camera` | `false` | Thermal camera stream |
 | `camera_pitch` | `1.5707` | Camera pitch in radians (90 deg down) |
 | `vio_bridge` | `false` | Stereo VIO (quads only), see below |
+
+Set these fields on each vehicle in the scenario JSON. [`esefex_fbx.json`](/simulation/simulation_resources/scenarios/esefex_fbx.json) lists its camera settings explicitly. Omitted fields keep their defaults. Camera changes apply on the next run of `sim_run.sh`, without an image rebuild.
 
 - `custom_objects`: models from [`objects/`](/simulation/simulation_resources/objects) (or [`world_models/`](/simulation/simulation_resources/world_models)), each with a `global_position` (lat/lon/alt, converted with the world's `<spherical_coordinates>` origin) or a `local_position` (x/y/z), and optionally an `attitude` (roll/pitch/yaw in degrees) and `static` (default `false`)
 
@@ -240,6 +252,8 @@ Infrared and depth run at 30 Hz.
 
 ### Stereo VIO (ArduPilot Iris)
 
+Ordinary Gazebo SITL runs use simulator ground truth (`AHRS_EKF_TYPE=10`), direct simulated GPS, and a single simulated IMU, through a generated SITL-only parameter overlay. This removes EKF convergence, GPS receiver probing, and multi-IMU consistency delays without changing RTF or hardware configurations. Arming checks remain enabled. Quads with `vio_bridge: true` retain EKF3 and their original GPS/IMU setup for estimator validation. See [SITL estimator](/supplementary/SCENARIOS.md#sitl-estimator).
+
 Build the simulation and RC aircraft images after changing the VIO bridge or
 startup templates, then enable the opt-in path:
 
@@ -251,7 +265,8 @@ SCENARIO=calibration_vio RCPILOT=true RTF=1 ./sim_run.sh
 ```
 
 `"vio_bridge": true` is set per quad in the scenario and requires `camera` and
-`rgbd_camera` on that quad, `RCPILOT=true`, and `JETSON=false`. It starts OpenVINS
+`rgbd_camera` and both `infrared_1_camera` and `infrared_2_camera` on that quad,
+`RCPILOT=true`, and `JETSON=false`. It starts OpenVINS
 in that quad's aircraft container and sends its sensor topics in its ROS domain
 (`ROS_DOMAIN_ID=DRONE_ID`). VIO stays in the aircraft container even when
 `CENTRALIZED=true`. Quads without `vio_bridge` keep the existing video-stream path.
