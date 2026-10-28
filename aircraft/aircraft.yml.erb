@@ -21,6 +21,13 @@
   # EVAAT: evaat_embedded_py mounted at /aas/evaat (sim_run.sh's EVAAT=true), EVAAT_CONFIG relative to it
   evaat = ENV.fetch('EVAAT', 'false') == 'true'
   evaat_config = ENV.fetch('EVAAT_CONFIG', 'config/sitl/drone1.yml')
+  evaat_autopilot_endpoint = '127.0.0.1:14550'
+  if evaat
+    require 'yaml'
+    config = YAML.safe_load(File.read(File.join('/aas/evaat', evaat_config)))
+    autopilot = config.fetch('autopilot')
+    evaat_autopilot_endpoint = "#{autopilot.fetch('ip')}:#{Integer(autopilot.fetch('port'))}"
+  end
 %>
 
 name: drone
@@ -76,7 +83,7 @@ windows:
       layout: even-horizontal
       panes:
         - >
-          mavlink-routerd -t 0 -e 127.0.0.1:14550 -e <%= "#{sim_subnet}.90.#{drone_id}" %>:14572 -e <%= "#{sim_subnet}.90.#{drone_id}" %>:14571 <%= "#{sim_subnet}.90.#{drone_id}" %>:14570
+          mavlink-routerd -t 0 -e <%= evaat_autopilot_endpoint %> -e <%= "#{sim_subnet}.90.#{drone_id}" %>:14572 -e <%= "#{sim_subnet}.90.#{drone_id}" %>:14571 <%= "#{sim_subnet}.90.#{drone_id}" %>:14570
 
   <% if rcpilot %>
   - rcpilot:

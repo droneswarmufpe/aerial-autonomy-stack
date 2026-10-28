@@ -222,8 +222,8 @@
       <world_frame_orientation>ENU</world_frame_orientation>
       <!--<latitude_deg>-22.94522</latitude_deg>-->
       <!--<longitude_deg>-43.15659</longitude_deg>-->
-      <latitude_deg>-22.945120</latitude_deg>
-      <longitude_deg>-43.156766</longitude_deg>
+      <latitude_deg>-22.9453598</latitude_deg>
+      <longitude_deg>-43.1566653</longitude_deg>
       <elevation>1.37</elevation>
     </spherical_coordinates>
 
@@ -233,7 +233,9 @@
 
     <model name="objects">
       <static>true</static>
-      <pose>0 0 0 0 0 0</pose>
+      <!-- Mesh origin was -22.945120, -43.156766. Rebase the terrain to the
+           spherical origin above so local (0, 0) moves across the terrain too. -->
+      <pose>-10.3113635 26.6645434 0 0 0 0</pose>
 
       <link name="lighting_link">
         <pose>0 0 0 0 0 0</pose>
@@ -257,61 +259,6 @@
           </spot>
         </light>
       </link>
-
-      <model name="axes">
-        <static>1</static>
-        <link name="link">
-          <visual name="r">
-            <cast_shadows>0</cast_shadows>
-            <pose>5 0 0.1 0 0 0</pose>
-            <geometry>
-              <box>
-                <size>10 0.01 0.01</size>
-              </box>
-            </geometry>
-            <material>
-              <ambient>1 0 0 0.8</ambient>
-              <diffuse>1 0 0 0.8</diffuse>
-              <emissive>1 0 0 0.8</emissive>
-              <specular>0.5 0.5 0.5 0.8</specular>
-            </material>
-          </visual>
-          <visual name="g">
-            <cast_shadows>0</cast_shadows>
-            <pose>0 5 0.1 0 0 0</pose>
-            <geometry>
-              <box>
-                <size>0.01 10 0.01</size>
-              </box>
-            </geometry>
-            <material>
-              <ambient>0 1 0 0.8</ambient>
-              <diffuse>0 1 0 0.8</diffuse>
-              <emissive>0 1 0 0.8</emissive>
-              <specular>0.5 0.5 0.5 0.8</specular>
-            </material>
-          </visual>
-          <visual name="b">
-            <cast_shadows>0</cast_shadows>
-            <pose>0 0 5.1 0 0 0</pose>
-            <geometry>
-              <box>
-                <size>0.01 0.01 10</size>
-              </box>
-            </geometry>
-            <material>
-              <ambient>0 0 1 0.8</ambient>
-              <diffuse>0 0 1 0.8</diffuse>
-              <emissive>0 0 1 0.8</emissive>
-              <specular>0.5 0.5 0.5 0.8</specular>
-            </material>
-          </visual>
-          <sensor name="navsat_sensor" type="navsat">
-            <always_on>1</always_on>
-            <update_rate>1</update_rate>
-          </sensor>
-        </link>
-      </model>
 
       <model name="ground_plane">
         <pose>0 0 0 0 0 0</pose> <static>true</static>

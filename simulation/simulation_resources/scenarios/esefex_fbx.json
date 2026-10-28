@@ -1,0 +1,40 @@
+{
+  "world": "esefex_fbx",
+  "quads": [
+    {
+      "x": 0,
+      "y": 0,
+      "camera": true,
+      "rgb_camera": true,
+      "rgbd_camera": true,
+      "infrared_1_camera": false,
+      "infrared_2_camera": false,
+      "depth_camera": false,
+      "thermal_camera": false
+    },
+    {
+      "x": 0,
+      "y": 3,
+      "camera": false,
+      "rgb_camera": false,
+      "rgbd_camera": false,
+      "infrared_1_camera": false,
+      "infrared_2_camera": false,
+      "depth_camera": false,
+      "thermal_camera": false
+    },
+    {
+      "x": 0,
+      "y": 6,
+      "camera": false,
+      "rgb_camera": false,
+      "rgbd_camera": false,
+      "infrared_1_camera": false,
+      "infrared_2_camera": false,
+      "depth_camera": false,
+      "thermal_camera": false
+    }
+  ],
+  "vtols": [],
+  "custom_objects": []
+}

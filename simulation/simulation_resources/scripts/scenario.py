@@ -12,8 +12,9 @@ A scenario is a JSON file with the world to load, the quads and VTOLs to spawn, 
       "custom_objects": []
     }
 
-Each vehicle accepts camera, rgbd_camera, thermal_camera, vio_bridge (quads only), camera_pitch (radians), x, y, z,
-and yaw (degrees); missing fields take the defaults in VEHICLE_DEFAULTS. Its spawn position is either x and y, or a
+Each vehicle accepts camera, rgbd_camera, rgb_camera, infrared_1_camera, infrared_2_camera, depth_camera,
+thermal_camera, vio_bridge (quads only), camera_pitch (radians), x, y, z, and yaw (degrees); missing fields take the
+defaults in VEHICLE_DEFAULTS. Its spawn position is either x and y, or a
 global_position (lat, lon, and optionally alt, used as z), converted to x and y with the world's <spherical_coordinates>
 origin. Each custom object has a
 model, a global_position (lat, lon, alt) or a local_position (x, y, z), and optionally an id, an attitude (roll,
@@ -44,16 +45,27 @@ from latlon_to_xy import latlon_to_xy  # noqa: E402
 
 RESOURCES_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
+RGBD_CAMERA_SENSORS = {
+    'rgb_camera': 'd435_color',
+    'infrared_1_camera': 'd435_ired1',
+    'infrared_2_camera': 'd435_ired2',
+    'depth_camera': 'd435_depth',
+}
+
 VEHICLE_DEFAULTS = {
     'camera': True,
     'rgbd_camera': True,
+    'rgb_camera': True,
+    'infrared_1_camera': True,
+    'infrared_2_camera': True,
+    'depth_camera': True,
     'thermal_camera': False,
     'vio_bridge': False,
     'camera_pitch': 1.5707,
     'z': 0.75,
     'yaw': 0.0,
 }
-VEHICLE_BOOLEANS = ('camera', 'rgbd_camera', 'thermal_camera', 'vio_bridge')
+VEHICLE_BOOLEANS = ('camera', 'rgbd_camera', *RGBD_CAMERA_SENSORS, 'thermal_camera', 'vio_bridge')
 VEHICLE_NUMBERS = ('camera_pitch', 'x', 'y', 'z', 'yaw')
 VEHICLE_REQUIRED = ('x', 'y')
 
@@ -185,6 +197,8 @@ def _resolve_vehicle(vehicle, vehicle_type, index, errors):
         errors.append(f'{label}.vio_bridge is only supported on quads')
     if resolved['vio_bridge'] is True and not (resolved['camera'] is True and resolved['rgbd_camera'] is True):
         errors.append(f'{label}.vio_bridge requires camera and rgbd_camera to be true')
+    if resolved['vio_bridge'] is True and not (resolved['infrared_1_camera'] is True and resolved['infrared_2_camera'] is True):
+        errors.append(f'{label}.vio_bridge requires infrared_1_camera and infrared_2_camera to be true')
     return resolved
 
 
@@ -298,10 +312,18 @@ def resolve(path, num_quads=None, num_vtols=None, rcpilot=None, jetson=None, res
             resolved.update({'type': vehicle_type, 'base_model': base_model})
             drones.append(resolved)
 
+    spawn_positions = {}
     for sitl_instance, drone in enumerate(drones):
         drone['id'] = sitl_instance + 1
         drone['sitl_instance'] = sitl_instance
         drone['model_name'] = f"{drone['base_model']}_{drone['id']}"
+        position = tuple(drone[axis] for axis in ('x', 'y', 'z'))
+        if all(_is_number(value) for value in position):
+            if position in spawn_positions:
+                errors.append(f"drone {drone['id']} and drone {spawn_positions[position]} share spawn position "
+                              f"{position}; separate their bodies and payloads to avoid collision-engine crashes")
+            else:
+                spawn_positions[position] = drone['id']
         if drone['vio_bridge'] and rcpilot is False:
             errors.append(f"drone {drone['id']} uses vio_bridge, which requires RCPILOT=true")
         if drone['vio_bridge'] and jetson is True:
