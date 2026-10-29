@@ -1,6 +1,6 @@
 # Rationale
 
-This project aims to speed up the ideation-development-simulation-deployment cycle of PX4/ArduPilot-based applications.
+This project aims to speed up the ideation-development-simulation-deployment cycle of ArduPilot-based applications.
 
 ## The Many Facets of the Sim2real Gap
 
@@ -35,12 +35,10 @@ For even more resources, check out [`aerial_robotic_landscape`](https://github.c
 ## Design Manifesto
 
 - **Simplicity** (["simple is better than complex"](https://peps.python.org/pep-0020/), ["worse is better"](https://www.dreamsongs.com/RiseOfWorseIsBetter.html), and ["no fat software"](https://people.inf.ethz.ch/wirth/Articles/LeanSoftware.pdf) are the 3 slogans of the AAS)
-- [おまかせ](https://dhh.dk/2012/rails-is-omakase.html) **end-to-end**ness (from camera frames, to autopilot uORB/MAVLink commands)
+- [おまかせ](https://dhh.dk/2012/rails-is-omakase.html) **end-to-end**ness (from camera frames, to autopilot MAVLink commands)
 - **Recentness** (break and fix, rather than carrying technical [debt](https://c2.com/doc/oopsla92.html))
 - **Deployment** focus
     - Clear, Dockerized split between aircraft, ground, and simulation software
     - ROS2 intra-companion board messaging
-    - XRCE-DDS (PX4), MAVROS (ArduPilot) autopilot-to-companion board ROS2 bridge
     - GStreamer camera-to-companion board acquisition pipelines
-    - Zenoh inter-vehicle ROS2 bridge, with networking over LAN (HITL) or emulated by `docker network` (SITL)
     - Dual network—in both SITL and HITL—to separate synthetic sensor data from inter-vehicle communication

@@ -25,36 +25,55 @@ int FRAMERATE = 10;
 std::string detect_gst_raw_format(const gz::msgs::Image &msg) {
     const auto width = static_cast<gsize>(msg.width());
     const auto height = static_cast<gsize>(msg.height());
-    if (width == 0 || height == 0) {
+    const gsize size = msg.data().size();
+    if (width == 0 || height == 0 || size == 0) {
         return "";
     }
 
     const gsize pixels = width * height;
-    if (pixels == 0) {
-        return "";
-    }
-
-    const gsize size = msg.data().size();
-    if (size % pixels != 0) {
+    if (pixels == 0 || size % pixels != 0) {
         return "";
     }
 
     const gsize bytes_per_pixel = size / pixels;
-    switch (bytes_per_pixel) {
-        case 1:
-            return "GRAY8";   // L8
-        case 2:
+    switch (msg.pixel_format_type()) {
+        case gz::msgs::L_INT8:
+            return bytes_per_pixel == 1 ? "GRAY8" : "";
+        case gz::msgs::L_INT16:
+            if (bytes_per_pixel != 2) return "";
 #if G_BYTE_ORDER == G_LITTLE_ENDIAN
-            return "GRAY16_LE";  // L16 / L_INT16 on little-endian hosts
+            return "GRAY16_LE";
 #else
             return "GRAY16_BE";
 #endif
-        case 3:
-            return "RGB";
-        case 4:
-            return "RGBA";
+        case gz::msgs::R_FLOAT32:
+            return bytes_per_pixel == 4 ? "RGBA" : "";
+        case gz::msgs::RGB_INT8:
+            return bytes_per_pixel == 3 ? "RGB" : "";
+        case gz::msgs::RGBA_INT8:
+            return bytes_per_pixel == 4 ? "RGBA" : "";
+        case gz::msgs::BGR_INT8:
+            return bytes_per_pixel == 3 ? "BGR" : "";
+        case gz::msgs::BGRA_INT8:
+            return bytes_per_pixel == 4 ? "BGRA" : "";
         default:
-            return "";
+            // Older publishers may not populate pixel_format_type.
+            switch (bytes_per_pixel) {
+                case 1:
+                    return "GRAY8";
+                case 2:
+#if G_BYTE_ORDER == G_LITTLE_ENDIAN
+                    return "GRAY16_LE";
+#else
+                    return "GRAY16_BE";
+#endif
+                case 3:
+                    return "RGB";
+                case 4:
+                    return "RGBA";
+                default:
+                    return "";
+            }
     }
 }
 

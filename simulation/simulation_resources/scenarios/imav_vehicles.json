@@ -1,0 +1,60 @@
+{
+  "world": "imav",
+  "quads": [
+    {
+      "global_position": {
+        "lat": 48.8065596,
+        "lon": 7.8522795,
+        "alt": 0.5
+      }
+    }
+  ],
+  "vtols": [],
+  "custom_objects": [
+    {
+      "id": 1,
+      "model": "panhard_vbl",
+      "local_position": {
+        "x": -16.8706,
+        "y": -0.9578,
+        "z": 4.0
+      }
+    },
+    {
+      "id": 2,
+      "model": "renault_ccfm_a",
+      "local_position": {
+        "x": -6.8706,
+        "y": -0.9578,
+        "z": 4.0
+      }
+    },
+    {
+      "id": 3,
+      "model": "renault_gbc180",
+      "local_position": {
+        "x": 3.8706,
+        "y": -0.9578,
+        "z": 4.0
+      }
+    },
+    {
+      "id": 4,
+      "model": "toyota_hilux",
+      "local_position": {
+        "x": 13.8706,
+        "y": -0.9578,
+        "z": 4.0
+      }
+    },
+    {
+      "id": 5,
+      "model": "arquus_vt4",
+      "local_position": {
+        "x": 23.8706,
+        "y": -0.9578,
+        "z": 4.0
+      }
+    }
+  ]
+}

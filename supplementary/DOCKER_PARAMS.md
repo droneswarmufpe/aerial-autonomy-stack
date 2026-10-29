@@ -4,29 +4,28 @@ This document lists the environment variables supported by the Docker helper scr
 
 ## scripts/sim_run.sh
 
-Starts the simulation, ground, and aircraft containers (SITL by default, HITL when enabled).
+Starts the simulation, ground, and aircraft containers (SITL by default, Jetson-in-the-loop with `JETSON=true`).
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `AUTOPILOT` | `ardupilot` | Autopilot stack (`px4` is removed). |
+| `SCENARIO` | `default` | Scenario to load: a name in `simulation/simulation_resources/scenarios/` (without `.json`) or a path to a `.json` file. The default loads `esefex_fbx` with one quad. The `scenarios/` folder is mounted into the simulation container, so scenarios can be edited from the host. It sets the world, the quads and VTOLs (cameras, LiDAR, VIO bridge, camera pitch, pose), and the custom objects. See [`SCENARIOS.md`](SCENARIOS.md). |
+| `NUM_QUADS` | all | Spawn only the first `NUM_QUADS` quads of the scenario. |
+| `NUM_VTOLS` | all | Spawn only the first `NUM_VTOLS` VTOLs of the scenario. |
 | `HEADLESS` | `false` | Disable GUI when `true`. |
-| `CAMERA` | `true` | Enable camera sensors. |
-| `LIDAR` | `false` | Enable LiDAR sensors. |
-| `CAMERA_PITCH` | `1.5707` | Camera pitch in radians (90 deg down). |
 | `SIM_SUBNET` | `10.42` | Base simulation subnet (overridden when `INSTANCE != 0`). |
 | `AIR_SUBNET` | `10.22` | Base inter-vehicle subnet (overridden when `INSTANCE != 0`). |
 | `SIM_ID` | `100` | Last byte of the simulation container IP. |
 | `GROUND_ID` | `101` | Last byte of the ground container IP. |
-| `NUM_QUADS` | `3` | Number of quadrotor containers. |
-| `NUM_VTOLS` | `0` | Number of VTOL containers. |
-| `WORLD` | `esefex_fbx` | Gazebo world name. |
-| `CENTRALIZED` | `true` | When `true`, all aircraft data (including MAVLink) is streamed to the ground container so processing runs externally; `false` keeps streams local to each aircraft container. |
-| `X_OFFSET` | `5` | X offset used to place drones. |
-| `Y_OFFSET` | `-110` | Y offset used to place drones. |
-| `DEV` | `false` | Mount workspaces/resources from host and use `/bin/bash` as entrypoint. |
-| `HITL` | `false` | Use host networking and skip SITL networks when `true`. |
+| `CENTRALIZED` | `false` | When `true`, all aircraft data (including MAVLink) is streamed to the ground container so processing runs externally; `false` keeps streams local to each aircraft container. |
+| `RCPILOT` | `false` | Use the rcpilot images (`rc-ground-image`, `rc-aircraft-image`) and start rcpilot. Required by quads with `vio_bridge`. |
+| `JETSON` | `false` | Jetson-in-the-loop: the simulation container uses host networking and streams each drone's SITL MAVLink (UDP `14550`) and cameras (UDP `5600`, `5700`, `5710`, `5720`, `5800`) to its own Jetson in `JETSON_IPS`. Aircraft containers are not started. Not compatible with `CENTRALIZED=true` or with quads using `vio_bridge`. |
+| `JETSON_IPS` | `192.168.55.1` | Comma-separated Jetson IPs on the same LAN as the PC, one per drone in drone ID order (quads first, then VTOLs), e.g. `192.168.1.50,192.168.1.51`. Used when `JETSON=true`. |
 | `GND_CONTAINER` | `true` | Start the ground container when `true`. |
-| `RTF` | `5.0` | Real-time factor (`<= 0.0` runs as fast as possible). |
+| `EVAAT` | `true` | Run the evaat_embedded_py drone stack in each aircraft container and its GCS in the ground container, from a checkout mounted into them. With `JETSON=true`, the drone stack runs on the Jetsons instead and the ground container uses host networking. Not compatible with `RCPILOT=true`, `CENTRALIZED=true`, or `GND_CONTAINER=false`. See [`EVAAT.md`](EVAAT.md). |
+| `EVAAT_DIR` | `github_clones/evaat_embedded_py` | The evaat_embedded_py checkout on the host, used when `EVAAT=true`. |
+| `EVAAT_DRONE_CONFIG` | `config/imav/drone{id}.yml` | evaat drone config, relative to `EVAAT_DIR`; `{id}` is replaced by the drone ID. These profiles use the aircraft container's UDP autopilot port `14550`. |
+| `EVAAT_GCS_CONFIG` | `config/sitl/gcs.yml` | evaat GCS config, relative to `EVAAT_DIR`, with its position at ESEFEX. |
+| `RTF` | `3.0` | Target real-time factor: `3.0` requests 3 simulation seconds per wall-clock second (300% in Gazebo). Actual speed depends on physics, rendering, and processing load. `<= 0.0` runs as fast as possible, with SITL speedup limited to 10. |
 | `START_AS_PAUSED` | `false` | Start simulation paused when `true`. |
 | `INSTANCE` | `0` | Unique instance ID; offsets subnets and container/network names. |
 
@@ -38,26 +37,3 @@ Clones external repositories and builds the simulation, ground, and aircraft ima
 | --- | --- | --- |
 | `CLEAN_BUILD` | `false` | Remove `github_clones`, delete images, and prune the builder cache before rebuilding. |
 | `CLONE_ONLY` | `false` | Clone repositories without building Docker images. |
-
-## scripts/deploy_run.sh
-
-Runs the aircraft container on deployment/HITL setups and can also start the ground container.
-
-| Variable | Default | Description |
-| --- | --- | --- |
-| `AUTOPILOT` | `ardupilot` | Autopilot stack (`px4` is removed). |
-| `HEADLESS` | `true` | Disable GUI when `true`. |
-| `CAMERA` | `true` | Enable camera sensors. |
-| `LIDAR` | `true` | Enable LiDAR sensors. |
-| `SIM_SUBNET` | `10.42` | Simulation subnet base. |
-| `AIR_SUBNET` | `10.22` | Inter-vehicle subnet base. |
-| `SIM_ID` | `100` | Last byte of the simulation container IP. |
-| `GROUND_ID` | `101` | Last byte of the ground container IP. |
-| `DRONE_TYPE` | `quad` | Drone type (`quad` or `vtol`). |
-| `DRONE_ID` | `1` | Drone ID inside the container. |
-| `NUM_QUADS` | `1` | Number of quadrotors (used by ground container). |
-| `NUM_VTOLS` | `0` | Number of VTOLs (used by ground container). |
-| `DEV` | `false` | Mount workspaces/resources from host and use `/bin/bash` as entrypoint. |
-| `HITL` | `false` | Run in HITL mode when `true`. |
-| `GND_CONTAINER` | `true` | Inform aircraft container whether a ground container is present. |
-| `GROUND` | `false` | When `true`, launch the ground container instead of aircraft. |

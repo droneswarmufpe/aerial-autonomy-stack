@@ -1,0 +1,82 @@
+"""SITL estimator overrides stay in generated output; source vehicle parameters remain unchanged."""
+
+import json
+from pathlib import Path
+import tempfile
+import unittest
+
+import build_world
+import scenario
+
+
+class SitlEstimatorTests(unittest.TestCase):
+    def read_params(self, path):
+        return {words[0]: float(words[1]) for line in path.read_text().splitlines()
+                if (words := line.split()) and not words[0].startswith('#')}
+
+    def test_sim_estimator_is_isolated_to_generated_params(self):
+        resources = Path(scenario.RESOURCES_DIR)
+        with tempfile.TemporaryDirectory(prefix='aas_sitl_estimator_') as temporary:
+            root = Path(temporary)
+            config = root / 'scenario.json'
+            config.write_text(json.dumps({'world': 'esefex_fbx',
+                                          'quads': [{'x': 0, 'y': 0, 'camera': False, 'sitl_ground_truth': True}],
+                                          'vtols': [{'x': 3, 'y': 0, 'camera': False, 'sitl_ground_truth': True}]}))
+            for drone in scenario.resolve(str(config))['drones']:
+                with self.subTest(vehicle=drone['type']):
+                    source = resources / 'aircraft/vehicles' / drone['base_model']
+                    source_params = source / 'ardupilot-4.6.params'
+                    original = source_params.read_bytes()
+                    model = Path(build_world.build_vehicle_model(drone, str(resources), str(root)))
+                    overlay = model / 'sitl-estimator.params'
+                    params = self.read_params(overlay)
+                    self.assertEqual(params['AHRS_EKF_TYPE'], 10)
+                    self.assertEqual(params['GPS1_TYPE'], 100)
+                    self.assertEqual(params['SIM_IMU_COUNT'], 1)
+                    for index in (2, 3):
+                        self.assertEqual(params[f'INS_ACC{index}_ID'], 0)
+                        for axis in 'XYZ':
+                            self.assertEqual(params[f'INS_ACC{index}OFFS_{axis}'], 0)
+                            self.assertEqual(params[f'INS_ACC{index}SCAL_{axis}'], 1)
+                    self.assertNotIn('ARMING_CHECK', params)
+                    self.assertNotIn('SIM_SPEEDUP', params)
+                    self.assertNotIn('INS_GYR_CAL', params)
+                    self.assertEqual((model / 'ardupilot-4.6.params').read_bytes(), original)
+                    self.assertEqual(source_params.read_bytes(), original)
+                    self.assertFalse((source / 'sitl-estimator.params').exists())
+
+    def test_selection_is_explicit_and_independent_of_vio(self):
+        with tempfile.TemporaryDirectory(prefix='aas_sitl_selection_') as temporary:
+            root = Path(temporary)
+            vehicles = []
+            for vio in (False, True):
+                for selection in (None, False, True):
+                    vehicle = {'x': len(vehicles) * 3, 'y': 0, 'vio_bridge': vio}
+                    if selection is not None:
+                        vehicle['sitl_ground_truth'] = selection
+                    vehicles.append(vehicle)
+            config = root / 'scenario.json'
+            config.write_text(json.dumps({'world': 'esefex_fbx', 'quads': vehicles}))
+            for drone in scenario.resolve(str(config), rcpilot=True)['drones']:
+                with self.subTest(vio=drone['vio_bridge'], enabled=drone['sitl_ground_truth']):
+                    model = Path(build_world.build_vehicle_model(drone, scenario.RESOURCES_DIR, str(root)))
+                    params = self.read_params(model / 'sitl-estimator.params')
+                    if drone['sitl_ground_truth']:
+                        self.assertEqual(params['AHRS_EKF_TYPE'], 10)
+                        self.assertEqual(params['GPS1_TYPE'], 100)
+                        self.assertEqual(params['SIM_IMU_COUNT'], 1)
+                    else:
+                        self.assertEqual(params, {})
+
+    def test_selection_requires_boolean(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            config = Path(temporary) / 'scenario.json'
+            config.write_text(json.dumps({'world': 'esefex_fbx', 'quads': [
+                {'x': 0, 'y': 0, 'sitl_ground_truth': 'true'},
+            ]}))
+            with self.assertRaisesRegex(scenario.ScenarioError, 'sitl_ground_truth must be true or false'):
+                scenario.resolve(str(config))
+
+
+if __name__ == '__main__':
+    unittest.main()

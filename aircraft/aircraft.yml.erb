@@ -1,29 +1,68 @@
 <% 
-  autopilot = ENV.fetch('AUTOPILOT', 'px4')
   headless = ENV.fetch('HEADLESS', 'true') == 'true'
   camera = ENV.fetch('CAMERA', 'true') == 'true'
-  lidar = ENV.fetch('LIDAR', 'true') == 'true'
 
   sim_subnet = ENV.fetch('SIM_SUBNET', '10.42')
   air_subnet = ENV.fetch('AIR_SUBNET', '10.22')
   sim_id = ENV.fetch('SIM_ID', '100')
   ground_id = ENV.fetch('GROUND_ID', '101')
+  jetson = ENV.fetch('JETSON', 'false') == 'true'
 
   drone_type = ENV.fetch('DRONE_TYPE', 'quad')
   drone_id = ENV.fetch('DRONE_ID', 1).to_i
 
-  hitl = ENV.fetch('HITL', 'false') == 'true'
   gnd_container = ENV.fetch('GND_CONTAINER', 'true') == 'true'
   centralized = ENV.fetch('CENTRALIZED', 'false') == 'true'
-  rcpilot = ENV.fetch('RCPILOT', 'true') == 'true'
+  rcpilot = ENV.fetch('RCPILOT', 'false') == 'true'
 
-  simulated_time = ENV.fetch('SIMULATED_TIME', 'false') == 'true'
+  vio_bridge = ENV.fetch('VIO_BRIDGE', 'false') == 'true'
+  camera_pitch = ENV.fetch('CAMERA_PITCH', '1.5707').to_f
 
+  # EVAAT: evaat_embedded_py mounted at /aas/evaat (sim_run.sh's EVAAT=true), EVAAT_CONFIG relative to it
+  evaat = ENV.fetch('EVAAT', 'false') == 'true'
+  evaat_config = ENV.fetch('EVAAT_CONFIG', 'config/sitl/drone1.yml')
+  evaat_autopilot_endpoint = '127.0.0.1:14550'
+  if evaat
+    require 'yaml'
+    config = YAML.safe_load(File.read(File.join('/aas/evaat', evaat_config)))
+    autopilot = config.fetch('autopilot')
+    evaat_autopilot_endpoint = "#{autopilot.fetch('ip')}:#{Integer(autopilot.fetch('port'))}"
+  end
 %>
 
 name: drone
 
 windows:
+
+  <% if evaat %>
+  - evaat:
+      panes:
+        - >-
+          cd /aas/evaat &&
+          flock native/evaat_codec/.aas_build.lock bash -c 'test -f native/evaat_codec/libevaat_codec.so || ./evaatctl build' &&
+          unset TMUX && EVAAT_NO_VENV=1 ./evaatctl run drone <%= evaat_config %> -y --here
+  <% end %>
+
+  <% if vio_bridge %>
+  - openvins:
+      panes:
+        - >
+          python3 /aas/aircraft_resources/scripts/generate_vio_config.py
+          --models /aas/vio_models --camera-pitch <%= camera_pitch %>
+          --template /aas/aircraft_ws/install/ov_msckf/share/ov_msckf/config/gazebo_ros2/estimator_config.yaml
+          --output /tmp/aas_vio &&
+          ros2 run ov_msckf run_subscribe_msckf --ros-args
+          -r __ns:=/ov_msckf
+          -p use_sim_time:=true -p config_path:=/tmp/aas_vio/estimator_config.yaml
+  <% end %>
+
+  <% if jetson %>
+  - jetson:
+      layout: even-horizontal
+      panes:
+        - clear && echo "Running on Jetson."
+  <% end %>
+  <% unless jetson %>
   <% if centralized %>
   - ap_interface:
       layout: even-horizontal
@@ -44,11 +83,7 @@ windows:
       layout: even-horizontal
       panes:
         - >
-          <% if simulated_time %>
-          mavlink-routerd -t 0 -e 127.0.0.1:14550 -e <%= "#{sim_subnet}.90.#{drone_id}" %>:14572 -e <%= "#{sim_subnet}.90.#{drone_id}" %>:14571 <%= "#{sim_subnet}.90.#{drone_id}" %>:14570
-          <% else %>
-          mavlink-routerd -t 0 -e 127.0.0.1:14550 -e <%= "#{sim_subnet}.90.#{drone_id}" %>:14572 -e <%= "#{sim_subnet}.90.#{drone_id}" %>:14571 /dev/ttyACM0:57600
-          <% end %>
+          mavlink-routerd -t 0 -e <%= evaat_autopilot_endpoint %> -e <%= "#{sim_subnet}.90.#{drone_id}" %>:14572 -e <%= "#{sim_subnet}.90.#{drone_id}" %>:14571 <%= "#{sim_subnet}.90.#{drone_id}" %>:14570
 
   <% if rcpilot %>
   - rcpilot:
@@ -57,5 +92,6 @@ windows:
         - >
           python3 -c "import yaml; cfg = yaml.safe_load(open('/workspaces/rcpilot/install/bringup/share/bringup/config/config.dev.yaml')); cfg['communication']['mavsys']['ros__parameters']['clients']['drone']['connection_string'] = 'udp:<%= "#{sim_subnet}.90.#{drone_id}" %>:14572'; yaml.dump(cfg, open('/workspaces/rcpilot/install/bringup/share/bringup/config/config.dev.yaml', 'w'))" &&
           ros2 launch bringup rcpilot.dev.launch.py
+  <% end %>
   <% end %>
   <% end %>

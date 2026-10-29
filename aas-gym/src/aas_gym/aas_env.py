@@ -8,6 +8,7 @@ import os
 import subprocess
 import shutil
 import concurrent.futures
+import json
 
 from docker.types import NetworkingConfig, EndpointConfig, DeviceRequest
 
@@ -18,10 +19,9 @@ class AASEnv(gym.Env):
     def __init__(self,
             instance: int=0,
             gym_freq_hz: int=50,
-            autopilot: str="ardupilot",
-            camera: bool=True,
-            lidar: bool=True,
-            num_quads: int=1,
+            scenario: str="gym",
+            num_quads: int | None=None,
+            num_vtols: int | None=None,
             render_mode=None
         ):
         super().__init__()
@@ -54,20 +54,19 @@ class AASEnv(gym.Env):
 
         # AAS Setup
         self.HEADLESS = False if self.render_mode == "human" else True # Only display GUIs if render_mode is "human"
-        self.AUTOPILOT = autopilot
-        self.CAMERA = camera
-        self.LIDAR = lidar
-        self.NUM_QUADS = num_quads
-        self.NUM_VTOLS = 0
-        self.WORLD = "impalpable_greyness"
+        # Scenario name (scenarios/<name>.json in simulation-image) or path to a .json file on the host, see scenario.py
+        # num_quads/num_vtols spawn only the first N vehicles of the scenario (None = all)
+        self.SCENARIO = scenario
+        self.NUM_QUADS_LIMIT = num_quads
+        self.NUM_VTOLS_LIMIT = num_vtols
         #
         self.SIM_SUBNET = "10.42"
         self.AIR_SUBNET = "10.22"
         self.SIM_ID = "100"
         # self.GROUND_ID = "101" # Unused
         #
-        self.GND_CONTAINER = False # Do NOT use the ground-image to run Zenoh (nor QGC)
-        self.RTF = 15.0 # Note: RTFs > 10 can destabilize PX4/ArduPilot SITL
+        self.GND_CONTAINER = False # Do NOT use the ground-image (QGC runs in the simulation container)
+        self.RTF = 15.0 # Note: RTFs > 10 can destabilize ArduPilot SITL
         self.START_AS_PAUSED = True # Start the simulation paused and manually step with gz-sim WorldControl
         self.INSTANCE = instance
         #
@@ -97,6 +96,7 @@ class AASEnv(gym.Env):
             self.client = docker.from_env()
         except Exception as e:
             raise RuntimeError("Could not connect to the Docker daemon. Ensure Docker is running.") from e
+        self._resolve_scenario()
         #
         def force_container_cleanup(name): # Needed to use AsyncVectorEnv
             try:
@@ -152,6 +152,7 @@ class AASEnv(gym.Env):
             '/tmp/.X11-unix': {'bind': '/tmp/.X11-unix', 'mode': 'rw'}, # Replaces "--volume /tmp/.X11-unix:/tmp/.X11-unix:rw"
             self.ZMQ_IPC_SOCKET_DIR: {'bind': self.ZMQ_IPC_SOCKET_DIR, 'mode': 'rw'} # For ZMQ IPC sockets
         }
+        volume_binds.update(self.scenario_volumes)
         device_binds = ['/dev/dri:/dev/dri:rwm'] # Replaces "--device /dev/dri"
         #
         force_container_cleanup(self.SIM_CONT_NAME)
@@ -172,13 +173,11 @@ class AASEnv(gym.Env):
                 "NVIDIA_DRIVER_CAPABILITIES": "all",
                 "XDG_RUNTIME_DIR": env_xdg,
                 "GST_DEBUG": "3",
-                "AUTOPILOT": self.AUTOPILOT,
                 "HEADLESS": str(self.HEADLESS).lower(),
-                "CAMERA": str(self.CAMERA).lower(),
-                "LIDAR": str(self.LIDAR).lower(),
+                "SCENARIO_FILE": self.SCENARIO_FILE,
+                "WORLD": self.WORLD, # For gz_wind.py and gz_step.py
                 "NUM_QUADS": str(self.NUM_QUADS),
                 "NUM_VTOLS": str(self.NUM_VTOLS),
-                "WORLD": self.WORLD,
                 "SIMULATED_TIME": "true",
                 "RTF": str(self.RTF),
                 "START_AS_PAUSED": str(self.START_AS_PAUSED).lower(),
@@ -205,11 +204,11 @@ class AASEnv(gym.Env):
         # self.simulation_container.start()
         #
         self.aircraft_containers = []
-        for i in range(1, self.NUM_QUADS + self.NUM_VTOLS + 1):            
+        for drone in self.drones:
+            i = drone["id"]
             air_cont_name = f"aircraft-container-inst{self.INSTANCE}_{i}"
             force_container_cleanup(air_cont_name)
             print(f"Creating Aircraft Container {air_cont_name}...")
-            drone_type = "quad" if i <= self.NUM_QUADS else "vtol"
             air_cont = self.client.containers.create(
                 "aircraft-image:latest",
                 name=air_cont_name,
@@ -226,11 +225,10 @@ class AASEnv(gym.Env):
                     "NVIDIA_DRIVER_CAPABILITIES": "all",
                     "XDG_RUNTIME_DIR": env_xdg,
                     "GST_DEBUG": "3",
-                    "AUTOPILOT": self.AUTOPILOT,
                     "HEADLESS": str(self.HEADLESS).lower(),
-                    "CAMERA": str(self.CAMERA).lower(),
-                    "LIDAR": str(self.LIDAR).lower(),
-                    "DRONE_TYPE": drone_type,
+                    "DRONE_TYPE": drone["type"],
+                    "CAMERA_PITCH": str(drone["camera_pitch"]),
+                    "VIO_BRIDGE": str(drone["vio_bridge"]).lower(),
                     "DRONE_ID": str(i),
                     "SIMULATED_TIME": "true",
                     "SIM_SUBNET": self.SIM_SUBNET,
@@ -263,6 +261,31 @@ class AASEnv(gym.Env):
         if self.ZMQ_TRANSPORT == "tcp":
             self.ZMQ_PORT = 5555
             self.ZMQ_IP = f"{self.SIM_SUBNET}.90.{self.SIM_ID}"
+
+    def _resolve_scenario(self):
+        """Resolve the scenario with scenario.py inside simulation-image: sets SCENARIO_FILE, NUM_QUADS, NUM_VTOLS, and drones."""
+        resources = "/aas/simulation_resources"
+        self.scenario_volumes = {}
+        if os.path.isfile(self.SCENARIO):
+            # A scenario file on the host is mounted into the containers
+            self.SCENARIO_FILE = "/aas/scenario.json"
+            self.scenario_volumes[os.path.abspath(self.SCENARIO)] = {"bind": self.SCENARIO_FILE, "mode": "ro"}
+        else:
+            self.SCENARIO_FILE = f"{resources}/scenarios/{self.SCENARIO}.json"
+        command = [f"{resources}/scripts/scenario.py", self.SCENARIO_FILE,
+                   "--num-quads", "" if self.NUM_QUADS_LIMIT is None else str(self.NUM_QUADS_LIMIT),
+                   "--num-vtols", "" if self.NUM_VTOLS_LIMIT is None else str(self.NUM_VTOLS_LIMIT)]
+        try:
+            output = self.client.containers.run("simulation-image:latest", command, entrypoint="python3", remove=True,
+                                                volumes=self.scenario_volumes, stdout=True, stderr=True)
+        except docker.errors.ContainerError as e:
+            raise ValueError(f"Invalid scenario {self.SCENARIO}:\n{e.stderr.decode() if e.stderr else e}") from e
+        resolved = json.loads(output)
+        self.WORLD = resolved["world"]
+        self.NUM_QUADS = resolved["num_quads"]
+        self.NUM_VTOLS = resolved["num_vtols"]
+        self.drones = resolved["drones"]
+        print(f"Scenario {self.SCENARIO}: world '{resolved['world']}', {self.NUM_QUADS} quad(s), {self.NUM_VTOLS} VTOL(s)")
 
     def _get_obs(self):
         return np.array([self.sim_sec, self.sim_nanosec], dtype=np.float64)
