@@ -3,13 +3,14 @@
 *Aerial autonomy stack* (AAS) is an all-in-one software stack to:
 
 1. **Develop** multi-drone autonomy—with ROS2 and ArduPilot
-2. **Simulate** faster-than-real-time perception and control—with YOLOv8
+2. **Simulate** faster-than-real-time perception and control—with YOLOv8 and 3D LiDAR
 3. **Deploy** in real drones—with JetPack and NVIDIA Orin
 
 <details>
 <summary><b>Feature list</b> <i>(click to expand)</i></summary>
 
 - **ArduPilot multi-vehicle** simulation (**quadrotors and VTOLs**)
+- Optional per-vehicle simulated 3D **LiDAR** point clouds (`/lidar_points`)
 - **YOLOv8** (with ONNX GPU Runtimes)
 - 3D worlds for perception-based simulation
 - **Steppable** [Gymnasium environment](https://gymnasium.farama.org/index.html) and **faster-than-real-time**, **multi-instance** simulation
@@ -144,7 +145,7 @@ aerial-autonomy-stack
     ├── simulation_resources
     │   ├── aircraft
     │   │   ├── vehicles                            # ArduPilot quad (iris_with_ardupilot) and VTOL (alti_transition_quad) models
-    │   │   ├── sensors                             # Camera models (d435 RGB-D, sensor_thermal_camera)
+    │   │   ├── sensors                             # RGB-D, thermal camera, and LiDAR models
     │   │   └── payloads                            # Droppable payload models (grenade, fog_generator)
     │   ├── worlds                                  # Gazebo world files (<world>.sdf)
     │   ├── world_models                            # Models included by the world files

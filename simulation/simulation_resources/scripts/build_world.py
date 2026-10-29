@@ -95,6 +95,16 @@ def build_vehicle_model(drone, resources_dir, output_dir):
         text = text.replace('<uri>model://d435</uri>', f'<uri>model://{camera_model}</uri>')
     if not (drone['camera'] and drone['thermal_camera']):
         text = _remove_marked_block(text, 'THERMAL_CAMERA')
+    if not drone['lidar']:
+        text = _remove_marked_block(text, 'LIDAR')
+    else:
+        lidar_name = f"sensor_lidar_{drone_id}"
+        lidar_dir = os.path.join(output_dir, lidar_name)
+        os.makedirs(lidar_dir, exist_ok=True)
+        for file_name in ('model.sdf', 'model.config'):
+            shutil.copyfile(os.path.join(resources_dir, 'aircraft', 'sensors', 'sensor_lidar', file_name),
+                            os.path.join(lidar_dir, file_name))
+        text = text.replace('<uri>model://sensor_lidar</uri>', f'<uri>model://{lidar_name}</uri>')
     # Topics of the model, its payload plugins, and the particle emitter, e.g. /iris_with_ardupilot/... -> /iris_with_ardupilot_1/...
     for prefix in ('<topic>/', 'topic="/', '<cmd_topic>/'):
         text = text.replace(f'{prefix}{base}', f'{prefix}{name}')
@@ -215,7 +225,8 @@ def main():
             if drone['thermal_camera']:
                 cameras.append('thermal_camera')
         print(f"  drone {drone['id']}: {drone['model_name']} at ({fmt(drone['x'])}, {fmt(drone['y'])}, {fmt(drone['z'])}), "
-              f"yaw {fmt(drone['yaw'])}, cameras: {', '.join(cameras) or 'none'}{', vio_bridge' if drone['vio_bridge'] else ''}")
+              f"yaw {fmt(drone['yaw'])}, cameras: {', '.join(cameras) or 'none'}"
+              f"{', lidar' if drone['lidar'] else ''}{', vio_bridge' if drone['vio_bridge'] else ''}")
     print(f'World written to {world_path}')
 
 

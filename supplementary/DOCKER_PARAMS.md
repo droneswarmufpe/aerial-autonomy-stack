@@ -8,7 +8,7 @@ Starts the simulation, ground, and aircraft containers (SITL by default, Jetson-
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `SCENARIO` | `default` | Scenario to load: a name in `simulation/simulation_resources/scenarios/` (without `.json`) or a path to a `.json` file. The default loads `esefex_fbx` with one quad. The `scenarios/` folder is mounted into the simulation container, so scenarios can be edited from the host. It sets the world, the quads and VTOLs (cameras, VIO bridge, camera pitch, pose), and the custom objects. See [`SCENARIOS.md`](SCENARIOS.md). |
+| `SCENARIO` | `default` | Scenario to load: a name in `simulation/simulation_resources/scenarios/` (without `.json`) or a path to a `.json` file. The default loads `esefex_fbx` with one quad. The `scenarios/` folder is mounted into the simulation container, so scenarios can be edited from the host. It sets the world, the quads and VTOLs (cameras, LiDAR, VIO bridge, camera pitch, pose), and the custom objects. See [`SCENARIOS.md`](SCENARIOS.md). |
 | `NUM_QUADS` | all | Spawn only the first `NUM_QUADS` quads of the scenario. |
 | `NUM_VTOLS` | all | Spawn only the first `NUM_VTOLS` VTOLs of the scenario. |
 | `HEADLESS` | `false` | Disable GUI when `true`. |

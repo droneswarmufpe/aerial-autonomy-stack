@@ -91,6 +91,7 @@ windows:
     infrared_2_camera_topic = "/world/#{world}/model/#{model_name}/#{sensor_path}model/d435/link/base_footprint/sensor/d435_ired2/image"
     depth_camera_topic = "/world/#{world}/model/#{model_name}/#{sensor_path}model/d435/link/base_footprint/sensor/d435_depth/image"
     thermal_camera_topic = "/world/#{world}/model/#{model_name}/#{sensor_path}model/simple_thermal_camera/link/thermal_cam/base_link/sensor/thermal_imager/image"
+    lidar_topic = "/world/#{world}/model/#{model_name}/#{sensor_path}model/simple_lidar/link/lidar/base_link/sensor/lidar3d/scan/points"
 
     jetson_ip = jetson_ips[sitl_instance]
     if jetson # Each drone streams to its own Jetson
@@ -185,6 +186,12 @@ windows:
           /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
           <%= thermal_camera_topic %>
           <%= camera_target_ip %> <%= thermal_camera_port %> 8
+        <% end %>
+        <% if drone['lidar'] %>
+        - >
+          ROS_DOMAIN_ID=<%= drone_id %> ros2 run ros_gz_bridge parameter_bridge
+          <%= lidar_topic %>@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked
+          --ros-args -r <%= lidar_topic %>:=/lidar_points
         <% end %>
         - "ROS_DOMAIN_ID=<%= drone_id %> ros2 run ros_gz_bridge parameter_bridge /clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock"
   <% end %>

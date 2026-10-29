@@ -13,7 +13,7 @@ A scenario is a JSON file with the world to load, the quads and VTOLs to spawn, 
     }
 
 Each vehicle accepts camera, rgbd_camera, rgb_camera, infrared_1_camera, infrared_2_camera, depth_camera,
-thermal_camera, vio_bridge (quads only), sitl_ground_truth, camera_pitch (radians), x, y, z, and yaw (degrees); missing fields take the
+thermal_camera, lidar, vio_bridge (quads only), sitl_ground_truth, camera_pitch (radians), x, y, z, and yaw (degrees); missing fields take the
 defaults in VEHICLE_DEFAULTS. Its spawn position is either x and y, or a
 global_position (lat, lon, and optionally alt, used as z), converted to x and y with the world's <spherical_coordinates>
 origin. Each custom object has a
@@ -60,13 +60,14 @@ VEHICLE_DEFAULTS = {
     'infrared_2_camera': True,
     'depth_camera': True,
     'thermal_camera': False,
+    'lidar': False,
     'vio_bridge': False,
     'sitl_ground_truth': False,
     'camera_pitch': 1.5707,
     'z': 0.75,
     'yaw': 0.0,
 }
-VEHICLE_BOOLEANS = ('camera', 'rgbd_camera', *RGBD_CAMERA_SENSORS, 'thermal_camera', 'vio_bridge', 'sitl_ground_truth')
+VEHICLE_BOOLEANS = ('camera', 'rgbd_camera', *RGBD_CAMERA_SENSORS, 'thermal_camera', 'lidar', 'vio_bridge', 'sitl_ground_truth')
 VEHICLE_NUMBERS = ('camera_pitch', 'x', 'y', 'z', 'yaw')
 VEHICLE_REQUIRED = ('x', 'y')
 

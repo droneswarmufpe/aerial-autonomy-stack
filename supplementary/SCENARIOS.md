@@ -72,6 +72,7 @@ Quads and VTOLs accept the same fields:
 | `infrared_2_camera` | `true` | D435 right infrared sensor and stream |
 | `depth_camera` | `true` | D435 depth sensor and stream |
 | `thermal_camera` | `false` | Thermal camera stream |
+| `lidar` | `false` | Simulated GPU 3D LiDAR; publishes a per-drone point cloud at `/lidar_points` in that drone's ROS domain. |
 | `camera_pitch` | `1.5707` | Camera pitch in radians (`1.5707` = 90 deg, pointing down) |
 | `sitl_ground_truth` | `false` | Enable ground-truth estimator, direct simulated GPS, and one simulated IMU together |
 | `vio_bridge` | `false` | Stereo visual-inertial odometry (quads only), see [Stereo VIO](#stereo-vio) |
