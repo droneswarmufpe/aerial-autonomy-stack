@@ -4,7 +4,7 @@
 set -e
 
 # Set up the simulation
-SCENARIO="${SCENARIO:-imav_hotspots}" # Scenario name (simulation/simulation_resources/scenarios/<name>.json) or path to a .json file: world, vehicles (with their cameras and poses), and custom objects
+SCENARIO="${SCENARIO:-default}" # Scenario name (simulation/simulation_resources/scenarios/<name>.json) or path to a .json file: world, vehicles (with their cameras and poses), and custom objects
 NUM_QUADS="${NUM_QUADS:-}" # Spawn only the first NUM_QUADS quads of the scenario (default = all)
 NUM_VTOLS="${NUM_VTOLS:-}" # Spawn only the first NUM_VTOLS VTOLs of the scenario (default = all)
 HEADLESS="${HEADLESS:-false}" # Options: true, false (default)
@@ -26,11 +26,11 @@ GND_CONTAINER="${GND_CONTAINER:-true}" # Options: true (default), false
 EVAAT="${EVAAT:-false}" # Options: true, false (default) - If true, mount evaat_embedded_py and run its drone stack in each aircraft container and its GCS in the ground container
 EVAAT_DIR="${EVAAT_DIR:-}" # evaat_embedded_py checkout on the host, used when EVAAT=true (default = github_clones/evaat_embedded_py)
 EVAAT_DRONE_CONFIG="${EVAAT_DRONE_CONFIG:-}" # evaat drone config, relative to EVAAT_DIR; {id} is replaced by the drone ID (default = config/sitl/drone{id}.yml)
-[[ -n "$EVAAT_DRONE_CONFIG" ]] || EVAAT_DRONE_CONFIG='config/imav/drone{id}.yml' # Set apart: the braces would end a ${...:-default}
-EVAAT_GCS_CONFIG="${EVAAT_GCS_CONFIG:-config/imav/gcs.yml}" # evaat GCS config, relative to EVAAT_DIR (default = config/sitl/gcs.yml)
+[[ -n "$EVAAT_DRONE_CONFIG" ]] || EVAAT_DRONE_CONFIG='config/sitl/drone{id}.yml' # Set apart: the braces would end a ${...:-default}
+EVAAT_GCS_CONFIG="${EVAAT_GCS_CONFIG:-config/sitl/gcs.yml}" # evaat GCS config, relative to EVAAT_DIR (default = config/sitl/gcs.yml, ESEFEX)
 
 # DISPLAY
-RTF="${RTF:-1.0}" # Real-time factor (default = 1.0), set to <=0.0 for as fast as possible execution
+RTF="${RTF:-1.0}" # Target real-time factor (default = 1.0), set to <=0.0 for as fast as possible execution
 START_AS_PAUSED="${START_AS_PAUSED:-false}" # Options: true, false (default)
 INSTANCE="${INSTANCE:-0}" # Integer ID to make docker network/container names unique as well as offsetting the second byte of the subnets (default = 0)
 
@@ -55,6 +55,7 @@ SCENARIO_SHELL=$(python3 "${RESOURCES_DIR}/scripts/scenario.py" "$SCENARIO" --nu
   --rcpilot "$RCPILOT" --jetson "$JETSON" --format shell) || exit 1
 eval "$SCENARIO_SHELL"
 echo "Scenario: $SCENARIO_FILE (world: $WORLD, quads: $NUM_QUADS, VTOLs: $NUM_VTOLS)"
+echo "Target RTF: $RTF"
 
 # Mount the scenarios folder into the simulation container, so scenarios can be edited from the host (changes apply on the next run).
 # A scenario file outside that folder is mounted on its own at /aas/scenario.json
@@ -67,6 +68,8 @@ else
   SCENARIO_OPTS+=" --volume ${SCENARIO_FILE}:${CONTAINER_SCENARIO_FILE}:ro"
 fi
 SCENARIO_OPTS+=" --env SCENARIO_FILE=${CONTAINER_SCENARIO_FILE}"
+# Use the selected world from the host, including newly added worlds, without rebuilding the simulation image.
+SCENARIO_OPTS+=" --volume ${RESOURCES_DIR}/worlds/${WORLD}.sdf:/aas/simulation_resources/worlds/${WORLD}.sdf:ro"
 
 if [[ "$JETSON" == "true" && "$CENTRALIZED" == "true" ]]; then
   echo "JETSON=true and CENTRALIZED=true are mutually exclusive (streams go either to the Jetson or to the ground container)" >&2
@@ -228,8 +231,11 @@ fi
 # Launch the simulation container
 DOCKER_CMD="docker run -it --rm \
   --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
+  --volume ${PARENT_DIR}/simulation/simulation.yml.erb:/aas/simulation.yml.erb:ro \
+  --volume ${RESOURCES_DIR}/scripts:/aas/simulation_resources/scripts:ro \
   ${SCENARIO_OPTS} \
   --volume ${RESOURCES_DIR}/objects:/aas/simulation_resources/objects:ro \
+  --volume ${RESOURCES_DIR}/world_models:/aas/simulation_resources/world_models:ro \
   --env DISPLAY=$DISPLAY --env QT_X11_NO_MITSHM=1 --env NVIDIA_DRIVER_CAPABILITIES=all --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --env GST_DEBUG=3 \
   --env HEADLESS=$HEADLESS --env NUM_QUADS=$NUM_QUADS --env NUM_VTOLS=$NUM_VTOLS --env WORLD=$WORLD $VIO_SIM_OPTS \
   --env SIMULATED_TIME=true --env RTF=$RTF --env START_AS_PAUSED=$START_AS_PAUSED \
@@ -248,6 +254,9 @@ fi
 # Add WSL-specific options and complete the command
 if [[ "$DESK_ENV" == "wsl" ]]; then
   DOCKER_CMD="$DOCKER_CMD $WSL_OPTS"
+else
+  # Exposing the NVIDIA GPU to Docker does not select it for X11 rendering on hybrid-GPU laptops.
+  DOCKER_CMD="$DOCKER_CMD --env __NV_PRIME_RENDER_OFFLOAD=1 --env __GLX_VENDOR_LIBRARY_NAME=nvidia"
 fi
 DOCKER_CMD="$DOCKER_CMD simulation-image"
 launch_terminal "Simulation" 0 "$DOCKER_CMD"
@@ -292,6 +301,7 @@ launch_aircraft_containers() {
     local NAME_AIRCRAFT_CNT="aircraft-container-inst${INSTANCE}_${DRONE_ID}"
     DOCKER_CMD="docker run -it --rm \
       --ipc=host \
+      --volume ${PARENT_DIR}/aircraft/aircraft.yml.erb:/aas/aircraft.yml.erb:ro \
       --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
       --volume ${PARENT_DIR}/github_clones/rcpilot/src:/workspaces/rcpilot/src:cached \
       --volume ${PARENT_DIR}/github_clones/rcpilot/sdk:/workspaces/rcpilot/sdk:cached \

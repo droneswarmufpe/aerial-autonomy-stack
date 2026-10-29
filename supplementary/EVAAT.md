@@ -21,20 +21,28 @@ You don't need to install evaat itself (`./evaatctl install`), nor a virtual env
 
 ```sh
 cd aerial-autonomy-stack/scripts
-EVAAT=true ./sim_run.sh                                                 # The default scenario, with evaat's SITL configs
-EVAAT=true SCENARIO=imav_hotspots NUM_QUADS=2 ./sim_run.sh             # Any scenario (up to 3 drones with evaat's SITL configs)
-EVAAT=true EVAAT_DIR=~/evaat_embedded_py ./sim_run.sh                   # A checkout elsewhere
-EVAAT=true EVAAT_DRONE_CONFIG=config/ufpe/drone{id}.yml ./sim_run.sh   # Other evaat configs
+./sim_run.sh                                                        # ESEFEX, one drone, and the EVAAT GCS
+SCENARIO=esefex_targets ./sim_run.sh                                # ESEFEX with the existing targets
+EVAAT_DIR=~/evaat_embedded_py ./sim_run.sh                            # A checkout elsewhere
+SCENARIO=esefex_fbx_2 CENTRALIZED=false EVAAT=true RTF=1.0 ./sim_run.sh # ESEFEX with six drones
 ```
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `EVAAT` | `false` | Run the evaat drone stack in each aircraft container and the evaat GCS in the ground container |
+| `EVAAT` | `true` | Run the evaat drone stack in each aircraft container and the evaat GCS in the ground container |
 | `EVAAT_DIR` | `github_clones/evaat_embedded_py` | The evaat_embedded_py checkout on your computer |
 | `EVAAT_DRONE_CONFIG` | `config/sitl/drone{id}.yml` | Drone config, relative to `EVAAT_DIR`. `{id}` is replaced by the drone ID (1, 2, ...), so each drone gets its own config |
-| `EVAAT_GCS_CONFIG` | `config/sitl/gcs.yml` | GCS config, relative to `EVAAT_DIR` |
+| `EVAAT_GCS_CONFIG` | `config/sitl/gcs.yml` | GCS config, relative to `EVAAT_DIR`, positioned at ESEFEX |
 
-`sim_run.sh` checks the checkout and every config before starting any container. evaat ships SITL configs for 3 drones (`drone1.yml` to `drone3.yml`), so add configs for more drones. Each drone config's `autopilot` must be `127.0.0.1:14550` to receive the simulated drone's MAVLink, see [What runs where](#what-runs-where).
+`sim_run.sh` checks the checkout and every config before starting any container.
+evaat ships SITL configs for 15 drones (`drone1.yml` to `drone15.yml`). The
+aircraft's MAVLink router reads each profile's `autopilot.ip` and
+`autopilot.port` and forwards MAVLink to that endpoint. The default profiles
+all listen on `127.0.0.1:14572` and reuse the same local bus and service
+ports because each aircraft has its own network namespace. Only their system
+IDs must differ; these profiles require separate namespaces when run together.
+Their geographic position comes from the scenario. The ESEFEX GCS uses
+`config/sitl/gcs.yml`.
 
 `EVAAT=true` is not supported with `RCPILOT=true`, `CENTRALIZED=true` (the aircraft containers have no MAVLink router), or `GND_CONTAINER=false` (the GCS runs in the ground container).
 
@@ -53,12 +61,12 @@ The evaat drone stack runs on the Jetsons themselves, one per drone, so no aircr
 ## What runs where
 
 - **Aircraft containers**: an `evaat` tmux window runs `./evaatctl run drone <config> -y --here` from `/aas/evaat`, so evaat's own tmux session (its nodes, one per pane) is shown in that window.
-- **MAVLink**: evaat's MAVLink bridge listens on its config's `autopilot.ip:autopilot.port`. Each aircraft container's `mavlink-routerd` sends the drone's MAVLink to fixed addresses: `127.0.0.1:14550`, which is free for evaat, and the container's own `<SIM_SUBNET>.90.<drone ID>:14572` and `:14571`, used by rcpilot and Projeto-Enxame-Drones. So the evaat drone configs must set:
+- **MAVLink**: evaat's MAVLink bridge listens on its config's `autopilot.ip:autopilot.port`. Each aircraft container's `mavlink-routerd` forwards to that configured endpoint and to the container's own `<SIM_SUBNET>.90.<drone ID>:14572` and `:14571`, used by rcpilot and Projeto-Enxame-Drones. For example, the default drone 1 profile uses:
 
 ```yaml
 autopilot:
   ip: 127.0.0.1
-  port: 14550
+  port: 14572
 ```
 - **Ground container**: an `evaat_gcs` tmux window runs `./evaatctl run gcs <config> -y --here`; the GCS window opens on your screen.
 - **Drone to GCS link**: evaat's SITL configs use UDP broadcast (port 50053), which reaches the ground and aircraft containers on the simulation network.
@@ -71,6 +79,10 @@ Inside the `evaat` windows, evaat's tmux session is nested in the container's: p
 ## Onboard perception
 
 evaat's perception node runs on each drone when its config enables it (`perception.enabled: true`, and `enabled: true` on a pipeline, see evaat's `docs/perception.md`). In the simulation, its `gstreamer` provider on port 5600 receives the drone's simulated RGB camera.
+
+With no feed, perception waits in `waiting_frames` without loading models or producing detections. Stale display windows close after three seconds without camera frames and reopen when the feed returns. The aircraft launcher uses EVAAT's own config as usual.
+
+Select the scenario file you edited: `SCENARIO=default` loads `scenarios/default.json`, while `SCENARIO=esefex_fbx` loads `scenarios/esefex_fbx.json`. Both select the ESEFEX world, but their camera settings are independent. Restart `sim_run.sh` after changing the scenario's cameras. The ArUco overlay's `Lost frames` counter counts frames without a marker, not dropped video frames.
 
 The `yolo_detector` pipeline needs a TensorRT engine (`assets/models/<model_name>.engine`). A TensorRT engine only runs with the TensorRT version and GPU it was built with, so export it from the YOLO `.pt` model inside `aircraft-image`, on the computer that runs the simulation (e.g. for `assets/models/yolov11-ime-target.pt`):
 

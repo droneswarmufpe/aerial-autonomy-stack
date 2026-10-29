@@ -8,13 +8,15 @@ Scenario files live in [`simulation/simulation_resources/scenarios/`](/simulatio
 
 ```sh
 cd aerial-autonomy-stack/scripts
-./sim_run.sh                                                    # The "default" scenario: esefex_fbx with one quad
+./sim_run.sh                                                    # ESEFEX: the default scenario, one quad and the EVAAT GCS
 SCENARIO=imav_hotspots ./sim_run.sh                             # A scenario in scenarios/ (name without .json)
 SCENARIO=/path/to/my_scenario.json ./sim_run.sh                 # Any scenario file
 SCENARIO=imav_vehicles NUM_QUADS=0 ./sim_run.sh                 # Only the world and its objects, no drones
 ```
 
 `NUM_QUADS` and `NUM_VTOLS` spawn only the first N quads or VTOLs listed in the scenario. When they are not set, every vehicle in the scenario is spawned. Asking for more vehicles than the scenario defines is an error.
+
+Give each vehicle a distinct spawn position with enough clearance for its body and payload. Identical resolved `(x, y, z)` positions are rejected before launch because overlapping collision meshes can abort Gazebo. For Iris quads, a 3-metre spacing is a useful starting point; distinct positions alone do not guarantee clearance for every vehicle model.
 
 The other `sim_run.sh` variables (`RTF`, `HEADLESS`, `CENTRALIZED`, `RCPILOT`, `JETSON`, `JETSON_IPS`, `GND_CONTAINER`, `INSTANCE`, `START_AS_PAUSED`) are about how the simulation runs, not what it contains, so they stay environment variables. See [`DOCKER_PARAMS.md`](DOCKER_PARAMS.md).
 
@@ -63,13 +65,34 @@ Quads and VTOLs accept the same fields:
 | `global_position` | — | Spawn position as `lat` and `lon` in degrees (and optionally `alt` in meters, used as `z`), instead of `x` and `y` |
 | `z` | `0.75` | Spawn height in meters |
 | `yaw` | `0` | Spawn heading in degrees |
-| `camera` | `true` | Master camera switch: `false` disables both cameras below, whatever their values |
-| `rgbd_camera` | `true` | Intel RealSense D435: color, infrared 1 and 2, and depth streams |
+| `camera` | `true` | Master camera switch: `false` disables all cameras, whatever their individual values |
+| `rgbd_camera` | `true` | Master switch for all four Intel RealSense D435 sensors below |
+| `rgb_camera` | `true` | D435 RGB color sensor and stream |
+| `infrared_1_camera` | `true` | D435 left infrared sensor and stream |
+| `infrared_2_camera` | `true` | D435 right infrared sensor and stream |
+| `depth_camera` | `true` | D435 depth sensor and stream |
 | `thermal_camera` | `false` | Thermal camera stream |
 | `camera_pitch` | `1.5707` | Camera pitch in radians (`1.5707` = 90 deg, pointing down) |
+| `sitl_ground_truth` | `false` | Enable ground-truth estimator, direct simulated GPS, and one simulated IMU together |
 | `vio_bridge` | `false` | Stereo visual-inertial odometry (quads only), see [Stereo VIO](#stereo-vio) |
 
 So `{"x": 0, "y": 0}` is a complete vehicle: a downward-facing RGB-D camera, no thermal camera, at the world origin.
+
+Set the individual camera fields on each vehicle in the scenario JSON. For RGB only:
+
+```json
+{
+  "x": 0,
+  "y": 0,
+  "rgb_camera": true,
+  "infrared_1_camera": false,
+  "infrared_2_camera": false,
+  "depth_camera": false,
+  "thermal_camera": false
+}
+```
+
+Disabled D435 sensors are omitted from the generated model, and their video bridges are not started. `camera` and `rgbd_camera` must both be `true` for any individual D435 switch to take effect. Omitted fields retain their defaults, so existing scenarios keep all four D435 sensors. Restart `sim_run.sh` after changing cameras.
 
 The world frame is ENU, like Gazebo's: `x` points east, `y` points north, and `yaw` is measured counter-clockwise from `x`, so `"yaw": 90` faces north.
 
@@ -103,7 +126,7 @@ With `JETSON=true`, `JETSON_IPS` lists one Jetson per drone in this same order.
 - every field has the right type and every vehicle has `x` and `y`
 - every custom object has a model that exists and a position
 - `NUM_QUADS`/`NUM_VTOLS` are not larger than the scenario's lists
-- `vio_bridge` is only used on quads with `camera` and `rgbd_camera`, with `RCPILOT=true` and `JETSON=false`
+- `vio_bridge` is only used on quads with `camera`, `rgbd_camera`, and both infrared cameras enabled, with `RCPILOT=true` and `JETSON=false`
 
 You can run the same check without starting the simulation. It prints the resolved scenario, with every default filled in and the drone IDs assigned:
 
@@ -116,14 +139,22 @@ python3 simulation/simulation_resources/scripts/scenario.py /path/to/my_scenario
 
 1. `sim_run.sh` resolves the scenario with [`scenario.py`](/simulation/simulation_resources/scripts/scenario.py) and mounts the `scenarios/` folder into the simulation container at `/aas/simulation_resources/scenarios` (a scenario file outside that folder is mounted on its own at `/aas/scenario.json`). The `SCENARIO_FILE` environment variable holds the scenario's path inside the simulation container. Each aircraft container gets its own drone's type, camera pitch, and VIO setting.
 2. In the simulation container, [`build_world.py`](/simulation/simulation_resources/scripts/build_world.py) writes everything Gazebo needs to `/tmp/aas_generated/`:
-    - one model per drone (`iris_with_ardupilot_1/`, ...) with its own name, topics, ArduPilot port, camera pitch, and only the cameras it enables
+    - one model per drone (`iris_with_ardupilot_1/`, ...) with its own name, topics, ArduPilot port, camera pitch, and only the cameras it enables; each enabled D435 assembly gets its own `d435_<id>/` model with disabled sensors removed and its nested name kept as `d435` to preserve topic paths
     - `world.sdf`: the scenario's world with ArduPilot's physics settings, the drones at their poses, and the custom objects
     - `scenario.resolved.json`: the resolved scenario, useful for debugging
 3. Gazebo, one ArduPilot SITL per drone, and each drone's camera streams are started.
 
 Nothing under `simulation_resources/` is modified, so every run starts from the same files.
 
-**What needs an image rebuild?** The `scenarios/` and `objects/` folders are mounted from your computer, so adding or editing a scenario or an object model takes effect on the next run, without a rebuild. Worlds (`worlds/`, `world_models/`) and aircraft models (`aircraft/`) are part of `simulation-image`: rebuild it after changing them (`CONTAINER=simulation ./sim_build.sh`). In the Gymnasium environment, a scenario given by name is read from the image, so pass a file path to use an edited scenario without rebuilding.
+### SITL estimator
+
+Set `"sitl_ground_truth": true` on an individual quad or VTOL in the scenario JSON to enable all three startup overrides together: simulator ground truth (`AHRS_EKF_TYPE=10`), direct simulated GPS (`GPS1_TYPE=100`), and one simulated IMU (`SIM_IMU_COUNT=1`). For example: `{"x": 0, "y": 0, "sitl_ground_truth": true}`. If the flag is absent or false, no estimator, GPS, or IMU overrides are added, preserving the vehicle defaults. The selection is independent of `vio_bridge`.
+
+`build_world.py` writes `sitl-estimator.params` in each generated vehicle directory; `simulation.yml.erb` loads it after the vehicle defaults. The enabled profile also clears calibration records for unused accelerometers. Arming checks remain enabled. This affects Gazebo SITL only and does not change RTF or hardware configurations.
+
+The override exists only in `/tmp/aas_generated/` inside the simulation container and is passed only to `sim_vehicle.py`. Source parameter files, EVAAT configs, and hardware autopilots are unchanged. Other pre-arm checks still apply.
+
+**What needs an image rebuild?** With `sim_run.sh`, the `scenarios/`, resource `scripts/`, `objects/` and `world_models/` folders, the selected world file and the launch template are mounted from your computer. Changes apply on the next run without rebuilding. Aircraft models (`aircraft/`) are part of `simulation-image`: rebuild it after changing them (`CONTAINER=simulation ./sim_build.sh`). In the Gymnasium environment, a scenario given by name is read from the image, so pass a file path to use an edited scenario without rebuilding. New scenario fields require rebuilding the Gymnasium simulation image to include the updated scripts.
 
 ## Running the world again
 
@@ -136,11 +167,11 @@ To try changes to a scenario without restarting the containers, use the `gz_sim`
 
 ArduPilot SITL and the camera streams keep running in the other windows and reconnect to the new Gazebo. This works for changes to the custom objects and to the vehicles' poses. SITL may report a GPS glitch when a vehicle's position jumps, which clears by itself; restart its `ardu_sitl_N` window if you need a clean autopilot state.
 
-Changes to the number of vehicles, their cameras, `vio_bridge`, or the `world` need a new run of `sim_run.sh`: the SITL instances, camera streams, and ArduPilot's home location are set up from the scenario when the containers start.
+Changes to the number of vehicles, their cameras, `vio_bridge`, `sitl_ground_truth`, or the `world` need a new run of `sim_run.sh`: the SITL instances, camera streams, and ArduPilot's home location are set up from the scenario when the containers start.
 
 ## Stereo VIO
 
-Set `"vio_bridge": true` on a quad to publish its D435 infrared stereo pair and the Gazebo IMU in its ROS domain and start OpenVINS in its aircraft container. It requires `camera` and `rgbd_camera` on that quad, `RCPILOT=true`, and `JETSON=false`. Quads without `vio_bridge` in the same scenario keep the regular camera streams.
+Set `"vio_bridge": true` on a quad to publish its D435 infrared stereo pair and the Gazebo IMU in its ROS domain and start OpenVINS in its aircraft container. It requires `camera`, `rgbd_camera`, `infrared_1_camera`, and `infrared_2_camera` on that quad, `RCPILOT=true`, and `JETSON=false`. RGB and depth can be disabled independently. Quads without `vio_bridge` in the same scenario keep their selected camera streams.
 
 ```sh
 SCENARIO=calibration_vio RCPILOT=true RTF=1 ./sim_run.sh
@@ -152,7 +183,8 @@ See the Stereo VIO section of the [README](/README.md) for the topics and the ca
 
 | Scenario | World | Vehicles | Custom objects |
 | --- | --- | --- | --- |
-| `default` | `esefex_fbx` | 1 quad | none |
+| `default` | `esefex_fbx` | 1 quad (default of `sim_run.sh`) | none |
+| `esefex_fbx` | `esefex_fbx` | 1 quad | none |
 | `gym` | `impalpable_greyness` | 1 quad | none (default of the Gymnasium environment) |
 | `calibration_vio` | `calibration_vio` | 1 quad with `vio_bridge` | none |
 | `imav_hotspots` | `imav` | 1 quad | 2 construction cones and an ArUco marker |

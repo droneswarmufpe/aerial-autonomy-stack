@@ -119,14 +119,18 @@ windows:
   - ardu_sitl_<%= drone_id %>:
       layout: main-horizontal
       panes:
+        # SITL binaries are built in the image; rebuilding them concurrently races on the same executable.
         - >
+          timeout 60s bash -c 'until test -s "$1"; do sleep 0.1; done' _ <%= generated_dir %>/<%= model_name %>/ardupilot-4.6.params &&
           sleep <%= sitl_instance * 3.0 %> && mkdir -p /aas/ardu_sitl_<%= drone_id %> && cd /aas/ardu_sitl_<%= drone_id %> &&
           /aas/github_apps/ardupilot/Tools/autotest/sim_vehicle.py
+          --no-rebuild
           --mavproxy-args="--streamrate=-1"
           <%= vehicle_config %> --model JSON
           -I <%= sitl_instance %> --sysid <%= drone_id %>
           --speedup <%= speedup %>
           --add-param-file=<%= generated_dir %>/<%= model_name %>/ardupilot-4.6.params
+          --add-param-file=<%= generated_dir %>/<%= model_name %>/sitl-estimator.params
           -l $(python3 /aas/simulation_resources/scripts/extract_spherical_coords.py /aas/simulation_resources/worlds/<%= world %>.sdf)
           <% if jetson %>
           --out=udp:<%= jetson_ip %>:14550
@@ -140,21 +144,25 @@ windows:
           <% else %>
           --out=udp:127.0.0.1:<%= 14550 + sitl_instance %>
           <% end %>
-        <% if rgbd_camera %>
+        <% if rgbd_camera && drone['rgb_camera'] %>
         - >
           /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
           <%= rgb_camera_topic %>
           <%= camera_target_ip %> <%= rgb_camera_port %> 8
-        <% unless vio_bridge %>
+        <% end %>
+        <% if rgbd_camera && drone['infrared_1_camera'] && !vio_bridge %>
         - >
           /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
           <%= infrared_1_camera_topic %>
           <%= camera_target_ip %> <%= infrared_1_camera_port %> 8
+        <% end %>
+        <% if rgbd_camera && drone['infrared_2_camera'] && !vio_bridge %>
         - >
           /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
           <%= infrared_2_camera_topic %>
           <%= camera_target_ip %> <%= infrared_2_camera_port %> 8
         <% end %>
+        <% if rgbd_camera && drone['depth_camera'] %>
         - >
           /aas/simulation_resources/comms/gz_gst_bridge/build/gz_gst_bridge
           <%= depth_camera_topic %>
