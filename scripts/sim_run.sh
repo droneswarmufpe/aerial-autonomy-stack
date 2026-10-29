@@ -266,6 +266,7 @@ if [[ "$GND_CONTAINER" == "true" ]]; then
   # Launch the ground container
   DOCKER_CMD="docker run -it --rm \
     --ipc=host \
+    --mount type=bind,source=${PARENT_DIR}/github_clones/MAVKit,target=/libs/MAVKit \
     --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
     --volume /tmp/.X11-unix:/tmp/.X11-unix:rw --device /dev/dri --gpus all \
     --volume ${PARENT_DIR}/github_clones/rcpilot/src:/workspaces/rcpilot/src:cached \
@@ -301,6 +302,7 @@ launch_aircraft_containers() {
     local NAME_AIRCRAFT_CNT="aircraft-container-inst${INSTANCE}_${DRONE_ID}"
     DOCKER_CMD="docker run -it --rm \
       --ipc=host \
+      --mount type=bind,source=${PARENT_DIR}/github_clones/MAVKit,target=/libs/MAVKit \
       --volume ${PARENT_DIR}/aircraft/aircraft.yml.erb:/aas/aircraft.yml.erb:ro \
       --volume ${PARENT_DIR}/github_clones/Projeto-Enxame-Drones:/aas/Projeto-Enxame-Drones \
       --volume ${PARENT_DIR}/github_clones/rcpilot/src:/workspaces/rcpilot/src:cached \

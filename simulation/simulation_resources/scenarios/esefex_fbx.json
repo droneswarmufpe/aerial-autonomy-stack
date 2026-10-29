@@ -11,7 +11,7 @@
       "infrared_2_camera": false,
       "depth_camera": false,
       "thermal_camera": false,
-      "sitl_ground_truth": false
+      "sitl_ground_truth": true
     },
     {
       "x": 0,

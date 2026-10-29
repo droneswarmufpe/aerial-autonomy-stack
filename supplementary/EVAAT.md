@@ -74,6 +74,8 @@ autopilot:
 
 The checkout is mounted read-write at `/aas/evaat`: evaat writes its node logs to `logs/` and, the first time, builds its codec (`native/evaat_codec/libevaat_codec.so`) there. Both are created by the containers' root user, so use `sudo` to delete them from your computer. Since the code is mounted, changes to your checkout apply on the next run, without rebuilding the images.
 
+`sim_run.sh` also mounts the host's `github_clones/MAVKit` at `/libs/MAVKit` in ground and aircraft containers, including the `rc_*` variants. The images' editable MAVKit installation uses this checkout, so MAVKit source changes only require restarting the drone processes. Recreate existing containers once to apply the mount; no image rebuild is needed. The host checkout must exist before launching.
+
 Inside the `evaat` windows, evaat's tmux session is nested in the container's: press `Ctrl + b` twice to send a key to evaat's session (e.g. `Ctrl + b`, `Ctrl + b`, `n` for its next window).
 
 ## Onboard perception
