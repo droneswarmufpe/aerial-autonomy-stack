@@ -135,7 +135,9 @@ RUN pip install numpy==1.26.4 transitions libtmux dearpygui zmq pymap3d utm cart
 # Chorus, MAVKit, rcpilot.mavsys, and OpenCV are installed above; TensorRT and pycuda (built against the CUDA toolkit
 # of the devel base image) as in Dockerfile.rc_aircraft
 RUN pip install --no-cache-dir numpy==1.26.4 pyyaml pyserial pymavlink utm pyzmq dearpygui
-RUN pip install --no-cache-dir --extra-index-url https://pypi.nvidia.com tensorrt
+# Match the CUDA 12 base image and the version used by the current model engines.
+ARG TENSORRT_VERSION=11.3.0.99
+RUN pip install --no-cache-dir --extra-index-url https://pypi.nvidia.com "tensorrt-cu12==${TENSORRT_VERSION}"
 RUN pip install --no-cache-dir pycuda
 # onnx and onnxslim: ultralytics exports YOLO .pt models to TensorRT engines (perception) through ONNX. Installed with
 # the image's packages as constraints, so they don't upgrade anything (e.g. numpy 1.x, which the system OpenCV needs)

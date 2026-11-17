@@ -129,8 +129,17 @@ RUN bash -c 'source /opt/ros/humble/setup.bash && pip install -e .'
 
 # Install dependencies
 RUN pip install numpy==1.26.4 transitions libtmux dearpygui zmq pymap3d utm cartopy filterpy
-RUN pip install --no-cache-dir --extra-index-url https://pypi.nvidia.com tensorrt
+# Match the CUDA 12 base image and the version used by the current model engines.
+ARG TENSORRT_VERSION=11.3.0.99
+RUN pip install --no-cache-dir --extra-index-url https://pypi.nvidia.com "tensorrt-cu12==${TENSORRT_VERSION}"
 RUN pip install --no-cache-dir pycuda
+
+# Ultralytics exports YOLO models through ONNX. Freeze the installed environment when installing ONNX so
+# NumPy (and other existing packages) are not upgraded or replaced.
+RUN pip freeze | grep -v "^-e\|@ file" > /tmp/constraints.txt \
+    && pip install --no-cache-dir -c /tmp/constraints.txt onnx \
+    && rm /tmp/constraints.txt
+
 
 # Install build dependencies for rcpilot
 RUN apt update \
