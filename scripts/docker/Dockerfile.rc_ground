@@ -1,4 +1,17 @@
 ################################################################################
+# Stage 0 - rcpilot GCS (UI) build #############################################
+################################################################################
+# Builds the rcpilot React UI to static files, copied into the final image and served there by nginx (see the last stage).
+# VITE_API_BASE=/api: the UI calls the API through nginx's /api proxy, so it works from any browser that reaches the
+# ground container (the API listens on the container's loopback only)
+FROM node:22-alpine AS rcpilot-gcs-ui-image
+WORKDIR /app
+COPY github_clones/rcpilot/ui/package.json github_clones/rcpilot/ui/package-lock.json ./
+RUN npm ci
+COPY github_clones/rcpilot/ui/ ./
+RUN VITE_API_BASE=/api npm run build
+
+################################################################################
 # Stage 1 - ?GB ################################################################
 ################################################################################
 FROM nvcr.io/nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04 AS ros2-image
@@ -157,8 +170,14 @@ RUN bash -c 'source /opt/ros/humble/setup.bash && pip install -e .'
 
 # Install dependencies
 RUN pip install numpy==1.26.4 transitions libtmux dearpygui zmq pymap3d utm cartopy filterpy
-RUN pip install --no-cache-dir --extra-index-url https://pypi.nvidia.com tensorrt
+RUN pip install --no-cache-dir --extra-index-url https://pypi.nvidia.com tensorrt-cu12==11.3.0.99
 RUN pip install --no-cache-dir pycuda
+# onnx, onnxslim, onnxruntime-gpu: ultralytics exports YOLO .pt models to TensorRT engines through ONNX. Without them,
+# ultralytics auto-installs them at export time, which upgrades numpy to 2.x mid-run and crashes the export. Installed with
+# the image's packages as constraints, so they don't upgrade anything (e.g. numpy 1.x, which the system OpenCV needs)
+RUN pip freeze | grep -v "^-e\|@ file" > /tmp/constraints.txt \
+    && pip install --no-cache-dir -c /tmp/constraints.txt onnx onnxslim onnxruntime-gpu \
+    && rm /tmp/constraints.txt
 
 # Install build dependencies for rcpilot
 RUN apt update \
@@ -182,9 +201,30 @@ RUN git config --global --add safe.directory /workspaces/rcpilot && \
 RUN pip3 install --no-cache-dir grpcio-tools
 
 # Build rcpilot dependencies, SDK, and workspace using the rcpilot orchestrator
+# Unit tests are skipped (BUILD_TESTING=OFF) because they are not needed in the image and upstream tests can lag behind the code
+RUN printf 'build:\n  cmake-args: ["-DBUILD_TESTING=OFF"]\n' > /tmp/colcon_defaults.yaml
 RUN ./rcpilot install deps -y && \
     ./rcpilot install sdk -y && \
-    bash -c "source /opt/ros/humble/setup.bash && ./rcpilot build -y"
+    bash -c "source /opt/ros/humble/setup.bash && COLCON_DEFAULTS_FILE=/tmp/colcon_defaults.yaml ./rcpilot build -y"
+
+# rcpilot GCS: the FastAPI backend (the SDK transport/observability packages and the protobuf stubs it needs were
+# installed by ./rcpilot install sdk above) and nginx to serve the UI built in stage 0
+RUN pip3 install --no-cache-dir fastapi "uvicorn[standard]" ./api
+RUN apt update \
+    && apt install -y --no-install-recommends \
+        nginx \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -f /etc/nginx/sites-enabled/default
+COPY --from=rcpilot-gcs-ui-image /app/dist /aas/rcpilot-gcs
+RUN printf '%s\n' \
+    'server {' \
+    '    listen 8080;' \
+    '    root /aas/rcpilot-gcs;' \
+    '    index index.html;' \
+    '    location / { try_files $uri $uri/ /index.html; }' \
+    '    location /api/ { proxy_pass http://127.0.0.1:8199/; proxy_set_header Host $host; }' \
+    '}' > /etc/nginx/conf.d/rcpilot-gcs.conf
 ################################################################################
 # Stage 8 - ?GB ################################################################
 ################################################################################

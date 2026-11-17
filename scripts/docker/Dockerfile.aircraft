@@ -137,10 +137,10 @@ RUN pip install numpy==1.26.4 transitions libtmux dearpygui zmq pymap3d utm cart
 RUN pip install --no-cache-dir numpy==1.26.4 pyyaml pyserial pymavlink utm pyzmq dearpygui
 RUN pip install --no-cache-dir --extra-index-url https://pypi.nvidia.com tensorrt
 RUN pip install --no-cache-dir pycuda
-# onnx and onnxslim: ultralytics exports YOLO .pt models to TensorRT engines (perception) through ONNX. Installed with
+# onnx, onnxslim, onnxruntime-gpu: ultralytics exports YOLO .pt models to TensorRT engines (perception) through ONNX. Installed with
 # the image's packages as constraints, so they don't upgrade anything (e.g. numpy 1.x, which the system OpenCV needs)
 RUN pip freeze | grep -v "^-e\|@ file" > /tmp/constraints.txt \
-    && pip install --no-cache-dir -c /tmp/constraints.txt onnx onnxslim \
+    && pip install --no-cache-dir -c /tmp/constraints.txt onnx onnxslim onnxruntime-gpu \
     && rm /tmp/constraints.txt
 
 # Use the system OpenCV, built with GStreamer (the simulated cameras and evaat's gstreamer provider need it):
