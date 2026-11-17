@@ -129,8 +129,14 @@ RUN bash -c 'source /opt/ros/humble/setup.bash && pip install -e .'
 
 # Install dependencies
 RUN pip install numpy==1.26.4 transitions libtmux dearpygui zmq pymap3d utm cartopy filterpy
-RUN pip install --no-cache-dir --extra-index-url https://pypi.nvidia.com tensorrt
+RUN pip install --no-cache-dir --extra-index-url https://pypi.nvidia.com tensorrt-cu12==11.3.0.99
 RUN pip install --no-cache-dir pycuda
+# onnx, onnxslim, onnxruntime-gpu: ultralytics exports YOLO .pt models to TensorRT engines through ONNX. Without them,
+# ultralytics auto-installs them at export time, which upgrades numpy to 2.x mid-run and crashes the export. Installed with
+# the image's packages as constraints, so they don't upgrade anything (e.g. numpy 1.x, which the system OpenCV needs)
+RUN pip freeze | grep -v "^-e\|@ file" > /tmp/constraints.txt \
+    && pip install --no-cache-dir -c /tmp/constraints.txt onnx onnxslim onnxruntime-gpu \
+    && rm /tmp/constraints.txt
 
 # Install build dependencies for rcpilot
 RUN apt update \
@@ -156,9 +162,11 @@ RUN pip3 install --no-cache-dir grpcio-tools
 RUN pip3 install --no-cache-dir "setuptools<80"
 
 # Build rcpilot dependencies, SDK, and workspace using the rcpilot orchestrator
+# Unit tests are skipped (BUILD_TESTING=OFF) because they are not needed in the image and upstream tests can lag behind the code
+RUN printf 'build:\n  cmake-args: ["-DBUILD_TESTING=OFF"]\n' > /tmp/colcon_defaults.yaml
 RUN ./rcpilot install deps -y && \
     ./rcpilot install sdk -y && \
-    bash -c "source /opt/ros/humble/setup.bash && ./rcpilot build -y"
+    bash -c "source /opt/ros/humble/setup.bash && COLCON_DEFAULTS_FILE=/tmp/colcon_defaults.yaml ./rcpilot build -y"
 
 ################################################################################
 # Stage 7 - ?GB ################################################################
@@ -175,6 +183,11 @@ RUN rosdep install --from-paths src/ --ignore-src --rosdistro humble --skip-keys
 # Explicitly use bash, not sh, to source and build the workspace
 # OpenVINS ROS2 build flow (official guide) + custom ov_repub package
 RUN bash -c "source /opt/ros/humble/setup.bash && colcon build --symlink-install --event-handlers console_cohesion+ --packages-select ov_core ov_init ov_msckf ov_eval ov_repub --cmake-args -DCMAKE_BUILD_TYPE=Release"
+
+# Use the system OpenCV, built with GStreamer (the simulated cameras need it): the pip OpenCV pulled in as a dependency
+# (e.g. by MAVProxy) has no GStreamer and would shadow it. Done after all pip/rosdep installs so nothing reinstalls it
+RUN pip uninstall -y opencv-python \
+    && python3 -c "import cv2, re; assert re.search(r'GStreamer:\s+YES', cv2.getBuildInformation()), 'OpenCV has no GStreamer'"
 
 # Copy resources and configuration files from this repository
 COPY aircraft/aircraft_resources/ /aas/aircraft_resources
