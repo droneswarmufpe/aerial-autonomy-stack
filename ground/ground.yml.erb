@@ -71,6 +71,26 @@ windows:
         <% end %>
   <% end %>
 
+  <% if rcpilot %>
+  <%
+    # The API talks to the rcpilot gateway over UDP (sends to port 50051, receives on 14556): the gateway runs in this
+    # container in centralized mode, otherwise in the first aircraft container (the API holds a single gateway target)
+    gcs_udp = centralized ? { mode: 'localhost', host: 'localhost' } : { mode: 'ip-targeted', host: "#{sim_subnet}.90.1" }
+  %>
+  - rcpilot_gcs:
+      layout: even-horizontal
+      panes:
+        - >-
+          uvicorn rcpilot.api.main:app --host 127.0.0.1 --port 8199 --no-access-log &
+          until curl -sf -o /dev/null http://127.0.0.1:8199/gateway/config; do sleep 1; done &&
+          curl -sf -X POST -H 'Content-Type: application/json'
+          -d '{"udp_enabled": true, "udp_mode": "<%= gcs_udp[:mode] %>", "udp_host": "<%= gcs_udp[:host] %>", "radio_enabled": false, "priority": "udp"}'
+          http://127.0.0.1:8199/gateway/config && echo && wait
+        - >-
+          nginx -g 'daemon off;' &
+          sleep 1 && echo "rcpilot GCS: http://$(hostname -I | awk '{print $1}'):8080" && wait
+  <% end %>
+
   - qgc:
       layout: even-horizontal
       panes:

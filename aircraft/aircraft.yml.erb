@@ -86,12 +86,14 @@ windows:
           mavlink-routerd -t 0 -e <%= evaat_autopilot_endpoint %> -e <%= "#{sim_subnet}.90.#{drone_id}" %>:14572 -e <%= "#{sim_subnet}.90.#{drone_id}" %>:14571 <%= "#{sim_subnet}.90.#{drone_id}" %>:14570
 
   <% if rcpilot %>
+  # The gateway sends its replies to the rcpilot API (GCS) in the ground container, over UDP (ip-targeted, port 14556)
+  # With VIO_BRIDGE, localization forwards OpenVINS's pose to mavsys (ArduPilot) and serves the RestartVIO command
   - rcpilot:
       layout: even-horizontal
       panes:
         - >
-          python3 -c "import yaml; cfg = yaml.safe_load(open('/workspaces/rcpilot/install/bringup/share/bringup/config/config.dev.yaml')); cfg['communication']['mavsys']['ros__parameters']['clients']['drone']['connection_string'] = 'udp:<%= "#{sim_subnet}.90.#{drone_id}" %>:14572'; yaml.dump(cfg, open('/workspaces/rcpilot/install/bringup/share/bringup/config/config.dev.yaml', 'w'))" &&
-          ros2 launch bringup rcpilot.dev.launch.py
+          python3 -c "import yaml; cfg = yaml.safe_load(open('/workspaces/rcpilot/install/bringup/share/bringup/config/config.dev.yaml')); cfg['communication']['mavsys']['ros__parameters']['clients']['drone']['connection_string'] = 'udp:<%= "#{sim_subnet}.90.#{drone_id}" %>:14572'; udp = cfg['communication']['gateway']['ros__parameters']['transport']['udp']; udp['type'] = 'ip-targeted'; udp['target_host'] = '<%= "#{sim_subnet}.90.#{ground_id}" %>'; yaml.dump(cfg, open('/workspaces/rcpilot/install/bringup/share/bringup/config/config.dev.yaml', 'w'))" &&
+          ros2 launch bringup rcpilot.dev.launch.py enable_localization:=<%= vio_bridge %>
   <% end %>
   <% end %>
   <% end %>
