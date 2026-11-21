@@ -3,6 +3,11 @@
 #include <memory>
 #include <csignal>
 #include <cstring>
+#include <cmath>
+#include <cstdint>
+#include <algorithm>
+#include <chrono>
+#include <mutex>
 #include <gz/transport/Node.hh>
 #include <gz/msgs/image.pb.h>
 #include <gst/gst.h>
@@ -21,6 +26,67 @@ std::string configured_format;
 std::string TARGET_IP = "127.0.0.1";
 int TARGET_PORT = 5600;
 int FRAMERATE = 10;
+bool DEPTH_MODE = false;
+std::uint64_t output_frame_index = 0;
+std::chrono::steady_clock::time_point last_depth_frame_time{};
+std::mutex depth_frame_mutex;
+
+bool depth_frame_is_due() {
+    std::lock_guard<std::mutex> lock(depth_frame_mutex);
+    const auto now = std::chrono::steady_clock::now();
+    const auto min_interval = std::chrono::duration<double>(1.0 / FRAMERATE);
+    if (last_depth_frame_time.time_since_epoch().count() != 0 &&
+        now - last_depth_frame_time < min_interval) {
+        return false;
+    }
+    last_depth_frame_time = now;
+    return true;
+}
+
+bool depth_image_to_millimeters(const gz::msgs::Image &msg, std::string &output) {
+    const std::size_t width = msg.width();
+    const std::size_t height = msg.height();
+    const std::size_t row_stride = msg.step() ? msg.step() : width * 4;
+    const std::string &input = msg.data();
+
+    if (width == 0 || height == 0 || row_stride < width * 2 ||
+        input.size() < row_stride * height) {
+        return false;
+    }
+
+    output.assign(width * height * 2, '\0');
+    const std::size_t bytes_per_pixel = row_stride / width;
+    if (msg.pixel_format_type() == gz::msgs::L_INT16 && bytes_per_pixel == 2) {
+        for (std::size_t y = 0; y < height; ++y) {
+            std::memcpy(output.data() + y * width * 2,
+                        input.data() + y * row_stride, width * 2);
+        }
+        return true;
+    }
+
+    // Gazebo depth_camera publishes R_FLOAT32 in metres. Convert to the
+    // uint16 millimetres expected by RCPilot's GRAY16_LE depth provider.
+    if (row_stride < width * sizeof(float)) {
+        return false;
+    }
+    for (std::size_t y = 0; y < height; ++y) {
+        for (std::size_t x = 0; x < width; ++x) {
+            float meters = 0.0f;
+            const char *pixel = input.data() + y * row_stride + x * sizeof(float);
+            std::memcpy(&meters, pixel, sizeof(meters));
+            std::uint16_t millimeters = 0;
+            if (std::isfinite(meters) && meters > 0.0f) {
+                const long rounded = std::lround(static_cast<double>(meters) * 1000.0);
+                millimeters = static_cast<std::uint16_t>(
+                    std::clamp(rounded, 1L, 65535L));
+            }
+            const std::size_t offset = (y * width + x) * 2;
+            output[offset] = static_cast<char>(millimeters & 0xff);
+            output[offset + 1] = static_cast<char>((millimeters >> 8) & 0xff);
+        }
+    }
+    return true;
+}
 
 std::string detect_gst_raw_format(const gz::msgs::Image &msg) {
     const auto width = static_cast<gsize>(msg.width());
@@ -109,31 +175,47 @@ void configure_caps_if_needed(const gz::msgs::Image &msg, const std::string &for
 // Image callback
 void on_frame(const gz::msgs::Image &msg) {
     if (!appsrc) return;
+    if (DEPTH_MODE && !depth_frame_is_due()) return;
 
-    const std::string format = detect_gst_raw_format(msg);
-    if (format.empty()) {
-        g_warning("Unsupported image layout: width=%u height=%u bytes=%zu",
-                  msg.width(), msg.height(), msg.data().size());
-        return;
+    std::string format;
+    std::string payload;
+    if (DEPTH_MODE) {
+        format = "GRAY16_LE";
+        if (!depth_image_to_millimeters(msg, payload)) {
+            g_warning("Unsupported depth image layout: width=%u height=%u step=%u bytes=%zu",
+                      msg.width(), msg.height(), msg.step(), msg.data().size());
+            return;
+        }
+    } else {
+        format = detect_gst_raw_format(msg);
+        if (format.empty()) {
+            g_warning("Unsupported image layout: width=%u height=%u bytes=%zu",
+                      msg.width(), msg.height(), msg.data().size());
+            return;
+        }
+        payload = msg.data();
     }
     configure_caps_if_needed(msg, format);
 
-    // Copy to GStreamer Buffer
-    gsize size = msg.data().size();
+    const gsize size = payload.size();
     GstBuffer *buffer = gst_buffer_new_allocate(NULL, size, NULL);
-
-    if (buffer) {
-        // Copy the pixel data from Gazebo message to GStreamer buffer
-        gst_buffer_fill(buffer, 0, msg.data().c_str(), size);
-
-        // Push to pipeline
-        GstFlowReturn ret = gst_app_src_push_buffer(GST_APP_SRC(appsrc), buffer);
-        if (ret != GST_FLOW_OK) {
-            // Use GLib logging for thread safety
-            g_warning("Error pushing buffer to appsrc");
-        }
-    } else {
+    if (!buffer) {
         g_warning("Failed to allocate GStreamer buffer");
+        return;
+    }
+
+    gst_buffer_fill(buffer, 0, payload.data(), size);
+    if (DEPTH_MODE) {
+        const GstClockTime duration = gst_util_uint64_scale(1, GST_SECOND, FRAMERATE);
+        GST_BUFFER_PTS(buffer) = gst_util_uint64_scale(output_frame_index, GST_SECOND, FRAMERATE);
+        GST_BUFFER_DTS(buffer) = GST_BUFFER_PTS(buffer);
+        GST_BUFFER_DURATION(buffer) = duration;
+        ++output_frame_index;
+    }
+
+    GstFlowReturn ret = gst_app_src_push_buffer(GST_APP_SRC(appsrc), buffer);
+    if (ret != GST_FLOW_OK) {
+        g_warning("Error pushing buffer to appsrc");
     }
 }
 
@@ -153,13 +235,23 @@ void sigint_handler(int sig) {
 
 int main(int argc, char **argv) {
     if (argc < 3) {
-        std::cerr << "Usage: ./gz_gst_bridge <gz_topic> <ip> [port] [framerate]\n";
+        std::cerr << "Usage: ./gz_gst_bridge <gz_topic> <ip> [port] [framerate] [color|depth]\n";
         return 1;
     }
     std::string topic = argv[1];
     TARGET_IP = argv[2];
     if (argc > 3) TARGET_PORT = std::stoi(argv[3]);
     if (argc > 4) FRAMERATE = std::stoi(argv[4]);
+    const std::string stream_mode = argc > 5 ? argv[5] : "color";
+    if (stream_mode != "color" && stream_mode != "depth") {
+        std::cerr << "Stream mode must be color or depth\n";
+        return 1;
+    }
+    DEPTH_MODE = stream_mode == "depth";
+    if (FRAMERATE <= 0) {
+        std::cerr << "Framerate must be positive\n";
+        return 1;
+    }
 
     // Initialize GStreamer and Gazebo Transport
     gst_init(&argc, &argv);    
@@ -168,18 +260,22 @@ int main(int argc, char **argv) {
     // Build Pipeline String
     std::string pipeline_str;
     std::string ip_port = "host=" + TARGET_IP + " port=" + std::to_string(TARGET_PORT);
-    if (check_nvidia_encoder()) {
+    if (DEPTH_MODE) {
+        std::cout << "Using lossless GRAY16_LE depth payload (rtpgstpay)\n";
+        pipeline_str = "appsrc name=gz_source ! queue max-size-buffers=1 leaky=downstream ! "
+                       "rtpgstpay pt=96 mtu=1400 config-interval=1 ! udpsink sync=false " + ip_port;
+    } else if (check_nvidia_encoder()) {
         std::cout << "Using NVIDIA GPU Encoder (nvh264enc)\n";
         pipeline_str = "appsrc name=gz_source ! queue max-size-buffers=1 leaky=downstream ! "
-                        "videoconvert ! "
-                        "nvh264enc preset=low-latency-hq zerolatency=true rc-mode=cbr bitrate=2048 qp-min=15 qp-max=35 gop-size=60 ! "
-                        "rtph264pay config-interval=1 mtu=1400 ! udpsink sync=false " + ip_port;
+                       "videoconvert ! "
+                       "nvh264enc preset=low-latency-hq zerolatency=true rc-mode=cbr bitrate=2048 qp-min=15 qp-max=35 gop-size=60 ! "
+                       "rtph264pay config-interval=1 mtu=1400 ! udpsink sync=false " + ip_port;
     } else {
         std::cout << "Using CPU Encoder (x264enc)\n";
         pipeline_str = "appsrc name=gz_source ! queue max-size-buffers=1 leaky=downstream ! "
-                        "videoconvert ! "
-                        "x264enc speed-preset=ultrafast tune=zerolatency bitrate=2048 key-int-max=60 ! "
-                        "rtph264pay config-interval=1 mtu=1400 ! udpsink sync=false " + ip_port;
+                       "videoconvert ! "
+                       "x264enc speed-preset=ultrafast tune=zerolatency bitrate=2048 key-int-max=60 ! "
+                       "rtph264pay config-interval=1 mtu=1400 ! udpsink sync=false " + ip_port;
     }
     // Note: re-send full frame every 60 frames
 

@@ -1,0 +1,22 @@
+{
+  "world": "cbr_phase1",
+  "quads": [
+    {
+      "x": -3,
+      "y": -3.14,
+      "z": 1.0,
+      "yaw": 90,
+      "camera": true,
+      "rgbd_camera": true,
+      "rgb_camera": true,
+      "infrared_1_camera": true,
+      "infrared_2_camera": true,
+      "depth_camera": true,
+      "thermal_camera": false,
+      "vio_bridge": true,
+      "sitl_ground_truth": false
+    }
+  ],
+  "vtols": [],
+  "custom_objects": []
+}
